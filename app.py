@@ -31,13 +31,11 @@ STATUTS = {
 }
 
 PRODUITS = [
-    "Fibre optique",
-    "ADSL / VDSL",
-    "Open (Fibre + Mobile)",
-    "Open (ADSL + Mobile)",
-    "Mobile seul",
-    "Livebox",
-    "Autre",
+    "En option",
+    "Livebox Fibre",
+    "Livebox Up",
+    "Livebox Max",
+    "Série Spécial Lite Fibre",
 ]
 
 
