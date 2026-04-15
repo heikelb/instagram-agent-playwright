@@ -3,8 +3,10 @@ import io
 import os
 from datetime import datetime, date, timedelta
 
-from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify
+import hashlib
+from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin, current_user
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 
@@ -16,6 +18,51 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///ventes.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
+
+# ---------------------------------------------------------------------------
+# Authentification
+# ---------------------------------------------------------------------------
+
+login_manager = LoginManager(app)
+login_manager.login_view = "login"
+login_manager.login_message = "Connecte-toi pour accéder à tes ventes."
+login_manager.login_message_category = "warning"
+
+APP_PASSWORD_HASH = hashlib.sha256(
+    os.environ.get("APP_PASSWORD", "orange2026").encode()
+).hexdigest()
+
+
+class FakeUser(UserMixin):
+    id = "1"
+
+
+THE_USER = FakeUser()
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return THE_USER if user_id == "1" else None
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for("dashboard"))
+    if request.method == "POST":
+        pwd = request.form.get("password", "")
+        if hashlib.sha256(pwd.encode()).hexdigest() == APP_PASSWORD_HASH:
+            login_user(THE_USER, remember=True)
+            return redirect(request.args.get("next") or url_for("dashboard"))
+        flash("Mot de passe incorrect.", "danger")
+    return render_template("login.html")
+
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for("login"))
 
 
 # ---------------------------------------------------------------------------
@@ -220,6 +267,7 @@ def envoyer_rappels_du_jour():
 # ---------------------------------------------------------------------------
 
 @app.route("/")
+@login_required
 def dashboard():
     aujourd_hui = date.today()
     demain = aujourd_hui + timedelta(days=1)
@@ -262,6 +310,7 @@ def dashboard():
 # ---------------------------------------------------------------------------
 
 @app.route("/ventes")
+@login_required
 def liste_ventes():
     statut_filtre = request.args.get("statut", "")
     produit_filtre = request.args.get("produit", "")
@@ -328,6 +377,7 @@ def liste_ventes():
 # ---------------------------------------------------------------------------
 
 @app.route("/ajouter", methods=["GET", "POST"])
+@login_required
 def ajouter_vente():
     if request.method == "POST":
         try:
@@ -374,6 +424,7 @@ def ajouter_vente():
 # ---------------------------------------------------------------------------
 
 @app.route("/modifier/<int:vente_id>", methods=["GET", "POST"])
+@login_required
 def modifier_vente(vente_id):
     vente = Vente.query.get_or_404(vente_id)
 
@@ -421,6 +472,7 @@ def modifier_vente(vente_id):
 # ---------------------------------------------------------------------------
 
 @app.route("/supprimer/<int:vente_id>", methods=["POST"])
+@login_required
 def supprimer_vente(vente_id):
     vente = Vente.query.get_or_404(vente_id)
     db.session.delete(vente)
@@ -434,6 +486,7 @@ def supprimer_vente(vente_id):
 # ---------------------------------------------------------------------------
 
 @app.route("/statut/<int:vente_id>/<statut>", methods=["POST"])
+@login_required
 def changer_statut(vente_id, statut):
     if statut not in STATUTS:
         flash("Statut invalide.", "danger")
@@ -452,6 +505,7 @@ def changer_statut(vente_id, statut):
 # ---------------------------------------------------------------------------
 
 @app.route("/envoyer-sms/<int:vente_id>", methods=["POST"])
+@login_required
 def envoyer_sms_manuel(vente_id):
     vente = Vente.query.get_or_404(vente_id)
     message = construire_message_rappel(vente)
@@ -472,6 +526,7 @@ def envoyer_sms_manuel(vente_id):
 # ---------------------------------------------------------------------------
 
 @app.route("/lancer-rappels", methods=["POST"])
+@login_required
 def lancer_rappels():
     envoyer_rappels_du_jour()
     flash("Rappels SMS du lendemain traités.", "info")
@@ -479,10 +534,20 @@ def lancer_rappels():
 
 
 # ---------------------------------------------------------------------------
+# Route offline (PWA fallback)
+# ---------------------------------------------------------------------------
+
+@app.route("/offline")
+def offline():
+    return render_template("offline.html")
+
+
+# ---------------------------------------------------------------------------
 # Routes : Prospection terrain
 # ---------------------------------------------------------------------------
 
 @app.route("/prospection")
+@login_required
 def liste_prospection():
     sessions = (
         SessionProspection.query
@@ -493,6 +558,7 @@ def liste_prospection():
 
 
 @app.route("/prospection/nouvelle", methods=["POST"])
+@login_required
 def nouvelle_session():
     nom = request.form.get("nom", "").strip()
     if not nom:
@@ -505,6 +571,7 @@ def nouvelle_session():
 
 
 @app.route("/prospection/<int:session_id>")
+@login_required
 def tap_session(session_id):
     session = SessionProspection.query.get_or_404(session_id)
     return render_template(
@@ -515,6 +582,7 @@ def tap_session(session_id):
 
 
 @app.route("/prospection/<int:session_id>/tap/<resultat>", methods=["POST"])
+@login_required
 def tap_porte(session_id, resultat):
     if resultat not in RESULTATS_PORTE:
         return jsonify({"error": "Résultat invalide"}), 400
@@ -526,6 +594,7 @@ def tap_porte(session_id, resultat):
 
 
 @app.route("/prospection/<int:session_id>/annuler", methods=["POST"])
+@login_required
 def annuler_derniere_porte(session_id):
     session = SessionProspection.query.get_or_404(session_id)
     derniere = (
@@ -541,6 +610,7 @@ def annuler_derniere_porte(session_id):
 
 
 @app.route("/prospection/<int:session_id>/supprimer", methods=["POST"])
+@login_required
 def supprimer_session(session_id):
     session = SessionProspection.query.get_or_404(session_id)
     db.session.delete(session)

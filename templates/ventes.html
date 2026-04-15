@@ -51,7 +51,7 @@
   <div class="card-body p-0">
     {% if ventes %}
     <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
+      <table class="table table-hover align-middle mb-0 table-mobile-cards">
         <thead class="table-light">
           <tr>
             <th>#</th>
@@ -68,8 +68,8 @@
         <tbody>
           {% for v in ventes %}
           <tr>
-            <td class="text-muted small">{{ v.id }}</td>
-            <td>
+            <td class="text-muted small" data-label="#">{{ v.id }}</td>
+            <td data-label="Client">
               <strong>{{ v.prenom }} {{ v.nom }}</strong>
               <div class="text-muted small">
                 <i class="bi bi-telephone me-1"></i>{{ v.telephone }}
@@ -78,20 +78,20 @@
                 <i class="bi bi-geo-alt me-1"></i>{{ v.adresse }}
               </div>
             </td>
-            <td><span class="badge bg-light text-dark border">{{ v.produit }}</span></td>
-            <td>
+            <td data-label="Produit"><span class="badge bg-light text-dark border">{{ v.produit }}</span></td>
+            <td data-label="Réf.">
               {% if v.reference %}
                 <code class="small">{{ v.reference }}</code>
               {% else %}
                 <span class="text-muted small">—</span>
               {% endif %}
             </td>
-            <td><small>{{ v.date_signature.strftime('%d/%m/%Y') }}</small></td>
-            <td>
+            <td data-label="Signé le"><small>{{ v.date_signature.strftime('%d/%m/%Y') }}</small></td>
+            <td data-label="RDV">
               <small class="fw-semibold">{{ v.date_rdv.strftime('%d/%m/%Y') }}</small>
               <div class="text-muted small">{{ v.date_rdv.strftime('%H:%M') }}</div>
             </td>
-            <td>
+            <td data-label="Statut">
               <div class="dropdown">
                 <span class="badge {{ v.badge_class }} dropdown-toggle"
                       style="cursor:pointer;" data-bs-toggle="dropdown">

@@ -1,0 +1,38 @@
+{
+  "name": "Ventes Orange",
+  "short_name": "Ventes",
+  "description": "Suivi des ventes Orange porte-à-porte avec rappels SMS",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ff7900",
+  "theme_color": "#ff7900",
+  "lang": "fr",
+  "icons": [
+    { "src": "/static/icons/icon-57.png",  "sizes": "57x57",   "type": "image/png" },
+    { "src": "/static/icons/icon-72.png",  "sizes": "72x72",   "type": "image/png" },
+    { "src": "/static/icons/icon-76.png",  "sizes": "76x76",   "type": "image/png" },
+    { "src": "/static/icons/icon-114.png", "sizes": "114x114", "type": "image/png" },
+    { "src": "/static/icons/icon-120.png", "sizes": "120x120", "type": "image/png" },
+    { "src": "/static/icons/icon-144.png", "sizes": "144x144", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/static/icons/icon-152.png", "sizes": "152x152", "type": "image/png" },
+    { "src": "/static/icons/icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nouvelle vente",
+      "short_name": "Vente",
+      "url": "/ajouter",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Terrain",
+      "short_name": "Terrain",
+      "url": "/prospection",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
