@@ -81,12 +81,12 @@
     .addr-info { flex: 1; min-width: 0; }
     .addr-numero { font-size: 1.05rem; font-weight: 700; color: #fff; }
     .addr-rue {
-      font-size: .72rem;
-      color: #666;
+      font-size: .8rem;
+      color: #bbb;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      margin-top: 1px;
+      margin-top: 2px;
     }
 
     /* ── Result buttons ── */
@@ -181,7 +181,9 @@
 
 <!-- Column hint -->
 <div class="list-header">
-  <span>N° — Adresse</span>
+  <span style="color:#ff7900; font-weight:600;">
+    {% if adresses %}{{ adresses[0].rue }}{% endif %}
+  </span>
   <span>🔘 ❌ 💬 🏠 ✅</span>
 </div>
 
