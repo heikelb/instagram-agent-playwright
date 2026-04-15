@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Prospection terrain{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="mb-0 fw-bold"><i class="bi bi-door-open me-1"></i>Prospection terrain</h4>
+</div>
+
+<!-- Démarrer une session -->
+<div class="card shadow-sm mb-4" style="border-left: 4px solid #ff7900;">
+  <div class="card-body">
+    <h6 class="fw-bold mb-2"><i class="bi bi-play-circle me-1 text-warning"></i>Nouvelle session</h6>
+    <form action="{{ url_for('nouvelle_session') }}" method="POST" class="d-flex gap-2">
+      <input type="text" name="nom" class="form-control"
+             placeholder="Rue Victor Hugo, Paris 10e — Bât A"
+             required autofocus>
+      <button type="submit" class="btn btn-warning fw-semibold text-nowrap px-4">
+        <i class="bi bi-lightning-charge me-1"></i>GO
+      </button>
+    </form>
+    <div class="form-text mt-1">Nom de la rue, du bâtiment ou de la zone que tu vas prospecter.</div>
+  </div>
+</div>
+
+<!-- Historique des sessions -->
+{% if sessions %}
+<h6 class="fw-bold text-muted mb-2">Historique des sessions</h6>
+<div class="row g-3">
+  {% for s in sessions %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <div class="fw-semibold">{{ s.nom }}</div>
+            <div class="text-muted small">{{ s.date.strftime('%d/%m/%Y') }}</div>
+          </div>
+          <span class="badge bg-light text-dark border">{{ s.total }} portes</span>
+        </div>
+
+        <!-- Métriques clés -->
+        <div class="row g-1 text-center mb-3">
+          <div class="col-3">
+            <div class="bg-light rounded p-1">
+              <div class="fw-bold text-secondary">{{ s.taux_ouverture }}%</div>
+              <div class="text-muted" style="font-size:.65rem;">Ouvertes</div>
+            </div>
+          </div>
+          <div class="col-3">
+            <div class="bg-light rounded p-1">
+              <div class="fw-bold text-warning">{{ s.taux_cause }}%</div>
+              <div class="text-muted" style="font-size:.65rem;">Causé</div>
+            </div>
+          </div>
+          <div class="col-3">
+            <div class="bg-light rounded p-1">
+              <div class="fw-bold text-primary">{{ s.taux_entree }}%</div>
+              <div class="text-muted" style="font-size:.65rem;">Entré</div>
+            </div>
+          </div>
+          <div class="col-3">
+            <div class="bg-light rounded p-1">
+              <div class="fw-bold text-success">{{ s.nb_signes }}</div>
+              <div class="text-muted" style="font-size:.65rem;">Signés</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Barre visuelle de la répartition -->
+        {% if s.total > 0 %}
+        <div class="progress mb-3" style="height:10px; border-radius:5px;">
+          {% set pct_absent = (s.total - s.nb_ouvertes) / s.total * 100 %}
+          {% set pct_refus  = (s.nb_ouvertes - s.nb_causes) / s.total * 100 %}
+          {% set pct_cause  = (s.nb_causes - s.nb_entrees) / s.total * 100 %}
+          {% set pct_entre  = (s.nb_entrees - s.nb_signes) / s.total * 100 %}
+          {% set pct_signe  = s.nb_signes / s.total * 100 %}
+          <div class="progress-bar bg-secondary" style="width:{{ pct_absent }}%" title="Absent"></div>
+          <div class="progress-bar bg-danger"    style="width:{{ pct_refus  }}%" title="Refus"></div>
+          <div class="progress-bar bg-warning"   style="width:{{ pct_cause  }}%" title="Causé"></div>
+          <div class="progress-bar bg-primary"   style="width:{{ pct_entre  }}%" title="Entré"></div>
+          <div class="progress-bar bg-success"   style="width:{{ pct_signe  }}%" title="Signé"></div>
+        </div>
+        {% endif %}
+
+        <div class="d-flex gap-2">
+          <a href="{{ url_for('tap_session', session_id=s.id) }}"
+             class="btn btn-sm btn-warning flex-grow-1">
+            <i class="bi bi-play-fill me-1"></i>Continuer
+          </a>
+          <form action="{{ url_for('supprimer_session', session_id=s.id) }}" method="POST"
+                onsubmit="return confirm('Supprimer cette session ?')">
+            <button class="btn btn-sm btn-outline-danger">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center text-muted py-5">
+  <div style="font-size:3rem;">🚪</div>
+  <p>Aucune session pour l'instant.<br>Lance ta première session ci-dessus !</p>
+</div>
+{% endif %}
+{% endblock %}

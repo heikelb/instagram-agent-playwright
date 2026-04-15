@@ -3,7 +3,7 @@ import io
 import os
 from datetime import datetime, date, timedelta
 
-from flask import Flask, render_template, request, redirect, url_for, flash, Response
+from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
@@ -70,6 +70,96 @@ class Vente(db.Model):
             "no_show": "bg-danger",
             "annule": "bg-secondary",
         }.get(self.statut, "bg-secondary")
+
+
+# ---------------------------------------------------------------------------
+# Modèles prospection terrain
+# ---------------------------------------------------------------------------
+
+# Résultats possibles à chaque porte
+RESULTATS_PORTE = {
+    "absent":  {"label": "ABSENT",  "emoji": "🔘", "color": "#6c757d"},
+    "refus":   {"label": "REFUS",   "emoji": "❌", "color": "#dc3545"},
+    "cause":   {"label": "CAUSÉ",   "emoji": "💬", "color": "#fd7e14"},
+    "entre":   {"label": "ENTRÉ",   "emoji": "🏠", "color": "#0d6efd"},
+    "signe":   {"label": "SIGNÉ",   "emoji": "✅", "color": "#198754"},
+}
+
+
+class SessionProspection(db.Model):
+    __tablename__ = "sessions_prospection"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nom = db.Column(db.String(200), nullable=False)   # ex: "Rue de la Paix, Paris 2"
+    date = db.Column(db.Date, nullable=False, default=date.today)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    portes = db.relationship(
+        "Porte", backref="session", lazy=True,
+        cascade="all, delete-orphan", order_by="Porte.id",
+    )
+
+    @property
+    def total(self):
+        return len(self.portes)
+
+    @property
+    def nb_ouvertes(self):
+        return sum(1 for p in self.portes if p.resultat in ("refus", "cause", "entre", "signe"))
+
+    @property
+    def nb_causes(self):
+        return sum(1 for p in self.portes if p.resultat in ("cause", "entre", "signe"))
+
+    @property
+    def nb_entrees(self):
+        return sum(1 for p in self.portes if p.resultat in ("entre", "signe"))
+
+    @property
+    def nb_signes(self):
+        return sum(1 for p in self.portes if p.resultat == "signe")
+
+    def _pct(self, n):
+        return round(n / self.total * 100) if self.total else 0
+
+    @property
+    def taux_ouverture(self):
+        return self._pct(self.nb_ouvertes)
+
+    @property
+    def taux_entree(self):
+        return self._pct(self.nb_entrees)
+
+    @property
+    def taux_cause(self):
+        return self._pct(self.nb_causes)
+
+    @property
+    def taux_signature(self):
+        return self._pct(self.nb_signes)
+
+    def to_stats_dict(self):
+        return {
+            "total":          self.total,
+            "nb_ouvertes":    self.nb_ouvertes,
+            "nb_causes":      self.nb_causes,
+            "nb_entrees":     self.nb_entrees,
+            "nb_signes":      self.nb_signes,
+            "taux_ouverture": self.taux_ouverture,
+            "taux_cause":     self.taux_cause,
+            "taux_entree":    self.taux_entree,
+            "taux_signature": self.taux_signature,
+        }
+
+
+class Porte(db.Model):
+    __tablename__ = "portes"
+
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(
+        db.Integer, db.ForeignKey("sessions_prospection.id"), nullable=False
+    )
+    resultat = db.Column(db.String(20), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 # ---------------------------------------------------------------------------
@@ -384,6 +474,77 @@ def lancer_rappels():
     envoyer_rappels_du_jour()
     flash("Rappels SMS du lendemain traités.", "info")
     return redirect(url_for("dashboard"))
+
+
+# ---------------------------------------------------------------------------
+# Routes : Prospection terrain
+# ---------------------------------------------------------------------------
+
+@app.route("/prospection")
+def liste_prospection():
+    sessions = (
+        SessionProspection.query
+        .order_by(SessionProspection.date.desc(), SessionProspection.created_at.desc())
+        .all()
+    )
+    return render_template("prospection.html", sessions=sessions)
+
+
+@app.route("/prospection/nouvelle", methods=["POST"])
+def nouvelle_session():
+    nom = request.form.get("nom", "").strip()
+    if not nom:
+        flash("Donne un nom à ta session (ex: Rue Victor Hugo).", "warning")
+        return redirect(url_for("liste_prospection"))
+    session = SessionProspection(nom=nom)
+    db.session.add(session)
+    db.session.commit()
+    return redirect(url_for("tap_session", session_id=session.id))
+
+
+@app.route("/prospection/<int:session_id>")
+def tap_session(session_id):
+    session = SessionProspection.query.get_or_404(session_id)
+    return render_template(
+        "tap.html",
+        session=session,
+        resultats=RESULTATS_PORTE,
+    )
+
+
+@app.route("/prospection/<int:session_id>/tap/<resultat>", methods=["POST"])
+def tap_porte(session_id, resultat):
+    if resultat not in RESULTATS_PORTE:
+        return jsonify({"error": "Résultat invalide"}), 400
+    session = SessionProspection.query.get_or_404(session_id)
+    porte = Porte(session_id=session_id, resultat=resultat)
+    db.session.add(porte)
+    db.session.commit()
+    return jsonify(session.to_stats_dict())
+
+
+@app.route("/prospection/<int:session_id>/annuler", methods=["POST"])
+def annuler_derniere_porte(session_id):
+    session = SessionProspection.query.get_or_404(session_id)
+    derniere = (
+        Porte.query
+        .filter_by(session_id=session_id)
+        .order_by(Porte.id.desc())
+        .first()
+    )
+    if derniere:
+        db.session.delete(derniere)
+        db.session.commit()
+    return jsonify(session.to_stats_dict())
+
+
+@app.route("/prospection/<int:session_id>/supprimer", methods=["POST"])
+def supprimer_session(session_id):
+    session = SessionProspection.query.get_or_404(session_id)
+    db.session.delete(session)
+    db.session.commit()
+    flash("Session supprimée.", "info")
+    return redirect(url_for("liste_prospection"))
 
 
 # ---------------------------------------------------------------------------
