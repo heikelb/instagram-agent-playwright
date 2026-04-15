@@ -687,10 +687,13 @@ def creer_scheduler():
     return scheduler
 
 
+# Créer les tables au démarrage (gunicorn + flask run)
+with app.app_context():
+    db.create_all()
+
+scheduler = creer_scheduler()
+
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
-    scheduler = creer_scheduler()
     try:
         app.run(debug=False, host="0.0.0.0", port=5000)
     finally:
