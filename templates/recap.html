@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Récap semaine — Ventes Orange{% endblock %}
+
+{% block content %}
+
+<!-- Navigation semaine -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <a href="{{ url_for('recap_semaine', offset_semaines=offset-1) }}"
+     class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-chevron-left"></i> Semaine précédente
+  </a>
+
+  <h5 class="mb-0 fw-bold text-center">
+    <i class="bi bi-calendar-week me-1 text-warning"></i>
+    {% if offset == 0 %}
+      Cette semaine
+    {% elif offset == -1 %}
+      Semaine dernière
+    {% else %}
+      Semaine du {{ lundi.strftime('%d/%m') }}
+    {% endif %}
+    <div class="text-muted fw-normal" style="font-size:.8rem;">
+      {{ lundi.strftime('%d/%m/%Y') }} → {{ dimanche.strftime('%d/%m/%Y') }}
+    </div>
+  </h5>
+
+  <a href="{{ url_for('recap_semaine', offset_semaines=offset+1) }}"
+     class="btn btn-outline-secondary btn-sm {% if offset >= 0 %}disabled{% endif %}">
+    Semaine suivante <i class="bi bi-chevron-right"></i>
+  </a>
+</div>
+
+<!-- Stats de la semaine -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm h-100 stat-card orange">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1"><i class="bi bi-bag-check me-1"></i>Total semaine</div>
+        <div class="fs-2 fw-bold">{{ total_semaine }}</div>
+      </div>
+    </div>
+  </div>
+  {% for produit, nb in par_produit.items() | sort(attribute='1', reverse=True) %}
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm h-100" style="border-left:4px solid #6c757d;">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1" style="font-size:.75rem;">{{ produit }}</div>
+        <div class="fs-2 fw-bold">{{ nb }}</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Ventes jour par jour -->
+{% for jour in jours %}
+<div class="mb-3">
+
+  <!-- En-tête du jour -->
+  <div class="d-flex align-items-center gap-2 mb-2">
+    <div class="fw-bold {% if jour.is_today %}text-warning{% else %}text-secondary{% endif %}"
+         style="min-width:90px;">
+      {{ jour.nom }}
+      {% if jour.is_today %}
+        <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">Aujourd'hui</span>
+      {% endif %}
+    </div>
+    <div class="text-muted small">{{ jour.date.strftime('%d/%m/%Y') }}</div>
+    <div class="ms-2">
+      {% if jour.ventes %}
+        <span class="badge bg-warning text-dark">{{ jour.ventes|length }} vente{{ 's' if jour.ventes|length > 1 }}</span>
+      {% else %}
+        <span class="text-muted small">—</span>
+      {% endif %}
+    </div>
+    <div class="flex-grow-1 border-bottom ms-2"></div>
+  </div>
+
+  <!-- Ventes du jour -->
+  {% if jour.ventes %}
+  <div class="row g-2">
+    {% for v in jour.ventes %}
+    <div class="col-12 col-md-6">
+      <div class="card shadow-sm border-0"
+           style="border-left:3px solid {{ '#198754' if v.statut == 'installe' else '#0d6efd' if v.statut == 'confirme' else '#ffc107' if v.statut == 'en_attente' else '#dc3545' if v.statut == 'no_show' else '#6c757d' }} !important; border-left-width:3px !important;">
+        <div class="card-body py-2 px-3">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="fw-bold">{{ v.prenom }} {{ v.nom }}</div>
+              <div class="text-muted small">
+                <i class="bi bi-telephone me-1"></i>{{ v.telephone }}
+              </div>
+              <div class="text-muted small">
+                <i class="bi bi-geo-alt me-1"></i>{{ v.adresse }}
+              </div>
+            </div>
+            <div class="text-end ms-2 flex-shrink-0">
+              <span class="badge {{ v.badge_class }} d-block mb-1">{{ v.statut_label }}</span>
+              <span class="badge bg-light text-dark border" style="font-size:.7rem;">{{ v.produit }}</span>
+            </div>
+          </div>
+
+          <!-- Référence + RDV -->
+          <div class="d-flex flex-wrap gap-2 mt-2" style="font-size:.8rem;">
+            {% if v.reference %}
+            <span class="text-muted">
+              <i class="bi bi-upc-scan me-1"></i><code>{{ v.reference }}</code>
+            </span>
+            {% endif %}
+            <span class="text-muted">
+              <i class="bi bi-calendar-event me-1"></i>RDV {{ v.date_rdv.strftime('%d/%m à %H:%M') }}
+            </span>
+            {% if v.sms_envoye %}
+            <span class="text-success"><i class="bi bi-check2-circle me-1"></i>SMS envoyé</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% endif %}
+</div>
+{% endfor %}
+
+{% if total_semaine == 0 %}
+<div class="text-center text-muted py-5">
+  <div style="font-size:3rem;">📭</div>
+  <p class="mt-2">Aucune vente signée cette semaine.<br>
+    <a href="{{ url_for('ajouter_vente') }}">Ajouter une vente →</a>
+  </p>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -263,6 +263,55 @@ def envoyer_rappels_du_jour():
 
 
 # ---------------------------------------------------------------------------
+# Routes : Récap semaine
+# ---------------------------------------------------------------------------
+
+@app.route("/recap")
+@app.route("/recap/<int:offset_semaines>")
+@login_required
+def recap_semaine(offset_semaines=0):
+    aujourd_hui = date.today()
+    # Lundi de la semaine cible
+    lundi = aujourd_hui - timedelta(days=aujourd_hui.weekday()) + timedelta(weeks=offset_semaines)
+    dimanche = lundi + timedelta(days=6)
+
+    # Toutes les ventes de la semaine
+    ventes_semaine = Vente.query.filter(
+        Vente.date_signature >= lundi,
+        Vente.date_signature <= dimanche,
+    ).order_by(Vente.date_signature.asc(), Vente.created_at.asc()).all()
+
+    # Grouper par jour
+    jours = []
+    noms_jours = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
+    for i in range(7):
+        jour = lundi + timedelta(days=i)
+        ventes_jour = [v for v in ventes_semaine if v.date_signature == jour]
+        jours.append({
+            "nom": noms_jours[i],
+            "date": jour,
+            "ventes": ventes_jour,
+            "is_today": jour == aujourd_hui,
+        })
+
+    # Stats globales de la semaine
+    par_produit = {}
+    for v in ventes_semaine:
+        par_produit[v.produit] = par_produit.get(v.produit, 0) + 1
+
+    return render_template(
+        "recap.html",
+        jours=jours,
+        lundi=lundi,
+        dimanche=dimanche,
+        total_semaine=len(ventes_semaine),
+        par_produit=par_produit,
+        offset=offset_semaines,
+        aujourd_hui=aujourd_hui,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Routes : Dashboard
 # ---------------------------------------------------------------------------
 
