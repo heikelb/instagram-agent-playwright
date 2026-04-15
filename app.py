@@ -768,49 +768,64 @@ def importer_fichier():
             _os.unlink(tmp.name)
             ws = wb.active
 
-            nb_ok = nb_skip = 0
-            col_rue = col_num = None
+            # Lire toutes les lignes non-vides
+            all_rows = [
+                [str(c).strip() if c is not None else "" for c in row]
+                for row in ws.iter_rows(min_row=1, values_only=True)
+                if any(c is not None and str(c).strip() for c in row)
+            ]
 
-            for i, row in enumerate(ws.iter_rows(min_row=1, values_only=True)):
-                if not row or all(c is None for c in row):
-                    continue
-                cells = [str(c).strip() if c is not None else "" for c in row]
+            if not all_rows:
+                flash("Le fichier est vide.", "warning")
+                return redirect(url_for("importer_fichier"))
 
-                # Auto-detect columns on first non-empty row
-                if col_rue is None:
-                    header_words = {"rue", "adresse", "voie", "libelle", "street",
-                                    "num", "n°", "no", "porte", "numero", "numéro"}
-                    first_low = cells[0].lower() if cells else ""
-                    if any(w in first_low for w in header_words):
-                        for j, c in enumerate(cells):
-                            c_low = c.lower()
-                            if any(w in c_low for w in ("rue", "adresse", "voie", "libelle")):
-                                col_rue = j
-                            elif any(w in c_low for w in ("num", "n°", "no", "porte")):
-                                col_num = j
-                        continue  # skip header row
-                    # Detect by content
-                    if len(cells) >= 2 and cells[0] and cells[1]:
-                        if cells[0][0].isdigit():
-                            col_num, col_rue = 0, 1
-                        else:
-                            col_rue, col_num = 0, 1
+            # Détecter l'en-tête : la 1re cellule est EXACTEMENT un mot-clé connu
+            # (pas de substring — "Rue Victor Hugo" ne doit PAS être traité comme header)
+            HEADER_EXACT = {"rue", "adresse", "voie", "libelle", "libellé", "street",
+                            "num", "n°", "no", "porte", "numero", "numéro", "n° porte",
+                            "numéro de porte", "code", "nom de voie"}
+            first_cell_low = all_rows[0][0].lower() if all_rows[0] else ""
+            has_header = first_cell_low in HEADER_EXACT
+
+            header_row = all_rows[0] if has_header else None
+            data_rows  = all_rows[1:] if has_header else all_rows
+
+            # Déterminer les colonnes rue et numéro
+            col_rue, col_num = 0, 1  # valeurs par défaut
+
+            if has_header and header_row:
+                # Chercher les colonnes par nom d'en-tête
+                for j, c in enumerate(header_row):
+                    c_low = c.lower()
+                    if any(w in c_low for w in ("rue", "adresse", "voie", "libelle", "libellé", "nom")):
+                        col_rue = j
+                    elif any(w in c_low for w in ("num", "n°", "porte", "no")):
+                        col_num = j
+            elif data_rows:
+                # Détecter par le contenu de la 1re ligne de données
+                r = data_rows[0]
+                if len(r) >= 2 and r[0] and r[1]:
+                    # Si col0 commence par un chiffre → c'est le numéro
+                    if r[0] and r[0][0].isdigit():
+                        col_num, col_rue = 0, 1
                     else:
                         col_rue, col_num = 0, 1
 
-                rue_val = cells[col_rue] if col_rue is not None and col_rue < len(cells) else ""
-                num_val = cells[col_num] if col_num is not None and col_num < len(cells) else ""
-                comp_val = cells[2].strip() if len(cells) > 2 and cells[2] else None
+            nb_ok = nb_skip = 0
+            for cells in data_rows:
+                rue_val = cells[col_rue] if col_rue < len(cells) else ""
+                num_val = cells[col_num] if col_num < len(cells) else ""
+                # Complément : 3e colonne utile (différente de rue et num)
+                comp_val = next(
+                    (cells[j] for j in range(len(cells)) if j not in (col_rue, col_num) and cells[j]),
+                    None
+                ) if len(cells) > 2 else None
 
-                # Single-column: try splitting "12 Rue Victor Hugo"
+                # Cas colonne unique : "12 Rue Victor Hugo"
                 if not num_val and rue_val:
                     m = re.match(r'^(\d+\w*)\s+(.+)$', rue_val)
                     if m:
                         num_val, rue_val = m.group(1), m.group(2)
-                    else:
-                        m = re.match(r'^(.+?)\s+(\d+\w*)$', rue_val)
-                        if m:
-                            rue_val, num_val = m.group(1), m.group(2)
 
                 if not rue_val or not num_val:
                     nb_skip += 1
@@ -821,7 +836,7 @@ def importer_fichier():
 
             db.session.commit()
             flash(f"{nb_ok} adresses importées avec succès ({nb_skip} lignes ignorées).", "success")
-            return redirect(url_for("liste_prospection"))
+            return redirect(url_for("importer_fichier"))
 
         except Exception as exc:
             db.session.rollback()
