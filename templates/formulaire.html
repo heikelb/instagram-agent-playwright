@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}{{ titre }} — Ventes Orange{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-person-plus me-1 text-warning"></i>{{ titre }}
+      </div>
+      <div class="card-body">
+        <form method="POST">
+
+          <div class="row g-3">
+            <!-- Prénom / Nom -->
+            <div class="col-6">
+              <label class="form-label fw-semibold">Prénom <span class="text-danger">*</span></label>
+              <input type="text" name="prenom" class="form-control"
+                     value="{{ vente.prenom if vente else '' }}" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Nom <span class="text-danger">*</span></label>
+              <input type="text" name="nom" class="form-control"
+                     value="{{ vente.nom if vente else '' }}" required>
+            </div>
+
+            <!-- Téléphone -->
+            <div class="col-6">
+              <label class="form-label fw-semibold">Téléphone <span class="text-danger">*</span></label>
+              <input type="tel" name="telephone" class="form-control"
+                     placeholder="+33612345678"
+                     value="{{ vente.telephone if vente else '' }}" required>
+              <div class="form-text">Format international (+33…) recommandé pour les SMS.</div>
+            </div>
+
+            <!-- Produit -->
+            <div class="col-6">
+              <label class="form-label fw-semibold">Produit <span class="text-danger">*</span></label>
+              <select name="produit" class="form-select" required>
+                {% for p in produits %}
+                  <option {% if vente and vente.produit == p %}selected{% endif %}>{{ p }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Adresse -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">Adresse <span class="text-danger">*</span></label>
+              <input type="text" name="adresse" class="form-control"
+                     placeholder="12 rue de la Paix, 75001 Paris"
+                     value="{{ vente.adresse if vente else '' }}" required>
+            </div>
+
+            <!-- Date RDV installation -->
+            <div class="col-6">
+              <label class="form-label fw-semibold">
+                Date & heure RDV installation <span class="text-danger">*</span>
+              </label>
+              <input type="datetime-local" name="date_rdv" class="form-control"
+                     value="{{ vente.date_rdv.strftime('%Y-%m-%dT%H:%M') if vente else '' }}"
+                     required>
+            </div>
+
+            <!-- Date signature -->
+            <div class="col-6">
+              <label class="form-label fw-semibold">Date de signature</label>
+              <input type="date" name="date_signature" class="form-control"
+                     value="{{ vente.date_signature.strftime('%Y-%m-%d') if vente else today }}">
+            </div>
+
+            <!-- Statut -->
+            <div class="col-6">
+              <label class="form-label fw-semibold">Statut</label>
+              <select name="statut" class="form-select">
+                {% for key, label in statuts.items() %}
+                  <option value="{{ key }}"
+                    {% if vente and vente.statut == key %}selected
+                    {% elif not vente and key == 'en_attente' %}selected{% endif %}>
+                    {{ label }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Notes -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">Notes (optionnel)</label>
+              <textarea name="notes" class="form-control" rows="2"
+                        placeholder="Code interphone, étage, remarques…">{{ vente.notes if vente and vente.notes else '' }}</textarea>
+            </div>
+          </div>
+
+          <hr>
+          <div class="d-flex justify-content-between">
+            <a href="{{ url_for('liste_ventes') }}" class="btn btn-outline-secondary">
+              <i class="bi bi-arrow-left me-1"></i>Annuler
+            </a>
+            <button type="submit" class="btn btn-warning fw-semibold px-4">
+              <i class="bi bi-check-circle me-1"></i>
+              {% if vente %}Enregistrer{% else %}Ajouter la vente{% endif %}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Pré-remplir la date de signature avec aujourd'hui si vide
+  const sigField = document.querySelector('[name="date_signature"]');
+  if (!sigField.value) {
+    sigField.value = new Date().toISOString().slice(0, 10);
+  }
+</script>
+{% endblock %}

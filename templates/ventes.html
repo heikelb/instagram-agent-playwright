@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Mes ventes — Orange{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0 fw-bold"><i class="bi bi-list-ul me-1"></i>Mes ventes</h4>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('liste_ventes') + '?export=csv' }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-download me-1"></i>Export CSV
+    </a>
+    <a href="{{ url_for('ajouter_vente') }}" class="btn btn-sm btn-warning fw-semibold">
+      <i class="bi bi-plus-circle me-1"></i>Nouvelle vente
+    </a>
+  </div>
+</div>
+
+<!-- Filtres -->
+<div class="card shadow-sm mb-3">
+  <div class="card-body py-2">
+    <form method="GET" class="row g-2 align-items-center">
+      <div class="col-md-4">
+        <input type="text" name="q" class="form-control form-control-sm"
+               placeholder="Rechercher nom, téléphone, adresse…" value="{{ search }}">
+      </div>
+      <div class="col-md-3">
+        <select name="statut" class="form-select form-select-sm">
+          <option value="">Tous les statuts</option>
+          {% for key, label in statuts.items() %}
+            <option value="{{ key }}" {% if statut_filtre == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select name="produit" class="form-select form-select-sm">
+          <option value="">Tous les produits</option>
+          {% for p in produits %}
+            <option {% if produit_filtre == p %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 d-flex gap-1">
+        <button type="submit" class="btn btn-sm btn-warning w-100">Filtrer</button>
+        <a href="{{ url_for('liste_ventes') }}" class="btn btn-sm btn-outline-secondary">✕</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Tableau -->
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    {% if ventes %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Client</th>
+            <th>Produit</th>
+            <th>Signé le</th>
+            <th>RDV installation</th>
+            <th>Statut</th>
+            <th>SMS</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in ventes %}
+          <tr>
+            <td class="text-muted small">{{ v.id }}</td>
+            <td>
+              <strong>{{ v.prenom }} {{ v.nom }}</strong>
+              <div class="text-muted small">
+                <i class="bi bi-telephone me-1"></i>{{ v.telephone }}
+              </div>
+              <div class="text-muted small">
+                <i class="bi bi-geo-alt me-1"></i>{{ v.adresse }}
+              </div>
+            </td>
+            <td><span class="badge bg-light text-dark border">{{ v.produit }}</span></td>
+            <td><small>{{ v.date_signature.strftime('%d/%m/%Y') }}</small></td>
+            <td>
+              <small class="fw-semibold">{{ v.date_rdv.strftime('%d/%m/%Y') }}</small>
+              <div class="text-muted small">{{ v.date_rdv.strftime('%H:%M') }}</div>
+            </td>
+            <td>
+              <div class="dropdown">
+                <span class="badge {{ v.badge_class }} dropdown-toggle"
+                      style="cursor:pointer;" data-bs-toggle="dropdown">
+                  {{ v.statut_label }}
+                </span>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  {% for key, label in statuts.items() %}
+                  <li>
+                    <form action="{{ url_for('changer_statut', vente_id=v.id, statut=key) }}" method="POST">
+                      <button class="dropdown-item {% if v.statut == key %}fw-bold{% endif %}">
+                        {{ label }}
+                      </button>
+                    </form>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </td>
+            <td>
+              {% if v.sms_envoye %}
+                <span class="badge bg-success"><i class="bi bi-check2"></i> Envoyé</span>
+              {% else %}
+                <form action="{{ url_for('envoyer_sms_manuel', vente_id=v.id) }}" method="POST" class="d-inline">
+                  <button class="btn btn-sm btn-outline-primary py-0 px-2">
+                    <i class="bi bi-send"></i>
+                  </button>
+                </form>
+              {% endif %}
+            </td>
+            <td>
+              <div class="d-flex gap-1">
+                <a href="{{ url_for('modifier_vente', vente_id=v.id) }}"
+                   class="btn btn-sm btn-outline-secondary py-0">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <form action="{{ url_for('supprimer_vente', vente_id=v.id) }}" method="POST"
+                      onsubmit="return confirm('Supprimer {{ v.prenom }} {{ v.nom }} ?')">
+                  <button class="btn btn-sm btn-outline-danger py-0">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% if v.notes %}
+          <tr class="table-light">
+            <td colspan="8" class="text-muted small py-1 ps-4">
+              <i class="bi bi-sticky me-1"></i>{{ v.notes }}
+            </td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="p-2 text-muted small border-top">
+      {{ ventes|length }} vente(s) affichée(s)
+    </div>
+    {% else %}
+      <p class="text-muted text-center py-4 mb-0">
+        Aucune vente trouvée.
+        <a href="{{ url_for('ajouter_vente') }}">Ajouter la première →</a>
+      </p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
