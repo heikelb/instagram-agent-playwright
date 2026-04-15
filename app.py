@@ -828,8 +828,14 @@ def importer_fichier():
             flash(f"Erreur lors de l'import : {exc}", "danger")
 
     nb_adresses = AdresseImportee.query.count()
-    nb_rues = db.session.query(AdresseImportee.rue).distinct().count()
-    return render_template("import.html", nb_adresses=nb_adresses, nb_rues=nb_rues)
+    from sqlalchemy import func as sa_func
+    rues = (
+        db.session.query(AdresseImportee.rue, sa_func.count(AdresseImportee.id).label("nb"))
+        .group_by(AdresseImportee.rue)
+        .order_by(AdresseImportee.rue)
+        .all()
+    )
+    return render_template("import.html", nb_adresses=nb_adresses, nb_rues=len(rues), rues=rues)
 
 
 @app.route("/import/effacer", methods=["POST"])

@@ -31,11 +31,40 @@
   </div>
 </div>
 
+<!-- Liste des rues -->
+{% if rues %}
+<div class="mb-4">
+  <h6 class="fw-bold mb-3">
+    <i class="bi bi-lightning-charge me-1 text-warning"></i>Lancer une session par rue
+  </h6>
+  <div class="row g-2">
+    {% for rue, nb in rues %}
+    <div class="col-12 col-md-6">
+      <div class="card shadow-sm h-100" style="border-left: 3px solid #ff7900;">
+        <div class="card-body py-2 px-3 d-flex align-items-center gap-3">
+          <div class="flex-grow-1 min-width-0">
+            <div class="fw-semibold text-truncate">{{ rue }}</div>
+            <div class="text-muted small">{{ nb }} numéro{{ 's' if nb > 1 }}</div>
+          </div>
+          <form action="{{ url_for('nouvelle_session') }}" method="POST" class="flex-shrink-0">
+            <input type="hidden" name="nom" value="{{ rue }}">
+            <button type="submit" class="btn btn-warning btn-sm fw-bold px-3">
+              <i class="bi bi-lightning-charge me-1"></i>GO
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 <!-- Upload -->
 <div class="card shadow-sm mb-4" style="border-left: 4px solid #198754;">
   <div class="card-body">
     <h6 class="fw-bold mb-3">
-      <i class="bi bi-upload me-1 text-success"></i>Importer un fichier Excel
+      <i class="bi bi-upload me-1 text-success"></i>{% if nb_adresses > 0 %}Remplacer / compléter le fichier{% else %}Importer un fichier Excel{% endif %}
     </h6>
     <form action="{{ url_for('importer_fichier') }}" method="POST" enctype="multipart/form-data">
       <div class="mb-3">
@@ -60,19 +89,6 @@
         <i class="bi bi-cloud-upload me-1"></i>Importer
       </button>
     </form>
-  </div>
-</div>
-
-<!-- Comment ça marche -->
-<div class="card shadow-sm mb-4">
-  <div class="card-body">
-    <h6 class="fw-bold mb-2"><i class="bi bi-question-circle me-1 text-warning"></i>Comment ça marche ?</h6>
-    <ol class="mb-0" style="font-size:.88rem; color:#555; padding-left:1.2rem;">
-      <li class="mb-1">Importe ton fichier Excel ici (le fichier fourni par Orange avec les adresses à prospecter).</li>
-      <li class="mb-1">Va dans <strong>Terrain</strong> et crée une nouvelle session en tapant le nom de la rue.</li>
-      <li class="mb-1">L'appli détecte automatiquement les numéros correspondants et les affiche dans la liste.</li>
-      <li>Tu peux then taper le résultat pour chaque numéro : 🔘 Absent, ❌ Refus, 💬 Causé, 🏠 Entré, ✅ Signé.</li>
-    </ol>
   </div>
 </div>
 
