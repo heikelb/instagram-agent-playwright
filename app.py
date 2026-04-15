@@ -816,34 +816,62 @@ def importer_fichier():
                 flash("Aucune donnée trouvée dans le fichier.", "warning")
                 return redirect(url_for("importer_fichier"))
 
-            # ── Détecter colonnes par CONTENU (analyse des 30 premières lignes) ──
+            # ── Détecter colonnes par CONTENU (analyse des 50 premières lignes) ──
             PREFIXES_RUE = (
                 "rue ", "avenue ", "av ", "av. ", "boulevard ", "bd ", "bd.",
                 "chemin ", "impasse ", "allée ", "allee ", "passage ", "place ",
                 "route ", "voie ", "résidence ", "residence ", "cité ", "cite ",
                 "square ", "villa ", "domaine ", "lot ", "lieu-dit",
             )
+            sample = data_rows[:50]
             scores_rue = [0] * n_cols
             scores_num = [0] * n_cols
 
-            for row in data_rows[:30]:
+            # Diversité par colonne (valeurs uniques non-nulles non-zéro)
+            col_unique_vals = [set() for _ in range(n_cols)]
+            col_zero_count  = [0] * n_cols
+
+            for row in sample:
                 for j in range(min(n_cols, len(row))):
                     v = row[j]
                     if not v:
                         continue
                     vl = v.lower()
-                    # Score rue : commence par un préfixe de voie
+
+                    # Score rue
                     if any(vl.startswith(p) for p in PREFIXES_RUE):
                         scores_rue[j] += 4
                     elif " " in v and not v[0].isdigit() and "/" not in v and len(v) > 5:
                         scores_rue[j] += 1
-                    # Score numéro : court, commence par chiffre, pas de /
+
+                    # Score numéro : entier court, pas de /
                     if "/" not in v and re.match(r'^\d{1,4}\w{0,3}$', v):
                         scores_num[j] += 4
                     elif re.match(r'^\d+$', v) and len(v) <= 4:
                         scores_num[j] += 2
 
-            # Priorité : header d'abord, contenu ensuite
+                    # Diversité
+                    if v == "0":
+                        col_zero_count[j] += 1
+                    else:
+                        col_unique_vals[j].add(v)
+
+            # Bonus de diversité : une colonne avec plein de valeurs différentes
+            # est très probablement la vraie colonne de numéros
+            for j in range(n_cols):
+                n_unique = len(col_unique_vals[j])
+                n_zero   = col_zero_count[j]
+                total    = n_unique + n_zero
+                if total == 0:
+                    continue
+                # Pénaliser fortement les colonnes majoritairement à 0
+                if total > 3 and n_zero / total > 0.5:
+                    scores_num[j] = 0
+                # Bonus diversité pour les colonnes avec plusieurs valeurs distinctes
+                if n_unique >= 3:
+                    scores_num[j] += n_unique * 2
+
+            # Priorité 1 : colonnes nommées dans l'en-tête
             col_rue = col_num = None
             if has_header and header_row:
                 for j, c in enumerate(header_row):
@@ -853,7 +881,7 @@ def importer_fichier():
                     if col_num is None and any(w in cl for w in ("num", "n°", "porte", "numéro", "numero")):
                         col_num = j
 
-            # Fallback : colonnes détectées par contenu
+            # Priorité 2 : colonnes détectées par contenu
             if col_rue is None:
                 col_rue = max(range(n_cols), key=lambda j: scores_rue[j])
             if col_num is None:
