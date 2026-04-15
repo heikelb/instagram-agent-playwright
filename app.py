@@ -766,62 +766,107 @@ def importer_fichier():
             tmp.close()
             wb = load_workbook(tmp.name, data_only=True)
             _os.unlink(tmp.name)
-            ws = wb.active
+            ws = wb.worksheets[0]
+
+            def cell_str(c):
+                """Convertit n'importe quelle valeur openpyxl en string propre."""
+                if c is None:
+                    return ""
+                # CellRichText ou objet itérable non-string
+                if hasattr(c, '__iter__') and not isinstance(c, str):
+                    try:
+                        return "".join(
+                            getattr(part, 'text', str(part)) for part in c
+                        ).strip()
+                    except Exception:
+                        pass
+                if isinstance(c, bool):
+                    return ""
+                if isinstance(c, float):
+                    return str(int(c)) if c.is_integer() else str(c)
+                if isinstance(c, int):
+                    return str(c)
+                return str(c).strip()
 
             # Lire toutes les lignes non-vides
             all_rows = [
-                [str(c).strip() if c is not None else "" for c in row]
+                [cell_str(c) for c in row]
                 for row in ws.iter_rows(min_row=1, values_only=True)
-                if any(c is not None and str(c).strip() for c in row)
+                if any(c is not None for c in row)
             ]
+            all_rows = [r for r in all_rows if any(v for v in r)]
 
             if not all_rows:
                 flash("Le fichier est vide.", "warning")
                 return redirect(url_for("importer_fichier"))
 
-            # Détecter l'en-tête : la 1re cellule est EXACTEMENT un mot-clé connu
-            # (pas de substring — "Rue Victor Hugo" ne doit PAS être traité comme header)
-            HEADER_EXACT = {"rue", "adresse", "voie", "libelle", "libellé", "street",
-                            "num", "n°", "no", "porte", "numero", "numéro", "n° porte",
-                            "numéro de porte", "code", "nom de voie"}
-            first_cell_low = all_rows[0][0].lower() if all_rows[0] else ""
-            has_header = first_cell_low in HEADER_EXACT
+            n_cols = max(len(r) for r in all_rows)
+
+            # ── Détecter en-tête ────────────────────────────────────────────
+            HEADER_KW = {"rue", "adresse", "voie", "libelle", "libellé", "street",
+                         "num", "n°", "no", "porte", "numero", "numéro", "code",
+                         "nom de voie", "type voie", "type de voie", "libellé voie"}
+            first_low = all_rows[0][0].lower().strip() if all_rows[0] else ""
+            has_header = first_low in HEADER_KW
 
             header_row = all_rows[0] if has_header else None
             data_rows  = all_rows[1:] if has_header else all_rows
 
-            # Déterminer les colonnes rue et numéro
-            col_rue, col_num = 0, 1  # valeurs par défaut
+            if not data_rows:
+                flash("Aucune donnée trouvée dans le fichier.", "warning")
+                return redirect(url_for("importer_fichier"))
 
+            # ── Détecter colonnes par CONTENU (analyse des 30 premières lignes) ──
+            PREFIXES_RUE = (
+                "rue ", "avenue ", "av ", "av. ", "boulevard ", "bd ", "bd.",
+                "chemin ", "impasse ", "allée ", "allee ", "passage ", "place ",
+                "route ", "voie ", "résidence ", "residence ", "cité ", "cite ",
+                "square ", "villa ", "domaine ", "lot ", "lieu-dit",
+            )
+            scores_rue = [0] * n_cols
+            scores_num = [0] * n_cols
+
+            for row in data_rows[:30]:
+                for j in range(min(n_cols, len(row))):
+                    v = row[j]
+                    if not v:
+                        continue
+                    vl = v.lower()
+                    # Score rue : commence par un préfixe de voie
+                    if any(vl.startswith(p) for p in PREFIXES_RUE):
+                        scores_rue[j] += 4
+                    elif " " in v and not v[0].isdigit() and "/" not in v and len(v) > 5:
+                        scores_rue[j] += 1
+                    # Score numéro : court, commence par chiffre, pas de /
+                    if "/" not in v and re.match(r'^\d{1,4}\w{0,3}$', v):
+                        scores_num[j] += 4
+                    elif re.match(r'^\d+$', v) and len(v) <= 4:
+                        scores_num[j] += 2
+
+            # Priorité : header d'abord, contenu ensuite
+            col_rue = col_num = None
             if has_header and header_row:
-                # Chercher les colonnes par nom d'en-tête
                 for j, c in enumerate(header_row):
-                    c_low = c.lower()
-                    if any(w in c_low for w in ("rue", "adresse", "voie", "libelle", "libellé", "nom")):
+                    cl = c.lower()
+                    if col_rue is None and any(w in cl for w in ("rue", "voie", "libelle", "libellé", "adresse", "nom")):
                         col_rue = j
-                    elif any(w in c_low for w in ("num", "n°", "porte", "no")):
+                    if col_num is None and any(w in cl for w in ("num", "n°", "porte", "numéro", "numero")):
                         col_num = j
-            elif data_rows:
-                # Détecter par le contenu de la 1re ligne de données
-                r = data_rows[0]
-                if len(r) >= 2 and r[0] and r[1]:
-                    # Si col0 commence par un chiffre → c'est le numéro
-                    if r[0] and r[0][0].isdigit():
-                        col_num, col_rue = 0, 1
-                    else:
-                        col_rue, col_num = 0, 1
 
+            # Fallback : colonnes détectées par contenu
+            if col_rue is None:
+                col_rue = max(range(n_cols), key=lambda j: scores_rue[j])
+            if col_num is None:
+                candidates = [j for j in range(n_cols) if j != col_rue]
+                col_num = max(candidates, key=lambda j: scores_num[j]) if candidates else (1 if col_rue == 0 else 0)
+
+            # ── Importer ────────────────────────────────────────────────────
             nb_ok = nb_skip = 0
             for cells in data_rows:
                 rue_val = cells[col_rue] if col_rue < len(cells) else ""
                 num_val = cells[col_num] if col_num < len(cells) else ""
-                # Complément : 3e colonne utile (différente de rue et num)
-                comp_val = next(
-                    (cells[j] for j in range(len(cells)) if j not in (col_rue, col_num) and cells[j]),
-                    None
-                ) if len(cells) > 2 else None
 
-                # Cas colonne unique : "12 Rue Victor Hugo"
+                # Cas colonne unique "12 Rue Victor Hugo"
                 if not num_val and rue_val:
                     m = re.match(r'^(\d+\w*)\s+(.+)$', rue_val)
                     if m:
@@ -831,11 +876,16 @@ def importer_fichier():
                     nb_skip += 1
                     continue
 
-                db.session.add(AdresseImportee(rue=rue_val, numero=num_val, complement=comp_val))
+                db.session.add(AdresseImportee(rue=rue_val, numero=num_val))
                 nb_ok += 1
 
             db.session.commit()
-            flash(f"{nb_ok} adresses importées avec succès ({nb_skip} lignes ignorées).", "success")
+            flash(
+                f"{nb_ok} adresses importées "
+                f"(colonnes détectées : col {col_rue+1}=Rue, col {col_num+1}=Numéro). "
+                f"{nb_skip} lignes ignorées.",
+                "success"
+            )
             return redirect(url_for("importer_fichier"))
 
         except Exception as exc:
@@ -851,6 +901,51 @@ def importer_fichier():
         .all()
     )
     return render_template("import.html", nb_adresses=nb_adresses, nb_rues=len(rues), rues=rues)
+
+
+@app.route("/import/structure", methods=["POST"])
+@login_required
+def structure_fichier():
+    """Affiche les premières lignes brutes du fichier pour diagnostiquer le format."""
+    fichier = request.files.get("fichier")
+    if not fichier:
+        return "Aucun fichier", 400
+    try:
+        from openpyxl import load_workbook
+        import tempfile, os as _os
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        fichier.save(tmp.name)
+        tmp.close()
+        wb = load_workbook(tmp.name, data_only=True)
+        _os.unlink(tmp.name)
+        ws = wb.worksheets[0]
+
+        html = """<html><head><meta charset="utf-8">
+        <style>body{font-family:monospace;font-size:13px;padding:20px}
+        table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:4px 8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        th{background:#eee}.row-num{color:#999;font-size:11px}.type{color:#07c;font-size:10px}</style>
+        </head><body>
+        <h3>Structure du fichier (15 premières lignes)</h3>
+        <p>Chaque cellule montre : <strong>valeur</strong> <span style="color:#07c">type Python</span></p>
+        <table><tr><th>#</th>"""
+
+        first_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), [])
+        for j in range(len(first_row)):
+            html += f"<th>Col {j+1}</th>"
+        html += "</tr>"
+
+        for i, row in enumerate(ws.iter_rows(min_row=1, max_row=15, values_only=True)):
+            html += f"<tr><td class='row-num'>{i+1}</td>"
+            for c in row:
+                typ = type(c).__name__
+                val = str(c)[:60] if c is not None else "(vide)"
+                html += f"<td>{val}<br><span class='type'>{typ}</span></td>"
+            html += "</tr>"
+
+        html += "</table></body></html>"
+        return html
+    except Exception as e:
+        return f"Erreur : {e}", 500
 
 
 @app.route("/import/effacer", methods=["POST"])

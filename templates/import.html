@@ -66,29 +66,34 @@
     <h6 class="fw-bold mb-3">
       <i class="bi bi-upload me-1 text-success"></i>{% if nb_adresses > 0 %}Remplacer / compléter le fichier{% else %}Importer un fichier Excel{% endif %}
     </h6>
-    <form action="{{ url_for('importer_fichier') }}" method="POST" enctype="multipart/form-data">
-      <div class="mb-3">
-        <label for="fichier" class="form-label">Fichier Excel (.xlsx ou .xls)</label>
-        <input class="form-control" type="file" id="fichier" name="fichier"
-               accept=".xlsx,.xls" required>
-      </div>
 
-      <div class="alert alert-info py-2 mb-3" style="font-size:.85rem;">
-        <i class="bi bi-info-circle me-1"></i>
-        <strong>Format attendu :</strong> deux colonnes —
-        <code>Rue</code> et <code>Numéro</code> (dans n'importe quel ordre).
-        La 1re ligne peut être un en-tête.<br>
-        <span class="text-muted">
-          Exemple : <code>Rue Victor Hugo</code> | <code>12</code>
-          &nbsp;ou&nbsp;
-          <code>12</code> | <code>Rue Victor Hugo</code>
-        </span>
-      </div>
+    <div class="mb-3">
+      <label for="fichier" class="form-label">Fichier Excel (.xlsx ou .xls)</label>
+      <input class="form-control" type="file" id="fichier" name="fichier"
+             accept=".xlsx,.xls" required
+             onchange="document.getElementById('fichier2').files = this.files">
+    </div>
 
-      <button type="submit" class="btn btn-success">
-        <i class="bi bi-cloud-upload me-1"></i>Importer
-      </button>
-    </form>
+    <div class="d-flex gap-2 flex-wrap">
+      <form action="{{ url_for('importer_fichier') }}" method="POST" enctype="multipart/form-data" id="form-import">
+        <input type="file" name="fichier" id="fichier2" accept=".xlsx,.xls" style="display:none">
+        <button type="submit" class="btn btn-success" onclick="syncFile()">
+          <i class="bi bi-cloud-upload me-1"></i>Importer
+        </button>
+      </form>
+
+      <form action="{{ url_for('structure_fichier') }}" method="POST" enctype="multipart/form-data" target="_blank" id="form-structure">
+        <input type="file" name="fichier" id="fichier3" accept=".xlsx,.xls" style="display:none">
+        <button type="button" class="btn btn-outline-secondary" onclick="syncAndDiag()">
+          <i class="bi bi-eye me-1"></i>Voir la structure du fichier
+        </button>
+      </form>
+    </div>
+
+    <div class="form-text mt-2">
+      <i class="bi bi-info-circle me-1"></i>
+      "Voir la structure" ouvre un aperçu des colonnes de ton fichier sans rien importer — utile si l'import ne fonctionne pas bien.
+    </div>
   </div>
 </div>
 
@@ -113,4 +118,23 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+function syncFile() {
+  const f = document.getElementById('fichier');
+  const dt = new DataTransfer();
+  if (f.files[0]) dt.items.add(f.files[0]);
+  document.getElementById('fichier2').files = dt.files;
+}
+function syncAndDiag() {
+  const f = document.getElementById('fichier');
+  if (!f.files[0]) { alert('Sélectionne un fichier d\'abord.'); return; }
+  const dt = new DataTransfer();
+  dt.items.add(f.files[0]);
+  document.getElementById('fichier3').files = dt.files;
+  document.getElementById('form-structure').submit();
+}
+</script>
 {% endblock %}
