@@ -53,6 +53,7 @@ class Vente(db.Model):
     date_rdv = db.Column(db.DateTime, nullable=False)
     date_signature = db.Column(db.Date, nullable=False, default=date.today)
     statut = db.Column(db.String(50), nullable=False, default="en_attente")
+    reference = db.Column(db.String(100), nullable=True)
     sms_envoye = db.Column(db.Boolean, default=False)
     notes = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -293,12 +294,13 @@ def liste_ventes():
         writer = csv.writer(output)
         writer.writerow([
             "ID", "Prénom", "Nom", "Téléphone", "Adresse",
-            "Produit", "Date RDV", "Date signature", "Statut", "SMS envoyé", "Notes",
+            "Produit", "Réf. commande", "Date RDV", "Date signature", "Statut", "SMS envoyé", "Notes",
         ])
         for v in ventes:
             writer.writerow([
                 v.id, v.prenom, v.nom, v.telephone, v.adresse,
                 v.produit,
+                v.reference or "",
                 v.date_rdv.strftime("%d/%m/%Y %H:%M"),
                 v.date_signature.strftime("%d/%m/%Y"),
                 v.statut_label,
@@ -347,6 +349,7 @@ def ajouter_vente():
                 telephone=request.form["telephone"].strip(),
                 adresse=request.form["adresse"].strip(),
                 produit=request.form["produit"],
+                reference=request.form.get("reference", "").strip() or None,
                 date_rdv=date_rdv,
                 date_signature=date_signature,
                 statut=request.form.get("statut", "en_attente"),
@@ -383,6 +386,7 @@ def modifier_vente(vente_id):
             vente.telephone = request.form["telephone"].strip()
             vente.adresse = request.form["adresse"].strip()
             vente.produit = request.form["produit"]
+            vente.reference = request.form.get("reference", "").strip() or None
             vente.date_rdv = datetime.strptime(
                 request.form["date_rdv"], "%Y-%m-%dT%H:%M"
             )

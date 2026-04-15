@@ -57,6 +57,7 @@
             <th>#</th>
             <th>Client</th>
             <th>Produit</th>
+            <th>Réf. commande</th>
             <th>Signé le</th>
             <th>RDV installation</th>
             <th>Statut</th>
@@ -78,6 +79,13 @@
               </div>
             </td>
             <td><span class="badge bg-light text-dark border">{{ v.produit }}</span></td>
+            <td>
+              {% if v.reference %}
+                <code class="small">{{ v.reference }}</code>
+              {% else %}
+                <span class="text-muted small">—</span>
+              {% endif %}
+            </td>
             <td><small>{{ v.date_signature.strftime('%d/%m/%Y') }}</small></td>
             <td>
               <small class="fw-semibold">{{ v.date_rdv.strftime('%d/%m/%Y') }}</small>

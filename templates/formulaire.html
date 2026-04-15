@@ -33,6 +33,14 @@
               <div class="form-text">Format international (+33…) recommandé pour les SMS.</div>
             </div>
 
+            <!-- Référence commande -->
+            <div class="col-6">
+              <label class="form-label fw-semibold">Référence commande</label>
+              <input type="text" name="reference" class="form-control"
+                     placeholder="ex : ORD-2026-001234"
+                     value="{{ vente.reference if vente and vente.reference else '' }}">
+            </div>
+
             <!-- Produit -->
             <div class="col-6">
               <label class="form-label fw-semibold">Produit <span class="text-danger">*</span></label>
