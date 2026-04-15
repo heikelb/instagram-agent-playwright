@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Import adresses terrain — Ventes Orange{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <h4 class="mb-0 fw-bold">
+    <i class="bi bi-file-earmark-excel me-1 text-success"></i>Import fichier terrain
+  </h4>
+  <a href="{{ url_for('liste_prospection') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Terrain
+  </a>
+</div>
+
+<!-- Compteurs -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm stat-card green h-100">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1"><i class="bi bi-house-door me-1"></i>Adresses importées</div>
+        <div class="fs-2 fw-bold">{{ nb_adresses }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm stat-card blue h-100">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1"><i class="bi bi-signpost-2 me-1"></i>Rues différentes</div>
+        <div class="fs-2 fw-bold">{{ nb_rues }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Upload -->
+<div class="card shadow-sm mb-4" style="border-left: 4px solid #198754;">
+  <div class="card-body">
+    <h6 class="fw-bold mb-3">
+      <i class="bi bi-upload me-1 text-success"></i>Importer un fichier Excel
+    </h6>
+    <form action="{{ url_for('importer_fichier') }}" method="POST" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label for="fichier" class="form-label">Fichier Excel (.xlsx ou .xls)</label>
+        <input class="form-control" type="file" id="fichier" name="fichier"
+               accept=".xlsx,.xls" required>
+      </div>
+
+      <div class="alert alert-info py-2 mb-3" style="font-size:.85rem;">
+        <i class="bi bi-info-circle me-1"></i>
+        <strong>Format attendu :</strong> deux colonnes —
+        <code>Rue</code> et <code>Numéro</code> (dans n'importe quel ordre).
+        La 1re ligne peut être un en-tête.<br>
+        <span class="text-muted">
+          Exemple : <code>Rue Victor Hugo</code> | <code>12</code>
+          &nbsp;ou&nbsp;
+          <code>12</code> | <code>Rue Victor Hugo</code>
+        </span>
+      </div>
+
+      <button type="submit" class="btn btn-success">
+        <i class="bi bi-cloud-upload me-1"></i>Importer
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Comment ça marche -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <h6 class="fw-bold mb-2"><i class="bi bi-question-circle me-1 text-warning"></i>Comment ça marche ?</h6>
+    <ol class="mb-0" style="font-size:.88rem; color:#555; padding-left:1.2rem;">
+      <li class="mb-1">Importe ton fichier Excel ici (le fichier fourni par Orange avec les adresses à prospecter).</li>
+      <li class="mb-1">Va dans <strong>Terrain</strong> et crée une nouvelle session en tapant le nom de la rue.</li>
+      <li class="mb-1">L'appli détecte automatiquement les numéros correspondants et les affiche dans la liste.</li>
+      <li>Tu peux then taper le résultat pour chaque numéro : 🔘 Absent, ❌ Refus, 💬 Causé, 🏠 Entré, ✅ Signé.</li>
+    </ol>
+  </div>
+</div>
+
+<!-- Supprimer tout -->
+{% if nb_adresses > 0 %}
+<div class="card shadow-sm border-danger">
+  <div class="card-body">
+    <h6 class="fw-bold mb-2 text-danger">
+      <i class="bi bi-trash me-1"></i>Supprimer toutes les adresses
+    </h6>
+    <p class="text-muted small mb-3">
+      Cela supprimera les {{ nb_adresses }} adresses importées.
+      Les sessions terrain existantes ne sont pas affectées.
+    </p>
+    <form action="{{ url_for('effacer_adresses') }}" method="POST"
+          onsubmit="return confirm('Supprimer les {{ nb_adresses }} adresses importées ?')">
+      <button type="submit" class="btn btn-danger btn-sm">
+        <i class="bi bi-trash me-1"></i>Tout supprimer
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

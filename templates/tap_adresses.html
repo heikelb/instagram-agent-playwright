@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>{{ session.nom }}</title>
+  <link href="/static/css/bootstrap-icons.min.css" rel="stylesheet">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#111111">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Ventes Orange">
+  <link rel="apple-touch-icon" href="/static/icons/icon-180.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background: #111;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* ── Header ── */
+    .top-bar {
+      background: #1a1a1a;
+      padding: 10px 14px 8px;
+      border-bottom: 1px solid #333;
+      flex-shrink: 0;
+    }
+    .session-name {
+      font-size: .85rem;
+      color: #aaa;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .session-name strong { color: #ff7900; }
+
+    /* ── Stats ── */
+    .stats-row { display: flex; gap: 5px; margin-top: 8px; }
+    .stat-pill {
+      flex: 1;
+      background: #2a2a2a;
+      border-radius: 10px;
+      padding: 5px 3px;
+      text-align: center;
+    }
+    .stat-pill .val { font-size: 1.05rem; font-weight: 700; line-height: 1; }
+    .stat-pill .lbl { font-size: .58rem; color: #888; text-transform: uppercase; margin-top: 2px; letter-spacing: .3px; }
+
+    /* ── Progress strip ── */
+    .progress-strip { height: 4px; display: flex; flex-shrink: 0; }
+    .seg { transition: width .2s ease; }
+
+    /* ── Address list ── */
+    .addr-list {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .addr-row {
+      display: flex;
+      align-items: center;
+      padding: 9px 12px;
+      border-bottom: 1px solid #1e1e1e;
+      gap: 8px;
+      transition: background .12s;
+    }
+    .addr-row.r-absent { background: #1c1c1c; }
+    .addr-row.r-refus  { background: #1f0c0c; }
+    .addr-row.r-cause  { background: #1f1000; }
+    .addr-row.r-entre  { background: #091525; }
+    .addr-row.r-signe  { background: #071a0d; }
+
+    .addr-info { flex: 1; min-width: 0; }
+    .addr-numero { font-size: 1.05rem; font-weight: 700; color: #fff; }
+    .addr-rue {
+      font-size: .72rem;
+      color: #666;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+
+    /* ── Result buttons ── */
+    .result-btns { display: flex; gap: 5px; flex-shrink: 0; }
+    .res-btn {
+      width: 38px;
+      height: 38px;
+      border: 1px solid #2a2a2a;
+      border-radius: 9px;
+      background: #1e1e1e;
+      font-size: 1.05rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform .07s, border-color .1s, background .1s;
+    }
+    .res-btn:active { transform: scale(.85); }
+    .res-btn.active-absent { background: #2e2e2e; border-color: #6c757d; }
+    .res-btn.active-refus  { background: #5c1111; border-color: #dc3545; }
+    .res-btn.active-cause  { background: #5c2800; border-color: #fd7e14; }
+    .res-btn.active-entre  { background: #0d2c4f; border-color: #4dabf7; }
+    .res-btn.active-signe  { background: #0a3d1a; border-color: #51cf66; }
+
+    /* ── Bottom bar ── */
+    .bottom-bar {
+      background: #1a1a1a;
+      border-top: 1px solid #333;
+      padding: 8px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .progress-text { color: #666; font-size: .8rem; }
+    .home-link { color: #888; text-decoration: none; font-size: .85rem; }
+
+    /* Scroll indicator line at top of list */
+    .list-header {
+      padding: 6px 12px;
+      background: #161616;
+      border-bottom: 1px solid #2a2a2a;
+      font-size: .72rem;
+      color: #555;
+      display: flex;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="top-bar">
+  <div class="session-name">
+    <i class="bi bi-list-ol" style="color:#ff7900;"></i>
+    <strong>{{ session.nom }}</strong>
+    <span style="color:#444; font-size:.72rem; margin-left:6px;">{{ adresses|length }} adresses</span>
+  </div>
+  <div class="stats-row">
+    <div class="stat-pill">
+      <div class="val" id="s-total" style="color:#fff;">{{ session.total }}</div>
+      <div class="lbl">Total</div>
+    </div>
+    <div class="stat-pill">
+      <div class="val" id="s-ouv" style="color:#adb5bd;">{{ session.taux_ouverture }}%</div>
+      <div class="lbl">Ouvertes</div>
+    </div>
+    <div class="stat-pill">
+      <div class="val" id="s-cause" style="color:#fd7e14;">{{ session.taux_cause }}%</div>
+      <div class="lbl">Causé</div>
+    </div>
+    <div class="stat-pill">
+      <div class="val" id="s-entre" style="color:#4dabf7;">{{ session.taux_entree }}%</div>
+      <div class="lbl">Entré</div>
+    </div>
+    <div class="stat-pill">
+      <div class="val" id="s-signe" style="color:#51cf66;">{{ session.nb_signes }}</div>
+      <div class="lbl">Signés</div>
+    </div>
+  </div>
+</div>
+
+<!-- Progress strip -->
+<div class="progress-strip" id="progress-strip">
+  <div class="seg" id="seg-absent" style="background:#3a3a3a; width:{{ 100 - session.taux_ouverture }}%;"></div>
+  <div class="seg" id="seg-refus"  style="background:#7f1d1d; width:{{ (session.nb_ouvertes - session.nb_causes) / session.total * 100 if session.total else 0 }}%;"></div>
+  <div class="seg" id="seg-cause"  style="background:#fd7e14; width:{{ (session.nb_causes - session.nb_entrees) / session.total * 100 if session.total else 0 }}%;"></div>
+  <div class="seg" id="seg-entre"  style="background:#4dabf7; width:{{ (session.nb_entrees - session.nb_signes) / session.total * 100 if session.total else 0 }}%;"></div>
+  <div class="seg" id="seg-signe"  style="background:#51cf66; width:{{ session.nb_signes / session.total * 100 if session.total else 0 }}%;"></div>
+</div>
+
+<!-- Column hint -->
+<div class="list-header">
+  <span>N° — Adresse</span>
+  <span>🔘 ❌ 💬 🏠 ✅</span>
+</div>
+
+<!-- Address list -->
+<div class="addr-list" id="addr-list">
+  {% for a in adresses %}
+  {% set r = a.resultat or '' %}
+  <div class="addr-row{% if r %} r-{{ r }}{% endif %}"
+       id="row-{{ a.id }}"
+       data-id="{{ a.id }}"
+       data-resultat="{{ r }}">
+    <div class="addr-info">
+      <div class="addr-numero">{{ a.numero }}</div>
+      <div class="addr-rue">{{ a.rue }}{% if a.complement %} — {{ a.complement }}{% endif %}</div>
+    </div>
+    <div class="result-btns" id="btns-{{ a.id }}">
+      <button class="res-btn{% if r == 'absent' %} active-absent{% endif %}" data-res="absent" title="Absent">🔘</button>
+      <button class="res-btn{% if r == 'refus'  %} active-refus{% endif %}"  data-res="refus"  title="Refus">❌</button>
+      <button class="res-btn{% if r == 'cause'  %} active-cause{% endif %}"  data-res="cause"  title="Causé">💬</button>
+      <button class="res-btn{% if r == 'entre'  %} active-entre{% endif %}"  data-res="entre"  title="Entré">🏠</button>
+      <button class="res-btn{% if r == 'signe'  %} active-signe{% endif %}"  data-res="signe"  title="Signé">✅</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Bottom bar -->
+<div class="bottom-bar">
+  <span class="progress-text" id="progress-text">
+    {% set done = adresses | selectattr('resultat') | list | length %}
+    {{ done }}/{{ adresses|length }} traités
+  </span>
+  <a href="{{ url_for('liste_prospection') }}" class="home-link">
+    <i class="bi bi-list-ul me-1"></i>Sessions
+  </a>
+</div>
+
+<script>
+const SESSION_ID = {{ session.id }};
+
+function updateStats(data) {
+  document.getElementById('s-total').textContent  = data.total;
+  document.getElementById('s-ouv').textContent    = data.taux_ouverture + '%';
+  document.getElementById('s-cause').textContent  = data.taux_cause + '%';
+  document.getElementById('s-entre').textContent  = data.taux_entree + '%';
+  document.getElementById('s-signe').textContent  = data.nb_signes;
+  const t = data.total || 1;
+  document.getElementById('seg-absent').style.width = ((t - data.nb_ouvertes) / t * 100) + '%';
+  document.getElementById('seg-refus').style.width  = ((data.nb_ouvertes - data.nb_causes)  / t * 100) + '%';
+  document.getElementById('seg-cause').style.width  = ((data.nb_causes - data.nb_entrees)   / t * 100) + '%';
+  document.getElementById('seg-entre').style.width  = ((data.nb_entrees - data.nb_signes)   / t * 100) + '%';
+  document.getElementById('seg-signe').style.width  = (data.nb_signes / t * 100) + '%';
+}
+
+function updateProgressText() {
+  const rows = document.querySelectorAll('.addr-row');
+  let done = 0;
+  rows.forEach(r => { if (r.dataset.resultat) done++; });
+  document.getElementById('progress-text').textContent = done + '/' + rows.length + ' traités';
+}
+
+document.querySelectorAll('.res-btn').forEach(btn => {
+  btn.addEventListener('click', async function () {
+    const row     = this.closest('.addr-row');
+    const adresseId = row.dataset.id;
+    const resultat  = this.dataset.res;
+    const prevRes   = row.dataset.resultat;
+
+    if (navigator.vibrate) navigator.vibrate(25);
+
+    // Optimistic update
+    row.dataset.resultat = resultat;
+    row.className = 'addr-row r-' + resultat;
+    row.querySelectorAll('.res-btn').forEach(b => {
+      b.className = 'res-btn' + (b.dataset.res === resultat ? ' active-' + resultat : '');
+    });
+    updateProgressText();
+
+    try {
+      const resp = await fetch(
+        `/prospection/${SESSION_ID}/tap-adresse/${adresseId}/${resultat}`,
+        { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } }
+      );
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      updateStats(data.stats);
+    } catch (e) {
+      // Revert on error
+      row.dataset.resultat = prevRes;
+      row.className = 'addr-row' + (prevRes ? ' r-' + prevRes : '');
+      row.querySelectorAll('.res-btn').forEach(b => {
+        b.className = 'res-btn' + (b.dataset.res === prevRes ? ' active-' + prevRes : '');
+      });
+      updateProgressText();
+      console.error('Erreur réseau', e);
+    }
+  });
+});
+
+// Prevent double-tap zoom
+let lastTap = 0;
+document.querySelectorAll('.res-btn').forEach(btn => {
+  btn.addEventListener('touchend', e => {
+    const now = Date.now();
+    if (now - lastTap < 300) e.preventDefault();
+    lastTap = now;
+  }, { passive: false });
+});
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>

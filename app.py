@@ -1,6 +1,7 @@
 import csv
 import io
 import os
+import re
 from datetime import datetime, date, timedelta
 
 import hashlib
@@ -205,7 +206,29 @@ class Porte(db.Model):
         db.Integer, db.ForeignKey("sessions_prospection.id"), nullable=False
     )
     resultat = db.Column(db.String(20), nullable=False)
+    adresse_id = db.Column(db.Integer, db.ForeignKey("adresses_importees.id"), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+# ---------------------------------------------------------------------------
+# Modèle import adresses terrain
+# ---------------------------------------------------------------------------
+
+class AdresseImportee(db.Model):
+    __tablename__ = "adresses_importees"
+
+    id = db.Column(db.Integer, primary_key=True)
+    rue = db.Column(db.String(200), nullable=False, index=True)
+    numero = db.Column(db.String(20), nullable=False)
+    complement = db.Column(db.String(100), nullable=True)
+    imported_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def adresse_complete(self):
+        parts = [self.numero, self.rue]
+        if self.complement:
+            parts.append(self.complement)
+        return " ".join(parts)
 
 
 # ---------------------------------------------------------------------------
@@ -592,6 +615,26 @@ def offline():
 
 
 # ---------------------------------------------------------------------------
+# Helpers : Prospection terrain
+# ---------------------------------------------------------------------------
+
+def _sort_numero(a):
+    m = re.match(r'^(\d+)', str(a.numero).strip())
+    return (int(m.group(1)) if m else 9999, str(a.numero))
+
+
+def trouver_adresses_pour_rue(nom_session):
+    """Retourne les AdresseImportee correspondant au nom de session (matching souple)."""
+    nom_norm = nom_session.lower().strip()
+    rues = [r[0] for r in db.session.query(AdresseImportee.rue).distinct().all()]
+    matching = [r for r in rues if r.lower() in nom_norm or nom_norm in r.lower()]
+    if not matching:
+        return []
+    adresses = AdresseImportee.query.filter(AdresseImportee.rue.in_(matching)).all()
+    return sorted(adresses, key=_sort_numero)
+
+
+# ---------------------------------------------------------------------------
 # Routes : Prospection terrain
 # ---------------------------------------------------------------------------
 
@@ -613,21 +656,33 @@ def nouvelle_session():
     if not nom:
         flash("Donne un nom à ta session (ex: Rue Victor Hugo).", "warning")
         return redirect(url_for("liste_prospection"))
-    session = SessionProspection(nom=nom)
-    db.session.add(session)
+    sess = SessionProspection(nom=nom)
+    db.session.add(sess)
     db.session.commit()
-    return redirect(url_for("tap_session", session_id=session.id))
+    return redirect(url_for("tap_session", session_id=sess.id))
 
 
 @app.route("/prospection/<int:session_id>")
 @login_required
 def tap_session(session_id):
-    session = SessionProspection.query.get_or_404(session_id)
-    return render_template(
-        "tap.html",
-        session=session,
-        resultats=RESULTATS_PORTE,
-    )
+    sess = SessionProspection.query.get_or_404(session_id)
+    adresses = trouver_adresses_pour_rue(sess.nom)
+    if adresses:
+        taps = {p.adresse_id: p.resultat for p in sess.portes if p.adresse_id is not None}
+        adresses_data = [{
+            "id": a.id,
+            "rue": a.rue,
+            "numero": a.numero,
+            "complement": a.complement,
+            "resultat": taps.get(a.id),
+        } for a in adresses]
+        return render_template(
+            "tap_adresses.html",
+            session=sess,
+            adresses=adresses_data,
+            resultats=RESULTATS_PORTE,
+        )
+    return render_template("tap.html", session=sess, resultats=RESULTATS_PORTE)
 
 
 @app.route("/prospection/<int:session_id>/tap/<resultat>", methods=["POST"])
@@ -635,17 +690,17 @@ def tap_session(session_id):
 def tap_porte(session_id, resultat):
     if resultat not in RESULTATS_PORTE:
         return jsonify({"error": "Résultat invalide"}), 400
-    session = SessionProspection.query.get_or_404(session_id)
+    sess = SessionProspection.query.get_or_404(session_id)
     porte = Porte(session_id=session_id, resultat=resultat)
     db.session.add(porte)
     db.session.commit()
-    return jsonify(session.to_stats_dict())
+    return jsonify(sess.to_stats_dict())
 
 
 @app.route("/prospection/<int:session_id>/annuler", methods=["POST"])
 @login_required
 def annuler_derniere_porte(session_id):
-    session = SessionProspection.query.get_or_404(session_id)
+    sess = SessionProspection.query.get_or_404(session_id)
     derniere = (
         Porte.query
         .filter_by(session_id=session_id)
@@ -655,17 +710,135 @@ def annuler_derniere_porte(session_id):
     if derniere:
         db.session.delete(derniere)
         db.session.commit()
-    return jsonify(session.to_stats_dict())
+    return jsonify(sess.to_stats_dict())
+
+
+@app.route("/prospection/<int:session_id>/tap-adresse/<int:adresse_id>/<resultat>", methods=["POST"])
+@login_required
+def tap_adresse_specifique(session_id, adresse_id, resultat):
+    if resultat not in RESULTATS_PORTE:
+        return jsonify({"error": "Résultat invalide"}), 400
+    sess = SessionProspection.query.get_or_404(session_id)
+    AdresseImportee.query.get_or_404(adresse_id)
+    # Upsert: one Porte entry per (session, adresse)
+    existing = Porte.query.filter_by(session_id=session_id, adresse_id=adresse_id).first()
+    if existing:
+        existing.resultat = resultat
+    else:
+        db.session.add(Porte(session_id=session_id, resultat=resultat, adresse_id=adresse_id))
+    db.session.commit()
+    all_taps = {p.adresse_id: p.resultat for p in sess.portes if p.adresse_id is not None}
+    return jsonify({"stats": sess.to_stats_dict(), "adresse_id": adresse_id,
+                    "resultat": resultat, "all_taps": all_taps})
 
 
 @app.route("/prospection/<int:session_id>/supprimer", methods=["POST"])
 @login_required
 def supprimer_session(session_id):
-    session = SessionProspection.query.get_or_404(session_id)
-    db.session.delete(session)
+    sess = SessionProspection.query.get_or_404(session_id)
+    db.session.delete(sess)
     db.session.commit()
     flash("Session supprimée.", "info")
     return redirect(url_for("liste_prospection"))
+
+
+# ---------------------------------------------------------------------------
+# Routes : Import fichier terrain
+# ---------------------------------------------------------------------------
+
+@app.route("/import", methods=["GET", "POST"])
+@login_required
+def importer_fichier():
+    if request.method == "POST":
+        fichier = request.files.get("fichier")
+        if not fichier or not fichier.filename:
+            flash("Sélectionne un fichier Excel (.xlsx ou .xls).", "warning")
+            return redirect(url_for("importer_fichier"))
+        if not fichier.filename.lower().endswith((".xlsx", ".xls")):
+            flash("Format invalide — seuls les fichiers .xlsx et .xls sont acceptés.", "warning")
+            return redirect(url_for("importer_fichier"))
+        try:
+            from openpyxl import load_workbook
+            import tempfile, os as _os
+
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+            fichier.save(tmp.name)
+            tmp.close()
+            wb = load_workbook(tmp.name, data_only=True)
+            _os.unlink(tmp.name)
+            ws = wb.active
+
+            nb_ok = nb_skip = 0
+            col_rue = col_num = None
+
+            for i, row in enumerate(ws.iter_rows(min_row=1, values_only=True)):
+                if not row or all(c is None for c in row):
+                    continue
+                cells = [str(c).strip() if c is not None else "" for c in row]
+
+                # Auto-detect columns on first non-empty row
+                if col_rue is None:
+                    header_words = {"rue", "adresse", "voie", "libelle", "street",
+                                    "num", "n°", "no", "porte", "numero", "numéro"}
+                    first_low = cells[0].lower() if cells else ""
+                    if any(w in first_low for w in header_words):
+                        for j, c in enumerate(cells):
+                            c_low = c.lower()
+                            if any(w in c_low for w in ("rue", "adresse", "voie", "libelle")):
+                                col_rue = j
+                            elif any(w in c_low for w in ("num", "n°", "no", "porte")):
+                                col_num = j
+                        continue  # skip header row
+                    # Detect by content
+                    if len(cells) >= 2 and cells[0] and cells[1]:
+                        if cells[0][0].isdigit():
+                            col_num, col_rue = 0, 1
+                        else:
+                            col_rue, col_num = 0, 1
+                    else:
+                        col_rue, col_num = 0, 1
+
+                rue_val = cells[col_rue] if col_rue is not None and col_rue < len(cells) else ""
+                num_val = cells[col_num] if col_num is not None and col_num < len(cells) else ""
+                comp_val = cells[2].strip() if len(cells) > 2 and cells[2] else None
+
+                # Single-column: try splitting "12 Rue Victor Hugo"
+                if not num_val and rue_val:
+                    m = re.match(r'^(\d+\w*)\s+(.+)$', rue_val)
+                    if m:
+                        num_val, rue_val = m.group(1), m.group(2)
+                    else:
+                        m = re.match(r'^(.+?)\s+(\d+\w*)$', rue_val)
+                        if m:
+                            rue_val, num_val = m.group(1), m.group(2)
+
+                if not rue_val or not num_val:
+                    nb_skip += 1
+                    continue
+
+                db.session.add(AdresseImportee(rue=rue_val, numero=num_val, complement=comp_val))
+                nb_ok += 1
+
+            db.session.commit()
+            flash(f"{nb_ok} adresses importées avec succès ({nb_skip} lignes ignorées).", "success")
+            return redirect(url_for("liste_prospection"))
+
+        except Exception as exc:
+            db.session.rollback()
+            flash(f"Erreur lors de l'import : {exc}", "danger")
+
+    nb_adresses = AdresseImportee.query.count()
+    nb_rues = db.session.query(AdresseImportee.rue).distinct().count()
+    return render_template("import.html", nb_adresses=nb_adresses, nb_rues=nb_rues)
+
+
+@app.route("/import/effacer", methods=["POST"])
+@login_required
+def effacer_adresses():
+    AdresseImportee.query.delete()
+    db.session.commit()
+    flash("Toutes les adresses importées ont été supprimées.", "info")
+    return redirect(url_for("importer_fichier"))
 
 
 # ---------------------------------------------------------------------------
@@ -690,6 +863,14 @@ def creer_scheduler():
 # Créer les tables au démarrage (gunicorn + flask run)
 with app.app_context():
     db.create_all()
+    # Migration: ajouter adresse_id à portes si absent (upgrade progressif)
+    from sqlalchemy import text, inspect as sa_inspect
+    _insp = sa_inspect(db.engine)
+    _cols = [c["name"] for c in _insp.get_columns("portes")]
+    if "adresse_id" not in _cols:
+        with db.engine.connect() as _conn:
+            _conn.execute(text("ALTER TABLE portes ADD COLUMN adresse_id INTEGER"))
+            _conn.commit()
 
 scheduler = creer_scheduler()
 
