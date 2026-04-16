@@ -4,30 +4,51 @@
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-lg-7">
+
+    <!-- ── Scan automatique ── -->
+    <div class="card shadow-sm mb-3" style="border-left:4px solid #ff7900;">
+      <div class="card-body py-3">
+        <div class="fw-semibold mb-1">
+          <i class="bi bi-camera-fill me-1 text-warning"></i>Remplissage automatique
+        </div>
+        <p class="text-muted small mb-2">
+          Prends une photo du bon de commande Orange — l'IA remplit le formulaire automatiquement.
+        </p>
+
+        <label for="scan-input" class="btn btn-warning w-100 py-3 fw-bold" id="scan-btn" style="font-size:1.05rem; cursor:pointer;">
+          <span id="scan-label"><i class="bi bi-camera-fill me-2"></i>📷 Scanner le bon de commande</span>
+        </label>
+        <input type="file" id="scan-input" accept="image/*" capture="environment" style="display:none">
+
+        <div id="scan-result" class="mt-2" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- ── Formulaire ── -->
     <div class="card shadow-sm">
       <div class="card-header bg-white fw-semibold">
         <i class="bi bi-person-plus me-1 text-warning"></i>{{ titre }}
       </div>
       <div class="card-body">
-        <form method="POST">
+        <form method="POST" id="vente-form">
 
           <div class="row g-3">
             <!-- Prénom / Nom -->
             <div class="col-6">
               <label class="form-label fw-semibold">Prénom <span class="text-danger">*</span></label>
-              <input type="text" name="prenom" class="form-control"
+              <input type="text" name="prenom" id="f-prenom" class="form-control"
                      value="{{ vente.prenom if vente else '' }}" required>
             </div>
             <div class="col-6">
               <label class="form-label fw-semibold">Nom <span class="text-danger">*</span></label>
-              <input type="text" name="nom" class="form-control"
+              <input type="text" name="nom" id="f-nom" class="form-control"
                      value="{{ vente.nom if vente else '' }}" required>
             </div>
 
             <!-- Téléphone -->
             <div class="col-6">
               <label class="form-label fw-semibold">Téléphone <span class="text-danger">*</span></label>
-              <input type="tel" name="telephone" class="form-control"
+              <input type="tel" name="telephone" id="f-telephone" class="form-control"
                      placeholder="+33612345678"
                      value="{{ vente.telephone if vente else '' }}" required>
               <div class="form-text">Format international (+33…) recommandé pour les SMS.</div>
@@ -36,7 +57,7 @@
             <!-- Référence commande -->
             <div class="col-6">
               <label class="form-label fw-semibold">Référence commande</label>
-              <input type="text" name="reference" class="form-control"
+              <input type="text" name="reference" id="f-reference" class="form-control"
                      placeholder="ex : ORD-2026-001234"
                      value="{{ vente.reference if vente and vente.reference else '' }}">
             </div>
@@ -44,7 +65,7 @@
             <!-- Produit -->
             <div class="col-6">
               <label class="form-label fw-semibold">Produit <span class="text-danger">*</span></label>
-              <select name="produit" class="form-select" required>
+              <select name="produit" id="f-produit" class="form-select" required>
                 {% for p in produits %}
                   <option {% if vente and vente.produit == p %}selected{% endif %}>{{ p }}</option>
                 {% endfor %}
@@ -54,7 +75,7 @@
             <!-- Adresse -->
             <div class="col-12">
               <label class="form-label fw-semibold">Adresse <span class="text-danger">*</span></label>
-              <input type="text" name="adresse" class="form-control"
+              <input type="text" name="adresse" id="f-adresse" class="form-control"
                      placeholder="12 rue de la Paix, 75001 Paris"
                      value="{{ vente.adresse if vente else '' }}" required>
             </div>
@@ -64,7 +85,7 @@
               <label class="form-label fw-semibold">
                 Date & heure RDV installation <span class="text-danger">*</span>
               </label>
-              <input type="datetime-local" name="date_rdv" class="form-control"
+              <input type="datetime-local" name="date_rdv" id="f-date-rdv" class="form-control"
                      value="{{ vente.date_rdv.strftime('%Y-%m-%dT%H:%M') if vente else '' }}"
                      required>
             </div>
@@ -73,7 +94,7 @@
             <div class="col-6">
               <label class="form-label fw-semibold">Date de signature</label>
               <input type="date" name="date_signature" class="form-control"
-                     value="{{ vente.date_signature.strftime('%Y-%m-%d') if vente else today }}">
+                     value="{{ vente.date_signature.strftime('%Y-%m-%d') if vente else '' }}">
             </div>
 
             <!-- Statut -->
@@ -111,16 +132,108 @@
         </form>
       </div>
     </div>
+
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  // Pré-remplir la date de signature avec aujourd'hui si vide
+  // Date signature → aujourd'hui par défaut
   const sigField = document.querySelector('[name="date_signature"]');
-  if (!sigField.value) {
-    sigField.value = new Date().toISOString().slice(0, 10);
-  }
+  if (!sigField.value) sigField.value = new Date().toISOString().slice(0, 10);
+
+  // ── Scan automatique ──────────────────────────────────────────────────────
+  const PRODUITS = {{ produits | tojson }};
+
+  document.getElementById('scan-input').addEventListener('change', async function () {
+    const file = this.files[0];
+    if (!file) return;
+
+    const btn   = document.getElementById('scan-btn');
+    const label = document.getElementById('scan-label');
+    const result = document.getElementById('scan-result');
+
+    // État chargement
+    btn.style.pointerEvents = 'none';
+    btn.style.opacity = '0.7';
+    label.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analyse en cours…';
+    result.style.display = 'none';
+
+    try {
+      const fd = new FormData();
+      fd.append('photo', file);
+
+      const resp = await fetch('/scan-affiche', { method: 'POST', body: fd });
+      const data = await resp.json();
+
+      if (data.error) {
+        result.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="bi bi-exclamation-triangle me-1"></i>${data.error}</div>`;
+        result.style.display = '';
+        label.innerHTML = '<i class="bi bi-camera-fill me-2"></i>📷 Réessayer';
+        return;
+      }
+
+      // Remplir les champs
+      const filled = [];
+      const set = (id, val, label) => {
+        if (val) { document.getElementById(id).value = val; filled.push(label); }
+      };
+
+      set('f-prenom',    data.prenom,    'Prénom');
+      set('f-nom',       data.nom,       'Nom');
+      set('f-telephone', data.telephone, 'Téléphone');
+      set('f-adresse',   data.adresse,   'Adresse');
+      set('f-reference', data.reference, 'Référence');
+      set('f-date-rdv',  data.date_rdv,  'Date RDV');
+
+      // Produit : correspondance approximative
+      if (data.produit) {
+        const sel = document.getElementById('f-produit');
+        const needle = data.produit.toLowerCase();
+        let found = false;
+        for (let opt of sel.options) {
+          if (opt.value.toLowerCase() === needle || opt.value.toLowerCase().includes(needle) || needle.includes(opt.value.toLowerCase())) {
+            sel.value = opt.value; found = true; filled.push('Produit'); break;
+          }
+        }
+        if (!found) {
+          // Essai partiel sur les mots-clés
+          for (let opt of sel.options) {
+            const words = opt.value.toLowerCase().split(' ');
+            if (words.some(w => w.length > 3 && needle.includes(w))) {
+              sel.value = opt.value; filled.push('Produit'); break;
+            }
+          }
+        }
+      }
+
+      if (filled.length > 0) {
+        result.innerHTML = `<div class="alert alert-success py-2 mb-0">
+          <i class="bi bi-check2-circle me-1"></i>
+          <strong>Rempli automatiquement :</strong> ${filled.join(', ')}.
+          Vérifie et corrige si besoin.
+        </div>`;
+        label.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>✅ Formulaire rempli — rescanner ?';
+        btn.style.background = '#198754';
+        btn.style.borderColor = '#198754';
+      } else {
+        result.innerHTML = `<div class="alert alert-warning py-2 mb-0">
+          <i class="bi bi-exclamation me-1"></i>
+          Aucune information trouvée. Essaie avec une photo plus nette ou plus cadrée.
+        </div>`;
+        label.innerHTML = '<i class="bi bi-camera-fill me-2"></i>📷 Réessayer';
+      }
+      result.style.display = '';
+
+    } catch (e) {
+      result.innerHTML = `<div class="alert alert-danger py-2 mb-0">Erreur réseau : ${e}</div>`;
+      result.style.display = '';
+      label.innerHTML = '<i class="bi bi-camera-fill me-2"></i>📷 Réessayer';
+    } finally {
+      btn.style.pointerEvents = '';
+      btn.style.opacity = '';
+    }
+  });
 </script>
 {% endblock %}

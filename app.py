@@ -606,6 +606,94 @@ def lancer_rappels():
 
 
 # ---------------------------------------------------------------------------
+# Route : Scan bon de commande (Claude Vision)
+# ---------------------------------------------------------------------------
+
+@app.route("/scan-affiche", methods=["POST"])
+@login_required
+def scan_affiche():
+    import base64
+    import json as _json
+
+    photo = request.files.get("photo")
+    if not photo:
+        return jsonify({"error": "Aucune photo reçue"}), 400
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return jsonify({"error": "ANTHROPIC_API_KEY non configuré dans les variables d'environnement."}), 500
+
+    img_bytes = photo.read()
+    if len(img_bytes) > 10 * 1024 * 1024:  # 10 Mo max
+        return jsonify({"error": "Image trop lourde (max 10 Mo)."}), 400
+
+    img_b64 = base64.standard_b64encode(img_bytes).decode("utf-8")
+    media_type = photo.content_type if (photo.content_type or "").startswith("image/") else "image/jpeg"
+
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1024,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": img_b64,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": (
+                            "Tu es un assistant pour un commercial Orange en porte-à-porte.\n"
+                            "Extrait les informations client de ce document "
+                            "(bon de commande, contrat, écran tablette Orange, fiche client...).\n\n"
+                            "Retourne UNIQUEMENT un objet JSON valide avec ces champs "
+                            "(null si non trouvé) :\n"
+                            "{\n"
+                            '  "prenom": "...",\n'
+                            '  "nom": "...",\n'
+                            '  "telephone": "...",\n'
+                            '  "adresse": "...",\n'
+                            '  "produit": "...",\n'
+                            '  "reference": "...",\n'
+                            '  "date_rdv": "YYYY-MM-DDTHH:MM"\n'
+                            "}\n\n"
+                            "Règles :\n"
+                            "- produit : choisir parmi (exactement) : "
+                            "'En option', 'Livebox Fibre', 'Livebox Up', "
+                            "'Livebox Max', 'Série Spécial Lite Fibre' — ou null\n"
+                            "- date_rdv : format YYYY-MM-DDTHH:MM (ex: 2026-04-25T14:00)\n"
+                            "- telephone : avec indicatif si visible (+33...)\n"
+                            "- adresse : adresse complète avec code postal et ville\n"
+                            "Retourne UNIQUEMENT le JSON brut, sans balises markdown."
+                        ),
+                    },
+                ],
+            }],
+        )
+
+        txt = msg.content[0].text.strip()
+        # Extraire le JSON si entouré de balises markdown
+        m = re.search(r'\{[\s\S]*\}', txt)
+        txt = m.group() if m else txt
+
+        data = _json.loads(txt)
+        # Nettoyer les None Python → null déjà géré par jsonify
+        return jsonify(data)
+
+    except _json.JSONDecodeError as e:
+        return jsonify({"error": f"Impossible de lire la réponse IA : {e}"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
 # Route offline (PWA fallback)
 # ---------------------------------------------------------------------------
 
