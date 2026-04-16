@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AppState,
   Platform,
@@ -66,14 +66,38 @@ function getBreathingLabel(elapsed: number): string {
   return BREATHING_PATTERN[3].label;
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Outer wrapper — just resolves the session, no hooks after early return ────
 
 export default function SessionPlayer() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const session: Session | undefined = SESSIONS.find((s) => s.id === Number(id));
+  const session = SESSIONS.find((s) => s.id === Number(id));
+  if (!session) return null;
+  return <SessionPlayerInner session={session} />;
+}
 
+// ── Inner component — all hooks at the top level, session is always defined ──
+
+function SessionPlayerInner({ session }: { session: Session }) {
   const { settings } = useSettings();
   const audio = useAudio();
+
+  // ── Stable derived values (computed once via useMemo) ──────────────────────
+  const reprogramDuration = useMemo(
+    () => getReprogrammingDuration(session),
+    [session]
+  );
+
+  const phaseDuration = useMemo<Record<Phase, number>>(
+    () => ({
+      induction: PHASE_DURATIONS.induction,
+      deepening: PHASE_DURATIONS.deepening,
+      reprogramming: reprogramDuration,
+      anchoring: PHASE_DURATIONS.anchoring,
+    }),
+    [reprogramDuration]
+  );
+
+  const totalDuration = session.durationMinutes * 60;
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>('induction');
@@ -83,46 +107,15 @@ export default function SessionPlayer() {
   const [scriptIndex, setScriptIndex] = useState(0);
   const [typewriterKey, setTypewriterKey] = useState(0);
 
+  // Refs mirror state for use inside setInterval callbacks (avoids stale closure)
   const phaseRef = useRef<Phase>('induction');
-  const phaseElapsedRef = useRef(0);
   const isPausedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   phaseRef.current = phase;
-  phaseElapsedRef.current = phaseElapsed;
   isPausedRef.current = isPaused;
 
-  if (!session) {
-    return null;
-  }
-
-  const reprogramDuration = getReprogrammingDuration(session);
-
-  const phaseDuration: Record<Phase, number> = {
-    induction: PHASE_DURATIONS.induction,
-    deepening: PHASE_DURATIONS.deepening,
-    reprogramming: reprogramDuration,
-    anchoring: PHASE_DURATIONS.anchoring,
-  };
-
-  const totalDuration = session.durationMinutes * 60;
-
-  // ── Derived values ─────────────────────────────────────────────────────────
-
-  const affirmationIndex = Math.floor(
-    (phaseElapsed / 5) % session.affirmations.length
-  );
-
-  const breathingLabel = getBreathingLabel(phaseElapsed);
-
-  const scriptLineIndex = Math.min(
-    Math.floor(
-      (phaseElapsed / phaseDuration.deepening) * session.deepeningScript.length
-    ),
-    session.deepeningScript.length - 1
-  );
-
-  // ── Audio ──────────────────────────────────────────────────────────────────
+  // ── Audio — start once on mount ───────────────────────────────────────────
 
   useEffect(() => {
     if (settings.soundEnabled) {
@@ -131,9 +124,10 @@ export default function SessionPlayer() {
     return () => {
       audio.stop();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── AppState — pause on background ────────────────────────────────────────
+  // ── AppState — auto-pause on incoming call / background ───────────────────
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (nextState) => {
@@ -141,21 +135,19 @@ export default function SessionPlayer() {
         isPausedRef.current = true;
         setIsPaused(true);
         audio.pause();
-      } else if (nextState === 'active') {
-        // Don't auto-resume — let user decide
       }
     });
     return () => sub.remove();
-  }, []);
+  }, [audio]);
 
-  // ── Main 1-second tick ────────────────────────────────────────────────────
+  // ── Phase advancement ─────────────────────────────────────────────────────
 
   const advancePhase = useCallback(() => {
     const current = phaseRef.current;
     const idx = PHASE_ORDER.indexOf(current);
 
     if (idx >= PHASE_ORDER.length - 1) {
-      // Session complete — navigate to completion screen
+      // Session complete
       if (timerRef.current) clearInterval(timerRef.current);
       if (Platform.OS !== 'web') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -174,7 +166,6 @@ export default function SessionPlayer() {
     phaseRef.current = next;
     setPhase(next);
     setPhaseElapsed(0);
-    phaseElapsedRef.current = 0;
     setScriptIndex(0);
     setTypewriterKey((k) => k + 1);
 
@@ -183,21 +174,23 @@ export default function SessionPlayer() {
     }
   }, [session.id, totalDuration]);
 
+  // ── Main 1-second tick ────────────────────────────────────────────────────
+  // phaseDuration is stable (useMemo), so this effect runs exactly once.
+
   useEffect(() => {
     timerRef.current = setInterval(() => {
       if (isPausedRef.current) return;
 
       setPhaseElapsed((prev) => {
         const next = prev + 1;
-        phaseElapsedRef.current = next;
-
         const duration = phaseDuration[phaseRef.current];
+
         if (next >= duration) {
           advancePhase();
           return 0;
         }
 
-        // Advance deepening script index
+        // Advance deepening script line
         if (phaseRef.current === 'deepening') {
           const newIdx = Math.min(
             Math.floor(
@@ -205,12 +198,12 @@ export default function SessionPlayer() {
             ),
             session.deepeningScript.length - 1
           );
-          setScriptIndex((prev) => {
-            if (newIdx !== prev) {
+          setScriptIndex((s) => {
+            if (newIdx !== s) {
               setTypewriterKey((k) => k + 1);
               return newIdx;
             }
-            return prev;
+            return s;
           });
         }
 
@@ -225,7 +218,7 @@ export default function SessionPlayer() {
     };
   }, [advancePhase, phaseDuration, session.deepeningScript.length]);
 
-  // ── Haptic pulse every 16s during anchoring ───────────────────────────────
+  // ── Haptic pulse during anchoring ─────────────────────────────────────────
 
   useEffect(() => {
     if (phase !== 'anchoring' || Platform.OS === 'web') return;
@@ -239,37 +232,42 @@ export default function SessionPlayer() {
 
   // ── Pause / resume ────────────────────────────────────────────────────────
 
-  const togglePause = () => {
-    const next = !isPaused;
-    setIsPaused(next);
-    isPausedRef.current = next;
-    if (next) {
-      audio.pause();
-    } else {
-      audio.resume();
-    }
-  };
+  const togglePause = useCallback(() => {
+    setIsPaused((prev) => {
+      const next = !prev;
+      isPausedRef.current = next;
+      if (next) {
+        audio.pause();
+      } else {
+        audio.resume();
+      }
+      return next;
+    });
+  }, [audio]);
 
   // ── Quit ──────────────────────────────────────────────────────────────────
 
-  const quit = () => {
+  const quit = useCallback(() => {
     audio.stop();
     if (timerRef.current) clearInterval(timerRef.current);
     router.back();
-  };
+  }, [audio]);
 
-  // ── Progress ──────────────────────────────────────────────────────────────
+  // ── Derived display values ─────────────────────────────────────────────────
 
+  const affirmationIndex = Math.floor(
+    (phaseElapsed / 5) % session.affirmations.length
+  );
+  const breathingLabel = getBreathingLabel(phaseElapsed);
   const progressFraction = Math.min(totalElapsed / totalDuration, 1);
   const timeLeft = Math.max(totalDuration - totalElapsed, 0);
   const phaseTimeLeft = Math.max(phaseDuration[phase] - phaseElapsed, 0);
-  const phaseProgress = phaseElapsed / phaseDuration[phase];
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      {/* Background particles only during reprogramming */}
+      {/* Background particles — reprogramming phase only */}
       <FloatingParticles
         color={session.color}
         active={phase === 'reprogramming' && !isPaused}
@@ -304,7 +302,7 @@ export default function SessionPlayer() {
         />
       </View>
 
-      {/* ── Phase dots ────────────────────────────────────────── */}
+      {/* ── Phase indicator dots ──────────────────────────────── */}
       <View style={styles.phaseDots}>
         {PHASE_ORDER.map((p, i) => (
           <View
@@ -325,9 +323,9 @@ export default function SessionPlayer() {
         ))}
       </View>
 
-      {/* ── Main content area ─────────────────────────────────── */}
+      {/* ── Main content ──────────────────────────────────────── */}
       <View style={styles.main}>
-        {/* PHASE 1 — Induction (breathing) */}
+        {/* PHASE 1 — Induction */}
         {phase === 'induction' && (
           <View style={styles.centered}>
             <BreathingCircle color={session.color} active={!isPaused} />
@@ -343,7 +341,6 @@ export default function SessionPlayer() {
         {/* PHASE 2 — Deepening */}
         {phase === 'deepening' && (
           <View style={styles.deepeningContainer}>
-            {/* Subtle descending dots */}
             <View style={styles.descentDots}>
               {[0, 1, 2, 3, 4].map((i) => (
                 <View
@@ -380,8 +377,6 @@ export default function SessionPlayer() {
               affirmation={session.affirmations[affirmationIndex]}
               color={session.color}
             />
-
-            {/* Affirmation counter */}
             <View style={styles.affirmCounter}>
               {session.affirmations.map((_, i) => (
                 <View
@@ -396,8 +391,6 @@ export default function SessionPlayer() {
                 />
               ))}
             </View>
-
-            {/* Phase timer */}
             <Text style={styles.phaseTimerLabel}>
               {formatTime(phaseTimeLeft)} restant
             </Text>
@@ -408,7 +401,6 @@ export default function SessionPlayer() {
         {phase === 'anchoring' && (
           <View style={styles.centered}>
             <Text style={styles.anchorIcon}>{session.icon}</Text>
-            <View style={styles.anchorGlow} />
             <Text style={[styles.anchorMessage, { color: session.color }]}>
               {session.anchorMessage}
             </Text>
@@ -446,8 +438,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-
-  // ── Top bar
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -497,8 +487,6 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     letterSpacing: 0.5,
   },
-
-  // ── Progress bar
   progressBarBg: {
     height: 2,
     backgroundColor: COLORS.border,
@@ -508,8 +496,6 @@ const styles = StyleSheet.create({
     height: 2,
     borderRadius: 2,
   },
-
-  // ── Phase dots
   phaseDots: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -520,8 +506,6 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
   },
-
-  // ── Main content
   main: {
     flex: 1,
     justifyContent: 'center',
@@ -531,8 +515,6 @@ const styles = StyleSheet.create({
     gap: SPACING.xl,
     paddingHorizontal: SPACING.lg,
   },
-
-  // ── Induction
   breathingLabelBlock: {
     alignItems: 'center',
     gap: SPACING.xs,
@@ -548,8 +530,6 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     letterSpacing: 3,
   },
-
-  // ── Deepening
   deepeningContainer: {
     flex: 1,
     alignItems: 'center',
@@ -580,8 +560,6 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     letterSpacing: 1,
   },
-
-  // ── Reprogramming
   affirmCounter: {
     flexDirection: 'row',
     gap: 6,
@@ -597,20 +575,11 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     letterSpacing: 1,
   },
-
-  // ── Anchoring
   anchorIcon: {
     fontSize: 72,
     textShadowColor: 'rgba(255,255,255,0.3)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 20,
-  },
-  anchorGlow: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'transparent',
   },
   anchorMessage: {
     fontFamily: FONTS.heading,
@@ -626,8 +595,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 0.2,
   },
-
-  // ── Controls
   controls: {
     alignItems: 'center',
     paddingBottom: SPACING.xl,
