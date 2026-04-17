@@ -58,8 +58,11 @@
 
     /* ── HERO ── */
     #hero {
-      background: var(--dark);
-      padding: 100px 24px 80px;
+      position: relative;
+      background:
+        linear-gradient(to bottom, rgba(12,12,12,0.72) 0%, rgba(12,12,12,0.96) 100%),
+        url('https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=1400&q=80') center/cover no-repeat;
+      padding: 120px 24px 100px;
       text-align: center;
     }
 
@@ -304,18 +307,13 @@
     }
 
     .coach-avatar {
-      width: 120px;
-      height: 120px;
+      width: 160px;
+      height: 160px;
       border-radius: 50%;
       border: 3px solid var(--gold);
-      background: var(--dark-3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2.5rem;
+      object-fit: cover;
       flex-shrink: 0;
-      color: var(--gold);
-      font-weight: 900;
+      display: block;
     }
 
     .coach-tags {
@@ -415,6 +413,44 @@
     }
 
     .urgency::before { content: "⚡"; }
+
+    /* ── IMPACT STRIP ── */
+    .impact-strip {
+      position: relative;
+      height: 280px;
+      overflow: hidden;
+    }
+
+    .impact-strip img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center 30%;
+      filter: brightness(0.35) grayscale(0.3);
+    }
+
+    .impact-strip-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 24px;
+    }
+
+    .impact-strip-overlay blockquote {
+      max-width: 640px;
+      text-align: center;
+      font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.4;
+      letter-spacing: -0.01em;
+    }
+
+    .impact-strip-overlay blockquote span {
+      color: var(--gold);
+    }
 
     /* ── FOOTER ── */
     footer {
@@ -526,7 +562,20 @@
     </div>
   </section>
 
-  <div class="divider"></div>
+  <!-- BANDEAU IMPACT -->
+  <div class="impact-strip">
+    <img
+      src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1400&q=80"
+      alt=""
+      aria-hidden="true"
+    />
+    <div class="impact-strip-overlay">
+      <blockquote>
+        Le problème, c'est pas ton potentiel.<br />
+        C'est que tu essaies de te transformer <span>tout seul.</span>
+      </blockquote>
+    </div>
+  </div>
 
   <!-- ═══════════════════════════════════════════
        5. PRÉSENTATION DE LA SOLUTION
@@ -670,7 +719,11 @@
       <p class="section-label">Ton coach</p>
       <h2>Heikel — quelqu'un qui l'a vraiment vécu.</h2>
       <div class="coach-card">
-        <div class="coach-avatar">H</div>
+        <img
+          class="coach-avatar"
+          src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=320&q=80"
+          alt="Heikel — Coach H Success"
+        />
         <div class="coach-bio">
           <div class="coach-tags">
             <span class="tag">Vendeur terrain d'élite</span>
