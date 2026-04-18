@@ -1,16 +1,8 @@
-import React, { useEffect, useMemo } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withRepeat,
-  withSequence,
-  withTiming,
-} from 'react-native-reanimated';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { Animated, Dimensions, StyleSheet, View } from 'react-native';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
-const PARTICLE_COUNT = 18;
+const PARTICLE_COUNT = 12;
 
 interface Particle {
   id: number;
@@ -18,7 +10,6 @@ interface Particle {
   y: number;
   size: number;
   riseDuration: number;
-  fadeDuration: number;
   delay: number;
 }
 
@@ -27,65 +18,43 @@ interface Props {
   active?: boolean;
 }
 
-function SingleParticle({
-  x,
-  y,
-  size,
-  riseDuration,
-  fadeDuration,
-  delay,
-  color,
-}: Particle & { color: string }) {
-  const translateY = useSharedValue(0);
-  const opacity = useSharedValue(0);
+function SingleParticle({ x, y, size, riseDuration, delay, color }: Particle & { color: string }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  const animRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
-    translateY.value = withDelay(
-      delay,
-      withRepeat(
-        withSequence(
-          withTiming(-60 - Math.random() * 60, {
-            duration: riseDuration,
-          }),
-          withTiming(0, { duration: 0 }),
-        ),
-        -1
-      )
-    );
+    const timeout = setTimeout(() => {
+      animRef.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(anim, { toValue: 1, duration: riseDuration / 2, useNativeDriver: true }),
+          Animated.timing(anim, { toValue: 0, duration: riseDuration / 2, useNativeDriver: true }),
+        ])
+      );
+      animRef.current.start();
+    }, delay);
 
-    opacity.value = withDelay(
-      delay,
-      withRepeat(
-        withSequence(
-          withTiming(0.0, { duration: 0 }),
-          withTiming(0.7, { duration: fadeDuration * 0.3 }),
-          withTiming(0.5, { duration: fadeDuration * 0.4 }),
-          withTiming(0.0, { duration: fadeDuration * 0.3 }),
-        ),
-        -1
-      )
-    );
+    return () => {
+      clearTimeout(timeout);
+      animRef.current?.stop();
+    };
   }, []);
 
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-    opacity: opacity.value,
-  }));
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -80] });
+  const opacity = anim.interpolate({ inputRange: [0, 0.3, 0.7, 1], outputRange: [0, 0.7, 0.5, 0] });
 
   return (
     <Animated.View
-      style={[
-        animStyle,
-        {
-          position: 'absolute',
-          left: x,
-          top: y,
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: color,
-        },
-      ]}
+      style={{
+        position: 'absolute',
+        left: x,
+        top: y,
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: color,
+        opacity,
+        transform: [{ translateY }],
+      }}
     />
   );
 }
@@ -99,8 +68,7 @@ export default function FloatingParticles({ color, active = true }: Props) {
         y: Math.random() * SCREEN_H * 0.8 + SCREEN_H * 0.1,
         size: Math.random() * 3 + 1.5,
         riseDuration: Math.random() * 4000 + 3000,
-        fadeDuration: Math.random() * 4000 + 3000,
-        delay: Math.random() * 5000,
+        delay: Math.random() * 3000,
       })),
     []
   );
