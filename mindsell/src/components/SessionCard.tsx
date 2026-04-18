@@ -1,14 +1,7 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import React, { useRef } from 'react';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { COLORS, FONTS, RADIUS, SPACING } from '../constants/theme';
 import type { Session } from '../constants/sessions';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface Props {
   session: Session;
@@ -17,62 +10,51 @@ interface Props {
 }
 
 export default function SessionCard({ session, isCompleted = false, onPress }: Props) {
-  const scale = useSharedValue(1);
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const scale = useRef(new Animated.Value(1)).current;
 
   return (
-    <AnimatedPressable
-      style={[styles.card, animStyle]}
-      onPressIn={() => {
-        scale.value = withSpring(0.97, { damping: 15 });
-      }}
-      onPressOut={() => {
-        scale.value = withSpring(1, { damping: 15 });
-      }}
-      onPress={onPress}
-    >
-      {/* Left color accent bar */}
-      <View style={[styles.accentBar, { backgroundColor: session.color }]} />
-
-      <View style={styles.content}>
-        {/* Header row */}
-        <View style={styles.headerRow}>
-          <Text style={styles.icon}>{session.icon}</Text>
-          <View style={styles.titleBlock}>
-            <Text style={styles.title}>{session.title}</Text>
-            <Text style={styles.subtitle}>{session.subtitle}</Text>
-          </View>
-          {isCompleted && (
-            <View style={[styles.completedBadge, { backgroundColor: session.colorDim }]}>
-              <Text style={[styles.completedText, { color: session.color }]}>✓</Text>
+    <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
+      <Pressable
+        style={styles.pressable}
+        onPressIn={() => Animated.spring(scale, { toValue: 0.97, damping: 15, useNativeDriver: true }).start()}
+        onPressOut={() => Animated.spring(scale, { toValue: 1, damping: 15, useNativeDriver: true }).start()}
+        onPress={onPress}
+      >
+        <View style={[styles.accentBar, { backgroundColor: session.color }]} />
+        <View style={styles.content}>
+          <View style={styles.headerRow}>
+            <Text style={styles.icon}>{session.icon}</Text>
+            <View style={styles.titleBlock}>
+              <Text style={styles.title}>{session.title}</Text>
+              <Text style={styles.subtitle}>{session.subtitle}</Text>
             </View>
-          )}
-        </View>
-
-        {/* Footer row */}
-        <View style={styles.footer}>
-          <View style={[styles.durationPill, { backgroundColor: session.colorDim }]}>
-            <Text style={[styles.duration, { color: session.color }]}>
-              {session.durationMinutes} min
-            </Text>
+            {isCompleted && (
+              <View style={[styles.completedBadge, { backgroundColor: session.colorDim }]}>
+                <Text style={[styles.completedText, { color: session.color }]}>✓</Text>
+              </View>
+            )}
           </View>
-          <View style={styles.dotsRow}>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.dot,
-                  { backgroundColor: i < session.affirmations.length / 2 ? session.color : COLORS.border },
-                ]}
-              />
-            ))}
+          <View style={styles.footer}>
+            <View style={[styles.durationPill, { backgroundColor: session.colorDim }]}>
+              <Text style={[styles.duration, { color: session.color }]}>
+                {session.durationMinutes} min
+              </Text>
+            </View>
+            <View style={styles.dotsRow}>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.dot,
+                    { backgroundColor: i < session.affirmations.length / 2 ? session.color : COLORS.border },
+                  ]}
+                />
+              ))}
+            </View>
           </View>
         </View>
-      </View>
-    </AnimatedPressable>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -85,6 +67,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: COLORS.border,
+  },
+  pressable: {
+    flex: 1,
+    flexDirection: 'row',
   },
   accentBar: {
     width: 3,
