@@ -569,6 +569,200 @@
       letter-spacing: 0.05em;
     }
 
+    /* ── PROGRESS BAR ── */
+    #progress-bar {
+      position: fixed;
+      top: 0; left: 0;
+      height: 3px;
+      width: 0%;
+      background: linear-gradient(to right, var(--gold), var(--gold-light));
+      z-index: 9999;
+      transition: width 0.1s linear;
+    }
+
+    /* ── STICKY NAV ── */
+    #sticky-nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 900;
+      background: rgba(12,12,12,0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transform: translateY(-100%);
+      transition: transform 0.3s ease;
+    }
+
+    #sticky-nav.visible { transform: translateY(0); }
+
+    .nav-logo {
+      font-weight: 900;
+      font-size: 1rem;
+      color: var(--gold);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .nav-cta {
+      background: var(--gold);
+      color: #000;
+      font-weight: 800;
+      font-size: 0.82rem;
+      padding: 10px 20px;
+      border-radius: 6px;
+      text-decoration: none;
+      letter-spacing: 0.02em;
+      transition: background 0.2s;
+    }
+
+    .nav-cta:hover { background: var(--gold-light); }
+
+    /* ── CTA PULSE ── */
+    @keyframes pulse-gold {
+      0%   { box-shadow: 0 0 0 0 rgba(201,168,76,0.5); }
+      70%  { box-shadow: 0 0 0 14px rgba(201,168,76,0); }
+      100% { box-shadow: 0 0 0 0 rgba(201,168,76,0); }
+    }
+
+    .cta-btn { animation: pulse-gold 2.2s infinite; }
+
+    /* ── SCROLL INDICATOR ── */
+    .scroll-down {
+      margin-top: 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .scroll-down .chevron {
+      width: 20px;
+      height: 20px;
+      border-right: 2px solid var(--gold);
+      border-bottom: 2px solid var(--gold);
+      transform: rotate(45deg);
+      animation: bounce 1.6s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: rotate(45deg) translateY(0); opacity: 1; }
+      50%       { transform: rotate(45deg) translateY(6px); opacity: 0.4; }
+    }
+
+    /* ── STATS COUNTERS ── */
+    .stats-row {
+      display: flex;
+      gap: 0;
+      margin: 40px 0 0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .stat-box {
+      flex: 1;
+      padding: 28px 16px;
+      text-align: center;
+      border-right: 1px solid var(--border);
+    }
+
+    .stat-box:last-child { border-right: none; }
+
+    .stat-num {
+      font-size: clamp(2rem, 4vw, 2.8rem);
+      font-weight: 900;
+      color: var(--gold);
+      line-height: 1;
+      display: block;
+    }
+
+    .stat-label {
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-top: 6px;
+      display: block;
+    }
+
+    /* ── TESTIMONIALS ── */
+    #testimonials { background: var(--dark-2); }
+
+    .testi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+      margin-top: 36px;
+    }
+
+    .testi-card {
+      background: var(--dark-3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+      position: relative;
+    }
+
+    .testi-card::before {
+      content: '"';
+      position: absolute;
+      top: 16px; left: 20px;
+      font-size: 4rem;
+      line-height: 1;
+      color: var(--gold);
+      opacity: 0.3;
+      font-family: Georgia, serif;
+    }
+
+    .testi-text {
+      font-size: 0.97rem;
+      color: #ccc;
+      line-height: 1.7;
+      margin-bottom: 20px;
+      padding-top: 20px;
+    }
+
+    .testi-author {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .testi-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: rgba(201,168,76,0.15);
+      border: 1px solid var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--gold);
+      flex-shrink: 0;
+    }
+
+    .testi-name {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .testi-result {
+      font-size: 0.78rem;
+      color: var(--gold);
+      margin-top: 2px;
+    }
+
     /* ── FOOTER ── */
     footer {
       background: var(--dark-2);
@@ -597,6 +791,15 @@
 
 <body>
 
+  <!-- Barre de progression -->
+  <div id="progress-bar"></div>
+
+  <!-- Sticky nav -->
+  <nav id="sticky-nav">
+    <span class="nav-logo">H Success</span>
+    <a href="#final-cta" class="nav-cta">Réserve ton appel gratuit</a>
+  </nav>
+
   <!-- ═══════════════════════════════════════════
        1. HEADLINE + SOUS-HEADLINE
   ═══════════════════════════════════════════ -->
@@ -614,6 +817,10 @@
       </p>
       <a href="#final-cta" class="cta-btn">Réserve ton appel de découverte gratuit</a>
       <p class="cta-sub">Appel de 30 min • Gratuit • Sans engagement</p>
+      <div class="scroll-down">
+        <span>Scroll</span>
+        <div class="chevron"></div>
+      </div>
     </div>
   </section>
 
@@ -896,6 +1103,22 @@
             Je ne t'enseigne pas des théories lues dans des bouquins.
             <strong>Je t'enseigne ce que j'ai appliqué.</strong>
           </p>
+
+          <!-- Compteurs animés -->
+          <div class="stats-row" id="statsRow">
+            <div class="stat-box">
+              <span class="stat-num" data-target="47">0</span>
+              <span class="stat-label">Hommes accompagnés</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-num" data-target="90">0</span>
+              <span class="stat-label">Jours de programme</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-num" data-target="94">0</span>
+              <span class="stat-label">% satisfaits</span>
+            </div>
+          </div>
           <p>
             La vente porte à porte m'a appris que le seul ennemi, c'est toi-même.
             Chaque refus, chaque porte fermée, chaque journée difficile —
@@ -972,6 +1195,66 @@
   <div class="divider"></div>
 
   <!-- ═══════════════════════════════════════════
+       TÉMOIGNAGES
+  ═══════════════════════════════════════════ -->
+  <section id="testimonials">
+    <div class="container">
+      <p class="section-label">Ils l'ont fait</p>
+      <h2>Des hommes comme toi. Des résultats réels.</h2>
+      <div class="testi-grid">
+
+        <div class="testi-card">
+          <p class="testi-text">
+            "En 6 semaines j'ai lancé mon projet que j'avais dans la tête depuis 2 ans.
+            Heikel m'a aidé à comprendre pourquoi je sabotais tout à chaque fois que ça devenait sérieux.
+            Aujourd'hui je suis en train de construire quelque chose de réel."
+          </p>
+          <div class="testi-author">
+            <div class="testi-avatar">K</div>
+            <div>
+              <p class="testi-name">Karim B. — 24 ans</p>
+              <p class="testi-result">✦ Lancement business e-commerce</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="testi-card">
+          <p class="testi-text">
+            "J'étais bloqué dans mon job depuis 3 ans, je rêvais de changer mais rien ne bougeait.
+            90 jours après, j'ai décroché un poste qui correspond enfin à ce que je veux.
+            Le travail sur l'identité a tout changé."
+          </p>
+          <div class="testi-author">
+            <div class="testi-avatar">T</div>
+            <div>
+              <p class="testi-name">Thomas R. — 29 ans</p>
+              <p class="testi-result">✦ Reconversion professionnelle réussie</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="testi-card">
+          <p class="testi-text">
+            "Ce qui m'a le plus frappé c'est la vitesse.
+            Dès la première semaine j'avais des actions concrètes à faire.
+            Pas de blabla théorique. Heikel va droit au but et ça m'a complètement débloqué."
+          </p>
+          <div class="testi-author">
+            <div class="testi-avatar">M</div>
+            <div>
+              <p class="testi-name">Mehdi A. — 26 ans</p>
+              <p class="testi-result">✦ Passage à l'action dès J+7</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ═══════════════════════════════════════════
        10. APPEL À L'ACTION FINAL
   ═══════════════════════════════════════════ -->
   <section id="final-cta">
@@ -1028,6 +1311,55 @@
     dots.forEach((dot, i) => dot.addEventListener('click', () => goTo(i)));
     prevBtn.addEventListener('click', () => { if (current > 0) goTo(current - 1); });
     nextBtn.addEventListener('click', () => { if (current < panels.length - 1) goTo(current + 1); });
+
+    // ── PROGRESS BAR ──
+    const progressBar = document.getElementById('progress-bar');
+    function updateProgress() {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      progressBar.style.width = pct + '%';
+    }
+
+    // ── STICKY NAV ──
+    const stickyNav = document.getElementById('sticky-nav');
+    const heroH = document.getElementById('hero').offsetHeight;
+    function updateNav() {
+      if (window.scrollY > heroH * 0.6) {
+        stickyNav.classList.add('visible');
+      } else {
+        stickyNav.classList.remove('visible');
+      }
+    }
+
+    window.addEventListener('scroll', () => {
+      updateProgress();
+      updateNav();
+    }, { passive: true });
+
+    // ── ANIMATED COUNTERS ──
+    function animateCounter(el, target, duration) {
+      let start = 0;
+      const step = Math.ceil(target / (duration / 16));
+      const timer = setInterval(() => {
+        start = Math.min(start + step, target);
+        el.textContent = start;
+        if (start >= target) clearInterval(timer);
+      }, 16);
+    }
+
+    const statsRow = document.getElementById('statsRow');
+    let counted = false;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && !counted) {
+        counted = true;
+        document.querySelectorAll('.stat-num').forEach(el => {
+          animateCounter(el, parseInt(el.dataset.target), 1200);
+        });
+      }
+    }, { threshold: 0.4 });
+
+    if (statsRow) observer.observe(statsRow);
   </script>
 
 </body>
