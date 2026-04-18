@@ -452,6 +452,123 @@
       color: var(--gold);
     }
 
+    /* ── FADE SCROLL LIST ── */
+    .fade-list-wrap {
+      position: relative;
+      max-height: 300px;
+      overflow: hidden;
+    }
+
+    .fade-list-wrap .check-list {
+      overflow-y: auto;
+      max-height: 300px;
+      scrollbar-width: none;
+    }
+
+    .fade-list-wrap .check-list::-webkit-scrollbar { display: none; }
+
+    .fade-list-wrap::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 110px;
+      background: linear-gradient(to bottom, transparent, var(--dark-2));
+      pointer-events: none;
+    }
+
+    /* ── STEP NAVIGATION ── */
+    .steps-wrap { margin-top: 36px; }
+
+    .step-dots {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 36px;
+    }
+
+    .step-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: transparent;
+      border: 1.5px solid rgba(201, 168, 76, 0.4);
+      cursor: pointer;
+      padding: 0;
+      transition: background 0.2s, transform 0.2s, border-color 0.2s;
+    }
+
+    .step-dot.active {
+      background: var(--gold);
+      border-color: var(--gold);
+      transform: scale(1.35);
+    }
+
+    .step-dot:hover:not(.active) { border-color: var(--gold); }
+
+    .step-panels { position: relative; }
+
+    .step-panel {
+      display: none;
+      animation: stepIn 0.3s ease;
+    }
+
+    .step-panel.active { display: block; }
+
+    @keyframes stepIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .step-card {
+      background: var(--dark-3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 36px;
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .step-card .offer-icon { flex-shrink: 0; }
+
+    .step-num {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 6px;
+    }
+
+    .step-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 20px;
+    }
+
+    .step-arrow {
+      background: none;
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text);
+      padding: 8px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-family: inherit;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .step-arrow:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+    .step-arrow:disabled { opacity: 0.2; cursor: default; }
+
+    .step-counter {
+      font-size: 0.82rem;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+
     /* ── FOOTER ── */
     footer {
       background: var(--dark-2);
@@ -512,15 +629,17 @@
       <p style="color: var(--muted); margin-top: 12px;">
         Tu n'es pas seul. C'est exactement là où se trouvaient tous ceux qui ont travaillé avec moi.
       </p>
-      <ul class="check-list">
-        <li>Tu sais exactement ce que tu veux faire de ta vie — mais tu n'arrives pas à passer à l'action, et chaque semaine ressemble à la précédente.</li>
-        <li>T'as un objectif en tête depuis des mois (business, physique, argent, carrière) mais il reste dans ta tête. Jamais dans la réalité.</li>
-        <li>Tu consommes du contenu "motivation" à la pelle — YouTube, podcasts, livres — mais rien ne bouge vraiment dans ta vie.</li>
-        <li>Tu te lèves le matin avec l'intention d'avancer, et tu te couches le soir avec la même liste non cochée.</li>
-        <li>Tu sens que t'as le potentiel, mais une voix dans ta tête te retient à chaque fois que ça devient sérieux.</li>
-        <li>T'as essayé de changer seul — et ça a marché quelques semaines, puis tu es retombé dans les mêmes patterns.</li>
-        <li>Au fond, t'es fatigué de te promettre que "le mois prochain, ce sera différent".</li>
-      </ul>
+      <div class="fade-list-wrap">
+        <ul class="check-list">
+          <li>Tu sais exactement ce que tu veux faire de ta vie — mais tu n'arrives pas à passer à l'action, et chaque semaine ressemble à la précédente.</li>
+          <li>T'as un objectif en tête depuis des mois (business, physique, argent, carrière) mais il reste dans ta tête. Jamais dans la réalité.</li>
+          <li>Tu consommes du contenu "motivation" à la pelle — YouTube, podcasts, livres — mais rien ne bouge vraiment dans ta vie.</li>
+          <li>Tu te lèves le matin avec l'intention d'avancer, et tu te couches le soir avec la même liste non cochée.</li>
+          <li>Tu sens que t'as le potentiel, mais une voix dans ta tête te retient à chaque fois que ça devient sérieux.</li>
+          <li>T'as essayé de changer seul — et ça a marché quelques semaines, puis tu es retombé dans les mêmes patterns.</li>
+          <li>Au fond, t'es fatigué de te promettre que "le mois prochain, ce sera différent".</li>
+        </ul>
+      </div>
     </div>
   </section>
 
@@ -669,42 +788,84 @@
     <div class="container">
       <p class="section-label">L'accompagnement</p>
       <h2>Ce que t'as quand tu rejoins H Success</h2>
-      <div class="offer-box">
-        <div class="offer-item">
-          <div class="offer-icon">📞</div>
-          <div class="offer-text">
-            <h3>1 appel hebdomadaire de 45 minutes</h3>
-            <p>Un espace dédié chaque semaine pour faire le point, débloquer ce qui coince, et fixer les prochaines actions. Pas de fioriture — on va droit au but.</p>
-          </div>
+      <div class="steps-wrap">
+
+        <!-- Dots -->
+        <div class="step-dots" id="stepDots">
+          <button class="step-dot active" data-step="0" aria-label="Étape 1"></button>
+          <button class="step-dot" data-step="1" aria-label="Étape 2"></button>
+          <button class="step-dot" data-step="2" aria-label="Étape 3"></button>
+          <button class="step-dot" data-step="3" aria-label="Étape 4"></button>
+          <button class="step-dot" data-step="4" aria-label="Étape 5"></button>
         </div>
-        <div class="offer-item">
-          <div class="offer-icon">💬</div>
-          <div class="offer-text">
-            <h3>Support WhatsApp du lundi au vendredi</h3>
-            <p>T'as un doute, une victoire, un moment de faiblesse ? Tu m'envoies un message. Je réponds. Le soutien ne s'arrête pas entre les appels.</p>
+
+        <!-- Panels -->
+        <div class="step-panels" id="stepPanels">
+
+          <div class="step-panel active">
+            <div class="step-card">
+              <div class="offer-icon">📞</div>
+              <div class="offer-text">
+                <p class="step-num">Étape 1 / 5</p>
+                <h3>1 appel hebdomadaire de 45 minutes</h3>
+                <p>Un espace dédié chaque semaine pour faire le point, débloquer ce qui coince, et fixer les prochaines actions. Pas de fioriture — on va droit au but.</p>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="offer-item">
-          <div class="offer-icon">🗺️</div>
-          <div class="offer-text">
-            <h3>Un plan d'action personnalisé sur 90 jours</h3>
-            <p>On ne part pas dans tous les sens. On définit ensemble la route exacte vers ton objectif — étape par étape, semaine par semaine.</p>
+
+          <div class="step-panel">
+            <div class="step-card">
+              <div class="offer-icon">💬</div>
+              <div class="offer-text">
+                <p class="step-num">Étape 2 / 5</p>
+                <h3>Support WhatsApp du lundi au vendredi</h3>
+                <p>T'as un doute, une victoire, un moment de faiblesse ? Tu m'envoies un message. Je réponds. Le soutien ne s'arrête pas entre les appels.</p>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="offer-item">
-          <div class="offer-icon">🔓</div>
-          <div class="offer-text">
-            <h3>Travail en profondeur sur tes blocages</h3>
-            <p>Peur, doute, procrastination, identité — on creuse là où ça fait mal, parce que c'est là que se trouve la vraie transformation.</p>
+
+          <div class="step-panel">
+            <div class="step-card">
+              <div class="offer-icon">🗺️</div>
+              <div class="offer-text">
+                <p class="step-num">Étape 3 / 5</p>
+                <h3>Un plan d'action personnalisé sur 90 jours</h3>
+                <p>On ne part pas dans tous les sens. On définit ensemble la route exacte vers ton objectif — étape par étape, semaine par semaine.</p>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="offer-item">
-          <div class="offer-icon">⚡</div>
-          <div class="offer-text">
-            <h3>Responsabilisation et suivi de tes engagements</h3>
-            <p>T'as quelqu'un qui attend que tu tiennes ta parole. Cette pression positive est l'un des moteurs les plus puissants qui existent.</p>
+
+          <div class="step-panel">
+            <div class="step-card">
+              <div class="offer-icon">🔓</div>
+              <div class="offer-text">
+                <p class="step-num">Étape 4 / 5</p>
+                <h3>Travail en profondeur sur tes blocages</h3>
+                <p>Peur, doute, procrastination, identité — on creuse là où ça fait mal, parce que c'est là que se trouve la vraie transformation.</p>
+              </div>
+            </div>
           </div>
+
+          <div class="step-panel">
+            <div class="step-card">
+              <div class="offer-icon">⚡</div>
+              <div class="offer-text">
+                <p class="step-num">Étape 5 / 5</p>
+                <h3>Responsabilisation et suivi de tes engagements</h3>
+                <p>T'as quelqu'un qui attend que tu tiennes ta parole. Cette pression positive est l'un des moteurs les plus puissants qui existent.</p>
+              </div>
+            </div>
+          </div>
+
         </div>
+
+        <!-- Arrows + counter -->
+        <div class="step-nav">
+          <button class="step-arrow" id="stepPrev" disabled>← Précédent</button>
+          <span class="step-counter" id="stepCounter">1 / 5</span>
+          <button class="step-arrow" id="stepNext">Suivant →</button>
+        </div>
+
       </div>
     </div>
   </section>
@@ -843,6 +1004,31 @@
     <p>© 2025 H Success — Accompagnement personnel par Heikel</p>
     <p style="margin-top: 8px;">Tous droits réservés.</p>
   </footer>
+
+  <script>
+    // ── STEP NAVIGATION ──
+    const dots    = document.querySelectorAll('.step-dot');
+    const panels  = document.querySelectorAll('.step-panel');
+    const prevBtn = document.getElementById('stepPrev');
+    const nextBtn = document.getElementById('stepNext');
+    const counter = document.getElementById('stepCounter');
+    let current = 0;
+
+    function goTo(index) {
+      dots[current].classList.remove('active');
+      panels[current].classList.remove('active');
+      current = index;
+      dots[current].classList.add('active');
+      panels[current].classList.add('active');
+      prevBtn.disabled = current === 0;
+      nextBtn.disabled = current === panels.length - 1;
+      counter.textContent = `${current + 1} / ${panels.length}`;
+    }
+
+    dots.forEach((dot, i) => dot.addEventListener('click', () => goTo(i)));
+    prevBtn.addEventListener('click', () => { if (current > 0) goTo(current - 1); });
+    nextBtn.addEventListener('click', () => { if (current < panels.length - 1) goTo(current + 1); });
+  </script>
 
 </body>
 </html>
