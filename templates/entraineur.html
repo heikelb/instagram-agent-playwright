@@ -435,7 +435,7 @@ async function demarrer() {
 function demarrerModeObjections() {
   objScores = []; objCount = 0;
   document.getElementById('setup-phase').style.display = 'none';
-  document.getElementById('objection-phase').style.display = '';
+  document.getElementById('objection-phase').style.display = 'block';
   const niv = getSelected('niveau') || '';
   const labels = {'':'🎲 Aléatoire', facile:'🟢 Facile', moyen:'🟡 Moyen', difficile:'🔴 Difficile'};
   document.getElementById('obj-niveau-badge').textContent = labels[niv] || 'Aléatoire';
