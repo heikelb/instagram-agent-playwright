@@ -232,6 +232,171 @@ class AdresseImportee(db.Model):
 
 
 # ---------------------------------------------------------------------------
+# Entraîneur IA — constantes & modèles
+# ---------------------------------------------------------------------------
+
+MODULES_ENTRAINEMENT = {
+    "adn_mental": {
+        "label": "🧠 ADN Mental",
+        "description": "Croyances limitatives, résilience face au refus",
+        "color": "#6f42c1",
+        "skills": [
+            "Absence de croyances limitatives — rester câblé sur les faits",
+            "Chaque refus est une étape vers le oui suivant",
+            "Capacité à rebondir sans prendre les refus personnellement",
+        ],
+    },
+    "competences_terrain": {
+        "label": "🎯 Compétences Terrain",
+        "description": "Première impression, questions ouvertes, écoute active",
+        "color": "#0d6efd",
+        "skills": [
+            "Langage corporel — posture, contact visuel, confiance",
+            "Questions ouvertes pour sceller l'intérêt rapidement",
+            "Transformer une objection en discussion sur la valeur",
+            "Lire les signaux non verbaux pour ajuster en temps réel",
+        ],
+    },
+    "organisation": {
+        "label": "⚙️ Organisation",
+        "description": "Gestion du temps, itinéraire, loi des nombres",
+        "color": "#198754",
+        "skills": [
+            "Organiser ses visites et optimiser chaque déplacement",
+            "Anticiper et planifier pour maximiser le volume",
+            "Loi des nombres : plus de portes = plus de chances",
+        ],
+    },
+    "relation_client": {
+        "label": "🤝 Relation Client",
+        "description": "Post-signature, fidélisation, analyse des métriques",
+        "color": "#fd7e14",
+        "skills": [
+            "Temps post-signature pour éviter les remords et annulations",
+            "Curiosité permanente et amélioration continue",
+            "Analyser taux de conversion et taux d'annulation",
+        ],
+    },
+}
+
+TYPES_CLIENT = {
+    "mefiant": {
+        "label": "😤 Méfiant",
+        "description": "Hostile, sur la défensive, ne fait pas confiance aux démarcheurs",
+    },
+    "curieux": {
+        "label": "🤔 Curieux",
+        "description": "Intéressé mais pose beaucoup de questions, veut tout comprendre",
+    },
+    "presse": {
+        "label": "⏰ Pressé",
+        "description": "N'a pas le temps, coupe court, veut que ça aille vite",
+    },
+    "interesse": {
+        "label": "😊 Intéressé",
+        "description": "Ouvert et réceptif, mais a besoin d'être guidé vers la décision",
+    },
+    "agressif": {
+        "label": "😠 Agressif",
+        "description": "Réactif, fâché dès le départ, claque la porte facilement",
+    },
+    "indecis": {
+        "label": "🤷 Indécis",
+        "description": "Hésite, compare, reporte la décision, a besoin d'être rassuré",
+    },
+}
+
+MODES_ENTRAINEMENT = {
+    "client": "Je joue le client",
+    "entraineur": "Je t'entraîne et te coache",
+    "les_deux": "Simulation complète + feedback",
+}
+
+SYSTEM_PROMPT_CLIENT = """Tu es un prospect porte-à-porte. L'utilisateur est un vendeur terrain Orange qui frappe à ta porte pour proposer des offres fibre optique (Livebox Fibre, Livebox Up, Livebox Max).
+
+TON PROFIL CLIENT AUJOURD'HUI : {type_client_desc}
+
+Règles absolues :
+- Tu parles UNIQUEMENT en français, langage naturel et familier
+- Tu réponds court et naturel (comme à sa vraie porte, 1-3 phrases max)
+- Tu as des objections réalistes selon ton profil
+- Tu ne cèdes pas facilement — le vendeur doit VRAIMENT mériter ta confiance
+- Tu peux peu à peu t'ouvrir si le vendeur est habile et authentique
+- Tu peux potentiellement signer si le vendeur fait preuve d'excellence
+
+MODULE DE FOCUS (ce que le vendeur travaille) : {module_focus}
+
+IMPORTANT : Tu es UNIQUEMENT le client. Reste dans ton rôle. Ne fais pas de coaching."""
+
+SYSTEM_PROMPT_ENTRAINEUR = """Tu es un coach de vente expert, spécialisé en vente porte-à-porte pour les offres télécom/fibre (Orange).
+
+Tu analyses ce que dit l'utilisateur (le vendeur) et tu lui donnes un coaching précis, direct et motivant.
+
+MODULE DE FOCUS : {module_focus}
+
+Tes compétences de coaching couvrent :
+🧠 ADN Mental : Détecter croyances limitatives, enseigner la résilience
+🎯 Terrain : Analyser l'approche, les questions posées, l'écoute active
+⚙️ Organisation : Conseiller sur l'efficacité et la loi des nombres
+🤝 Relation : Post-signature, gestion des remords, fidélisation
+
+Style : direct, bienveillant, exemples concrets. Tu félicites ce qui est bon et corriges sans juger.
+Techniques à enseigner : SONCAS, SPIN Selling, CAB, écoute active, reformulation.
+
+Réponds en français uniquement. Sois concis (5-8 lignes max par réponse)."""
+
+SYSTEM_PROMPT_LES_DEUX = """Tu joues DEUX rôles dans cette session d'entraînement de vente porte-à-porte.
+
+RÔLE 1 — CLIENT : Profil : {type_client_desc}
+RÔLE 2 — COACH : Tu donnes un feedback structuré à la fin
+
+PHASE ACTUELLE : {phase}
+
+Si PHASE = CLIENT :
+- Réponds comme un vrai prospect à la porte (court, naturel, avec tes objections)
+- Commence ta réponse par [CLIENT]
+- Reste dans ton personnage, ne fais pas de coaching
+
+Si PHASE = COACH :
+- Analyse toute la conversation du vendeur
+- Structure : ✅ Points forts | ⚠️ À améliorer | 💡 Techniques conseillées | 🏆 Score /10
+- Commence ta réponse par [COACH]
+- Sois précis, motivant, avec des exemples concrets tirés de l'échange
+
+MODULE FOCUS : {module_focus}
+Parle UNIQUEMENT en français."""
+
+
+class SessionEntrainement(db.Model):
+    __tablename__ = "sessions_entrainement"
+
+    id = db.Column(db.Integer, primary_key=True)
+    mode = db.Column(db.String(20), nullable=False, default="les_deux")
+    module = db.Column(db.String(50), nullable=False, default="competences_terrain")
+    type_client = db.Column(db.String(20), nullable=False, default="mefiant")
+    score = db.Column(db.Float, nullable=True)
+    feedback_final = db.Column(db.Text, nullable=True)
+    terminee = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    messages = db.relationship(
+        "MessageEntrainement", backref="session_entrainement", lazy=True,
+        cascade="all, delete-orphan", order_by="MessageEntrainement.id",
+    )
+
+
+class MessageEntrainement(db.Model):
+    __tablename__ = "messages_entrainement"
+
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(
+        db.Integer, db.ForeignKey("sessions_entrainement.id"), nullable=False
+    )
+    role = db.Column(db.String(10), nullable=False)  # "user" or "assistant"
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+# ---------------------------------------------------------------------------
 # SMS
 # ---------------------------------------------------------------------------
 
@@ -1076,6 +1241,237 @@ def effacer_adresses():
 # ---------------------------------------------------------------------------
 # Démarrage
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Routes Entraîneur IA
+# ---------------------------------------------------------------------------
+
+def _build_system_prompt(sess):
+    module_info = MODULES_ENTRAINEMENT.get(sess.module, {})
+    type_client_info = TYPES_CLIENT.get(sess.type_client, {})
+    module_focus = f"{module_info.get('label', '')} — {module_info.get('description', '')}"
+    type_client_desc = f"{type_client_info.get('label', '')} : {type_client_info.get('description', '')}"
+
+    if sess.mode == "client":
+        return SYSTEM_PROMPT_CLIENT.format(
+            type_client_desc=type_client_desc,
+            module_focus=module_focus,
+        )
+    if sess.mode == "entraineur":
+        return SYSTEM_PROMPT_ENTRAINEUR.format(module_focus=module_focus)
+
+    # les_deux — switch to COACH after user says "fin" or after 16 user turns
+    nb_user_msgs = sum(1 for m in sess.messages if m.role == "user")
+    phase = "CLIENT" if nb_user_msgs < 8 else "COACH"
+    return SYSTEM_PROMPT_LES_DEUX.format(
+        type_client_desc=type_client_desc,
+        module_focus=module_focus,
+        phase=phase,
+    )
+
+
+@app.route("/entraineur")
+@login_required
+def entraineur():
+    sessions = (
+        SessionEntrainement.query
+        .order_by(SessionEntrainement.created_at.desc())
+        .limit(10)
+        .all()
+    )
+    return render_template(
+        "entraineur.html",
+        modules=MODULES_ENTRAINEMENT,
+        types_client=TYPES_CLIENT,
+        modes=MODES_ENTRAINEMENT,
+        sessions=sessions,
+    )
+
+
+@app.route("/api/entraineur/demarrer", methods=["POST"])
+@login_required
+def entraineur_demarrer():
+    data = request.get_json() or {}
+    mode = data.get("mode", "les_deux")
+    module = data.get("module", "competences_terrain")
+    type_client = data.get("type_client", "mefiant")
+
+    if mode not in MODES_ENTRAINEMENT:
+        return jsonify({"error": "Mode invalide"}), 400
+    if module not in MODULES_ENTRAINEMENT:
+        return jsonify({"error": "Module invalide"}), 400
+    if type_client not in TYPES_CLIENT:
+        return jsonify({"error": "Type client invalide"}), 400
+
+    sess = SessionEntrainement(mode=mode, module=module, type_client=type_client)
+    db.session.add(sess)
+    db.session.commit()
+    return jsonify({"session_id": sess.id, "ok": True})
+
+
+@app.route("/api/entraineur/chat", methods=["POST"])
+@login_required
+def entraineur_chat():
+    import anthropic as _anthropic
+    import json as _json
+
+    data = request.get_json() or {}
+    session_id = data.get("session_id")
+    user_message = (data.get("message") or "").strip()
+    force_feedback = data.get("force_feedback", False)
+
+    if not user_message:
+        return jsonify({"error": "Message vide"}), 400
+
+    sess = db.session.get(SessionEntrainement, session_id)
+    if not sess:
+        return jsonify({"error": "Session introuvable"}), 404
+
+    # Persist user message
+    db.session.add(MessageEntrainement(session_id=sess.id, role="user", content=user_message))
+    db.session.commit()
+
+    # Force coach phase if user asks for feedback
+    if force_feedback and sess.mode == "les_deux":
+        module_info = MODULES_ENTRAINEMENT.get(sess.module, {})
+        type_client_info = TYPES_CLIENT.get(sess.type_client, {})
+        system_prompt = SYSTEM_PROMPT_LES_DEUX.format(
+            type_client_desc=f"{type_client_info.get('label','')} : {type_client_info.get('description','')}",
+            module_focus=f"{module_info.get('label','')} — {module_info.get('description','')}",
+            phase="COACH",
+        )
+    else:
+        system_prompt = _build_system_prompt(sess)
+
+    history = [
+        {"role": m.role, "content": m.content}
+        for m in sess.messages
+    ]
+
+    try:
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            return jsonify({"error": "ANTHROPIC_API_KEY non configuré"}), 500
+
+        client = _anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1024,
+            system=system_prompt,
+            messages=history,
+        )
+        reply_raw = response.content[0].text
+
+        # Persist assistant message
+        db.session.add(MessageEntrainement(session_id=sess.id, role="assistant", content=reply_raw))
+        db.session.commit()
+
+        is_coach = (
+            "[COACH]" in reply_raw
+            or sess.mode == "entraineur"
+            or force_feedback
+        )
+        clean_reply = reply_raw.replace("[CLIENT]", "").replace("[COACH]", "").strip()
+
+        return jsonify({
+            "reply": clean_reply,
+            "is_coach": is_coach,
+            "message_count": len(sess.messages),
+        })
+    except Exception as exc:
+        app.logger.error("Entraineur chat error: %s", exc)
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/api/entraineur/feedback/<int:session_id>", methods=["POST"])
+@login_required
+def entraineur_feedback(session_id):
+    import anthropic as _anthropic
+    import json as _json
+
+    sess = db.session.get(SessionEntrainement, session_id)
+    if not sess:
+        return jsonify({"error": "Session introuvable"}), 404
+
+    if not sess.messages:
+        return jsonify({"error": "Session vide"}), 400
+
+    conversation_text = "\n".join(
+        f"{'VENDEUR' if m.role == 'user' else 'INTERLOCUTEUR'}: {m.content}"
+        for m in sess.messages
+    )
+    module_info = MODULES_ENTRAINEMENT.get(sess.module, {})
+    skills_list = "\n".join(f"- {s}" for s in module_info.get("skills", []))
+
+    prompt = f"""Analyse cette session d'entraînement de vente porte-à-porte.
+
+MODULE ÉVALUÉ : {module_info.get('label', '')} — {module_info.get('description', '')}
+COMPÉTENCES CIBLÉES :
+{skills_list}
+
+CONVERSATION :
+{conversation_text}
+
+Fournis un JSON structuré (rien d'autre, pas de markdown) :
+{{
+  "score": <entier 0-10>,
+  "points_forts": ["point 1", "point 2"],
+  "a_ameliorer": ["point 1", "point 2"],
+  "techniques_recommandees": ["Technique + explication courte"],
+  "feedback_global": "2-3 phrases motivantes résumant la session"
+}}"""
+
+    try:
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            return jsonify({"error": "ANTHROPIC_API_KEY non configuré"}), 500
+
+        client = _anthropic.Anthropic(api_key=api_key)
+        resp = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = resp.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+
+        feedback = _json.loads(raw)
+        sess.score = feedback.get("score")
+        sess.feedback_final = raw
+        sess.terminee = True
+        db.session.commit()
+        return jsonify(feedback)
+    except Exception as exc:
+        app.logger.error("Entraineur feedback error: %s", exc)
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/api/entraineur/sessions")
+@login_required
+def entraineur_sessions():
+    sessions = (
+        SessionEntrainement.query
+        .order_by(SessionEntrainement.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    return jsonify([
+        {
+            "id": s.id,
+            "mode": MODES_ENTRAINEMENT.get(s.mode, s.mode),
+            "module": MODULES_ENTRAINEMENT.get(s.module, {}).get("label", s.module),
+            "type_client": TYPES_CLIENT.get(s.type_client, {}).get("label", s.type_client),
+            "score": s.score,
+            "terminee": s.terminee,
+            "nb_messages": len(s.messages),
+            "date": s.created_at.strftime("%d/%m/%Y %H:%M"),
+        }
+        for s in sessions
+    ])
+
 
 def creer_scheduler():
     scheduler = BackgroundScheduler()
