@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Ma Progression — Entraîneur PAP{% endblock %}
+
+{% block content %}
+<style>
+  .stat-prog { border-radius: 14px; padding: 20px 24px; color: #fff; }
+  .score-bar-wrap { background:#e9ecef; border-radius:6px; height:10px; overflow:hidden; }
+  .score-bar { height:100%; border-radius:6px; transition: width .5s; }
+  .module-card { border-radius:12px; border: 2px solid; padding: 16px; }
+  .no-data { color:#adb5bd; font-style:italic; font-size:.9rem; }
+</style>
+
+<!-- Header -->
+<div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+  <div>
+    <h4 class="mb-0 fw-bold">📈 Ma Progression</h4>
+    <small class="text-muted">Entraîneur PAP Orange Fibre — Méthode Marvesting</small>
+  </div>
+  <a href="{{ url_for('entraineur') }}" class="btn btn-sm ms-auto" style="background:#ff7900;color:#fff">
+    <i class="bi bi-play-fill me-1"></i>Nouvelle session
+  </a>
+</div>
+
+<!-- KPIs -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-prog" style="background:#ff7900">
+      <div class="fs-1 fw-bold">{{ total }}</div>
+      <div class="small opacity-75">Sessions totales</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-prog" style="background:#0d6efd">
+      <div class="fs-1 fw-bold">{{ terminees }}</div>
+      <div class="small opacity-75">Terminées avec score</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-prog" style="background:{% if avg_score and avg_score >= 7 %}#198754{% elif avg_score and avg_score >= 5 %}#fd7e14{% elif avg_score %}#dc3545{% else %}#6c757d{% endif %}">
+      <div class="fs-1 fw-bold">{{ avg_score if avg_score else '—' }}{% if avg_score %}<span style="font-size:1rem">/10</span>{% endif %}</div>
+      <div class="small opacity-75">Score moyen</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-prog" style="background:#6f42c1">
+      <div class="fs-1 fw-bold">{{ best_score if best_score else '—' }}{% if best_score %}<span style="font-size:1rem">/10</span>{% endif %}</div>
+      <div class="small opacity-75">Meilleur score</div>
+    </div>
+  </div>
+</div>
+
+<!-- Courbe + Modules -->
+<div class="row g-4 mb-4">
+
+  <!-- Courbe évolution -->
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <h6 class="fw-semibold mb-3"><i class="bi bi-graph-up me-2" style="color:#ff7900"></i>Évolution du score (30 dernières sessions)</h6>
+        {% if chart_data %}
+        <canvas id="scoreChart" height="120"></canvas>
+        {% else %}
+        <p class="no-data text-center py-4">Complète au moins une session pour voir ta courbe.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Modules -->
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <h6 class="fw-semibold mb-3"><i class="bi bi-bullseye me-2" style="color:#ff7900"></i>Score par module</h6>
+        {% for key, info in by_module.items() %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-1">
+            <small class="fw-semibold">{{ info.label }}</small>
+            <small class="text-muted">
+              {% if info.avg %}{{ info.avg }}/10 ({{ info.count }} session{{ 's' if info.count > 1 }}){% else %}—{% endif %}
+            </small>
+          </div>
+          <div class="score-bar-wrap">
+            <div class="score-bar" style="width:{% if info.avg %}{{ (info.avg / 10 * 100)|int }}%{% else %}0{% endif %};background:{{ info.color }}"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Historique sessions -->
+<div class="card border-0 shadow-sm">
+  <div class="card-body">
+    <h6 class="fw-semibold mb-3"><i class="bi bi-clock-history me-2" style="color:#ff7900"></i>Dernières sessions notées</h6>
+    {% if sessions %}
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0" style="font-size:.85rem">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Mode</th>
+            <th>Module</th>
+            <th>Prospect</th>
+            <th>Échanges</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for s in sessions %}
+        <tr>
+          <td>{{ s.created_at.strftime('%d/%m %H:%M') }}</td>
+          <td>
+            {% if s.mode == 'client' %}🎭{% elif s.mode == 'entraineur' %}🧠{% else %}🔥{% endif %}
+            {{ {'client':'Roleplay','entraineur':'Coach','les_deux':'Simulation'}.get(s.mode, s.mode) }}
+          </td>
+          <td>{{ modules.get(s.module, {}).get('label', s.module) }}</td>
+          <td>
+            {% set tc = {'mefiant':'😤 Méfiant','curieux':'🤔 Curieux','presse':'⏰ Pressé','interesse':'😊 Intéressé','agressif':'😠 Agressif','indecis':'🤷 Indécis'} %}
+            {{ tc.get(s.type_client, s.type_client) }}
+          </td>
+          <td>{{ s.messages|length }}</td>
+          <td>
+            {% if s.score is not none %}
+            <span class="badge fw-bold" style="background:{% if s.score >= 7 %}#198754{% elif s.score >= 5 %}#fd7e14{% else %}#dc3545{% endif %}">
+              {{ s.score }}/10
+            </span>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="no-data text-center py-3">Aucune session terminée pour l'instant.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if chart_data %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const raw = {{ chart_data | tojson }};
+const labels = raw.map(d => d.date);
+const scores = raw.map(d => d.score);
+const colors = scores.map(s => s >= 7 ? '#198754' : s >= 5 ? '#fd7e14' : '#dc3545');
+
+new Chart(document.getElementById('scoreChart'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [{
+      label: 'Score /10',
+      data: scores,
+      borderColor: '#ff7900',
+      backgroundColor: 'rgba(255,121,0,.1)',
+      pointBackgroundColor: colors,
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      tension: 0.35,
+      fill: true,
+    }]
+  },
+  options: {
+    responsive: true,
+    scales: {
+      y: { min: 0, max: 10, ticks: { stepSize: 2 } }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` Score : ${ctx.parsed.y}/10 — ${raw[ctx.dataIndex].module}`
+        }
+      }
+    }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

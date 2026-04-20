@@ -4,176 +4,112 @@
 {% block content %}
 <style>
   /* ── Layout général ───────────────────────────── */
-  #setup-phase { max-width: 860px; margin: 0 auto; }
+  #setup-phase { max-width: 900px; margin: 0 auto; }
   #training-phase { display: none; height: calc(100vh - 120px); flex-direction: column; }
+  #objection-phase { display: none; max-width: 720px; margin: 0 auto; }
 
   /* ── Cards de sélection ───────────────────────── */
   .select-card {
-    border: 2px solid #dee2e6;
-    border-radius: 12px;
-    padding: 14px 16px;
-    cursor: pointer;
-    transition: all .18s;
-    background: #fff;
+    border: 2px solid #dee2e6; border-radius: 12px;
+    padding: 14px 16px; cursor: pointer; transition: all .18s; background: #fff;
   }
   .select-card:hover { border-color: #ff7900; background: #fff8f0; }
   .select-card.active { border-color: #ff7900; background: #fff3e0; box-shadow: 0 0 0 3px rgba(255,121,0,.15); }
-  .select-card .badge-module { font-size: .7rem; padding: 3px 8px; }
 
   /* ── Zone de chat ─────────────────────────────── */
   #chat-area {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
-    background: #f8f9fa;
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    flex: 1; overflow-y: auto; padding: 16px; background: #f8f9fa;
+    border-radius: 12px; display: flex; flex-direction: column; gap: 10px;
   }
-  .bubble {
-    max-width: 78%;
-    padding: 10px 14px;
-    border-radius: 18px;
-    font-size: .93rem;
-    line-height: 1.5;
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-  .bubble-user {
-    align-self: flex-end;
-    background: #ff7900;
-    color: #fff;
-    border-bottom-right-radius: 4px;
-  }
-  .bubble-ai {
-    align-self: flex-start;
-    background: #fff;
-    border: 1px solid #dee2e6;
-    color: #212529;
-    border-bottom-left-radius: 4px;
-  }
+  .bubble { max-width: 78%; padding: 10px 14px; border-radius: 18px; font-size: .93rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .bubble-user { align-self: flex-end; background: #ff7900; color: #fff; border-bottom-right-radius: 4px; }
+  .bubble-ai { align-self: flex-start; background: #fff; border: 1px solid #dee2e6; color: #212529; border-bottom-left-radius: 4px; }
   .bubble-ai.coach { border-left: 4px solid #6f42c1; background: #faf5ff; }
   .bubble-ai.client { border-left: 4px solid #0d6efd; }
-  .bubble-system {
-    align-self: center;
-    background: #e9ecef;
-    color: #6c757d;
-    font-size: .8rem;
-    padding: 5px 14px;
-    border-radius: 20px;
-  }
+  .bubble-system { align-self: center; background: #e9ecef; color: #6c757d; font-size: .8rem; padding: 5px 14px; border-radius: 20px; }
 
   /* ── Barre de saisie ──────────────────────────── */
-  #input-bar {
-    padding: 10px 0 4px;
-    display: flex;
-    gap: 8px;
-    align-items: flex-end;
-  }
+  #input-bar { padding: 10px 0 4px; display: flex; gap: 8px; align-items: flex-end; }
   #msg-input {
-    flex: 1;
-    border-radius: 24px;
-    padding: 10px 16px;
-    font-size: .93rem;
-    border: 2px solid #dee2e6;
-    resize: none;
-    max-height: 120px;
-    outline: none;
-    transition: border-color .15s;
+    flex: 1; border-radius: 24px; padding: 10px 16px; font-size: .93rem;
+    border: 2px solid #dee2e6; resize: none; max-height: 120px; outline: none; transition: border-color .15s;
   }
   #msg-input:focus { border-color: #ff7900; }
 
   /* ── Bouton micro ─────────────────────────────── */
-  #btn-mic {
-    width: 48px; height: 48px;
-    border-radius: 50%;
-    border: none;
-    background: #ff7900;
-    color: #fff;
-    font-size: 1.2rem;
-    cursor: pointer;
+  #btn-mic, #obj-btn-mic {
+    width: 48px; height: 48px; border-radius: 50%; border: none;
+    background: #ff7900; color: #fff; font-size: 1.2rem; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    transition: background .15s, transform .1s;
-    flex-shrink: 0;
+    transition: background .15s, transform .1s; flex-shrink: 0;
   }
-  #btn-mic:hover { background: #e06800; }
-  #btn-mic.listening { background: #dc3545; animation: pulse 1s infinite; }
-  #btn-mic.speaking { background: #6f42c1; }
+  #btn-mic:hover, #obj-btn-mic:hover { background: #e06800; }
+  .mic-listening { background: #dc3545 !important; animation: pulse 1s infinite; }
+  .mic-speaking  { background: #6f42c1 !important; }
   @keyframes pulse {
     0%,100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220,53,69,.4); }
-    50% { transform: scale(1.08); box-shadow: 0 0 0 8px rgba(220,53,69,0); }
+    50%      { transform: scale(1.08); box-shadow: 0 0 0 8px rgba(220,53,69,0); }
   }
 
-  /* ── Header session ───────────────────────────── */
-  #session-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 0 10px;
-    flex-wrap: wrap;
-  }
-  #voice-status {
-    font-size: .8rem;
-    color: #6c757d;
-    min-width: 140px;
-  }
+  /* ── Objection ────────────────────────────────── */
+  .obj-card { border-radius: 16px; border: 2px solid #dee2e6; padding: 20px 24px; background: #fff; }
+  .obj-bubble { background: #fff3e0; border-left: 4px solid #ff7900; border-radius: 12px; padding: 14px 18px; font-size: 1rem; font-style: italic; }
+  .feedback-card { border-radius:12px; padding: 16px; margin-top: 12px; }
+  .score-pill { font-size: 2rem; font-weight: 700; }
 
-  /* ── Score badge ──────────────────────────────── */
-  .score-circle {
-    width: 64px; height: 64px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.5rem; font-weight: 700;
-    border: 4px solid;
-    margin: 0 auto 8px;
-  }
-
-  /* ── Historique ───────────────────────────────── */
-  .hist-row { font-size: .82rem; }
+  /* ── Score modal ──────────────────────────────── */
+  .score-circle { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; border: 4px solid; margin: 0 auto 8px; }
 
   /* ── Mobile ───────────────────────────────────── */
-  @media (max-width: 600px) {
-    .bubble { max-width: 92%; }
-    #training-phase { height: calc(100vh - 90px); }
-  }
+  @media (max-width: 600px) { .bubble { max-width: 92%; } #training-phase { height: calc(100vh - 90px); } }
 </style>
 
 <!-- ════════════════════════════════════════════════
      PHASE SETUP
 ═══════════════════════════════════════════════════ -->
 <div id="setup-phase">
-  <div class="d-flex align-items-center gap-2 mb-4">
+  <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
     <span style="font-size:1.8rem">🥊</span>
     <div>
       <h4 class="mb-0 fw-bold">Entraîneur IA — Vente PAP</h4>
       <small class="text-muted">Méthode Marvesting · Orange Fibre</small>
     </div>
+    <a href="{{ url_for('progression') }}" class="btn btn-outline-secondary btn-sm ms-auto">
+      <i class="bi bi-graph-up me-1"></i>Ma progression
+    </a>
   </div>
 
   <!-- Mode -->
   <div class="mb-4">
-    <label class="form-label fw-semibold mb-2">1 — Choisis le mode</label>
+    <label class="form-label fw-semibold mb-2">1 — Mode d'entraînement</label>
     <div class="row g-2">
       {% for key, label in modes.items() %}
       <div class="col-md-4">
         <div class="select-card {% if key == 'les_deux' %}active{% endif %}"
              data-group="mode" data-value="{{ key }}" onclick="selectCard(this)">
           <div class="fw-semibold">
-            {% if key == 'client' %}🎭{% elif key == 'entraineur' %}🧠{% else %}🔥{% endif %}
-            {{ label }}
+            {% if key == 'client' %}🎭{% elif key == 'entraineur' %}🧠{% else %}🔥{% endif %} {{ label }}
           </div>
           <small class="text-muted">
-            {% if key == 'client' %}Je joue le prospect, tu vends{% elif key == 'entraineur' %}Je coache chaque échange{% else %}Simulation + feedback final{% endif %}
+            {% if key == 'client' %}Je joue le prospect, tu vends
+            {% elif key == 'entraineur' %}Je coache chaque échange
+            {% else %}Simulation complète + feedback final{% endif %}
           </small>
         </div>
       </div>
       {% endfor %}
+      <!-- Mode objection -->
+      <div class="col-md-4">
+        <div class="select-card" data-group="mode" data-value="objection" onclick="selectCard(this)">
+          <div class="fw-semibold">🎯 Objections</div>
+          <small class="text-muted">Objection aléatoire → tu réponds → score immédiat</small>
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- Module -->
-  <div class="mb-4">
+  <div class="mb-4" id="module-section">
     <label class="form-label fw-semibold mb-2">2 — Module de travail</label>
     <div class="row g-2">
       {% for key, info in modules.items() %}
@@ -189,7 +125,9 @@
           </div>
           <div class="mt-2">
             {% for skill in info.skills %}
-            <span class="badge text-bg-light border me-1 mb-1" style="font-size:.68rem">{{ skill[:40] }}{% if skill|length > 40 %}…{% endif %}</span>
+            <span class="badge text-bg-light border me-1 mb-1" style="font-size:.68rem">
+              {{ skill[:42] }}{% if skill|length > 42 %}…{% endif %}
+            </span>
             {% endfor %}
           </div>
         </div>
@@ -198,7 +136,18 @@
     </div>
   </div>
 
-  <!-- Type client (masqué si mode entraîneur) -->
+  <!-- Niveau difficulté (mode objection seulement) -->
+  <div class="mb-4" id="niveau-section" style="display:none">
+    <label class="form-label fw-semibold mb-2">2 — Niveau de difficulté</label>
+    <div class="row g-2">
+      <div class="col-4"><div class="select-card active" data-group="niveau" data-value="" onclick="selectCard(this)"><div class="fw-semibold">🎲 Aléatoire</div></div></div>
+      <div class="col-4"><div class="select-card" data-group="niveau" data-value="facile" onclick="selectCard(this)"><div class="fw-semibold">🟢 Facile</div></div></div>
+      <div class="col-4"><div class="select-card" data-group="niveau" data-value="moyen" onclick="selectCard(this)"><div class="fw-semibold">🟡 Moyen</div></div></div>
+      <div class="col-4"><div class="select-card" data-group="niveau" data-value="difficile" onclick="selectCard(this)"><div class="fw-semibold">🔴 Difficile</div></div></div>
+    </div>
+  </div>
+
+  <!-- Type client -->
   <div class="mb-4" id="client-type-section">
     <label class="form-label fw-semibold mb-2">3 — Profil du prospect</label>
     <div class="row g-2">
@@ -214,10 +163,9 @@
     </div>
   </div>
 
-  <!-- Bouton démarrer -->
   <div class="d-flex gap-3 align-items-center mb-5">
-    <button class="btn btn-lg fw-bold px-5" style="background:#ff7900;color:#fff" onclick="demarrerSession()">
-      <i class="bi bi-play-fill me-1"></i>Démarrer l'entraînement
+    <button class="btn btn-lg fw-bold px-5" style="background:#ff7900;color:#fff" onclick="demarrer()">
+      <i class="bi bi-play-fill me-1"></i>Démarrer
     </button>
     <div id="start-error" class="text-danger small" style="display:none"></div>
   </div>
@@ -227,10 +175,8 @@
   <hr>
   <h6 class="fw-semibold text-muted mb-3"><i class="bi bi-clock-history me-1"></i>Sessions récentes</h6>
   <div class="table-responsive">
-    <table class="table table-sm table-hover hist-row">
-      <thead><tr>
-        <th>Date</th><th>Mode</th><th>Module</th><th>Prospect</th><th>Messages</th><th>Score</th>
-      </tr></thead>
+    <table class="table table-sm table-hover" style="font-size:.82rem">
+      <thead><tr><th>Date</th><th>Mode</th><th>Module</th><th>Prospect</th><th>Msg</th><th>Score</th></tr></thead>
       <tbody>
       {% for s in sessions %}
       <tr>
@@ -241,9 +187,7 @@
         <td>{{ s.messages|length }}</td>
         <td>
           {% if s.score is not none %}
-          <span class="badge" style="background:{% if s.score >= 7 %}#198754{% elif s.score >= 5 %}#fd7e14{% else %}#dc3545{% endif %}">
-            {{ s.score }}/10
-          </span>
+          <span class="badge" style="background:{% if s.score >= 7 %}#198754{% elif s.score >= 5 %}#fd7e14{% else %}#dc3545{% endif %}">{{ s.score }}/10</span>
           {% else %}<span class="text-muted">—</span>{% endif %}
         </td>
       </tr>
@@ -255,47 +199,104 @@
 </div>
 
 <!-- ════════════════════════════════════════════════
-     PHASE ENTRAÎNEMENT
+     PHASE ENTRAÎNEMENT (chat)
 ═══════════════════════════════════════════════════ -->
 <div id="training-phase">
-
-  <!-- Header session -->
-  <div id="session-header">
-    <button class="btn btn-sm btn-outline-secondary" onclick="retourSetup()">
-      <i class="bi bi-arrow-left"></i>
-    </button>
+  <div id="session-header" class="d-flex align-items-center gap-2 pb-2 flex-wrap">
+    <button class="btn btn-sm btn-outline-secondary" onclick="retourSetup()"><i class="bi bi-arrow-left"></i></button>
     <span id="session-badge-mode" class="badge" style="background:#ff7900;font-size:.8rem"></span>
     <span id="session-badge-module" class="badge text-bg-secondary" style="font-size:.8rem"></span>
     <span id="session-badge-client" class="badge text-bg-info" style="font-size:.8rem"></span>
-    <span id="voice-status" class="ms-auto"><i class="bi bi-mic-mute me-1"></i>Prêt</span>
-    <button class="btn btn-sm btn-outline-success" onclick="demanderFeedback()" id="btn-feedback">
-      <i class="bi bi-bar-chart-line me-1"></i>Feedback final
+    <span id="voice-status" class="ms-auto text-muted small"><i class="bi bi-mic-mute me-1"></i>Prêt</span>
+    <button class="btn btn-sm btn-outline-success" onclick="demanderFeedback()">
+      <i class="bi bi-bar-chart-line me-1"></i>Feedback
     </button>
-    <button class="btn btn-sm btn-outline-danger" onclick="retourSetup()">
-      <i class="bi bi-x-lg"></i>
-    </button>
+    <button class="btn btn-sm btn-outline-danger" onclick="retourSetup()"><i class="bi bi-x-lg"></i></button>
   </div>
-
-  <!-- Zone chat -->
   <div id="chat-area"></div>
-
-  <!-- Barre de saisie -->
   <div id="input-bar">
     <textarea id="msg-input" rows="1" placeholder='Parle ou écris… ("feedback" pour le bilan)'
       onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-    <button id="btn-mic" onclick="toggleMic()" title="Parler (maintenir)">
-      <i class="bi bi-mic-fill" id="mic-icon"></i>
-    </button>
-    <button class="btn btn-sm fw-bold px-3" style="background:#ff7900;color:#fff;border-radius:24px;height:48px"
-            onclick="sendMessage()">
+    <button id="btn-mic" onclick="toggleMic()" title="Micro"><i class="bi bi-mic-fill" id="mic-icon"></i></button>
+    <button class="btn btn-sm fw-bold px-3" style="background:#ff7900;color:#fff;border-radius:24px;height:48px" onclick="sendMessage()">
       <i class="bi bi-send-fill"></i>
     </button>
   </div>
-
 </div>
 
 <!-- ════════════════════════════════════════════════
-     MODAL FEEDBACK
+     PHASE OBJECTIONS
+═══════════════════════════════════════════════════ -->
+<div id="objection-phase">
+  <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+    <button class="btn btn-sm btn-outline-secondary" onclick="retourSetup()"><i class="bi bi-arrow-left"></i></button>
+    <h5 class="mb-0 fw-bold">🎯 Mode Objections</h5>
+    <span id="obj-niveau-badge" class="badge text-bg-secondary ms-2"></span>
+    <a href="{{ url_for('progression') }}" class="btn btn-sm btn-outline-primary ms-auto">
+      <i class="bi bi-graph-up me-1"></i>Progression
+    </a>
+  </div>
+
+  <!-- Compteur de session -->
+  <div class="d-flex gap-3 mb-3" style="font-size:.85rem">
+    <span class="badge text-bg-light border">🎯 Objection <span id="obj-count">1</span></span>
+    <span class="badge text-bg-light border">📊 Score moyen : <span id="obj-avg">—</span></span>
+    <span class="badge text-bg-light border">✅ Réussies : <span id="obj-wins">0</span>/0</span>
+  </div>
+
+  <!-- Carte objection courante -->
+  <div class="obj-card mb-3" id="obj-card">
+    <div class="d-flex justify-content-between align-items-start mb-2">
+      <small class="fw-semibold text-muted" id="obj-categorie">—</small>
+      <span class="badge" id="obj-niveau-pill">facile</span>
+    </div>
+    <div class="obj-bubble mb-3" id="obj-text">Chargement…</div>
+    <div class="d-flex gap-2">
+      <button id="obj-btn-mic" onclick="toggleObjMic()"><i class="bi bi-mic-fill" id="obj-mic-icon"></i></button>
+      <textarea id="obj-input" class="form-control" rows="2" placeholder="Tape ta réponse ou utilise le micro…" style="border-radius:12px;font-size:.9rem"></textarea>
+    </div>
+    <div class="d-flex gap-2 mt-2">
+      <button class="btn fw-bold flex-fill" style="background:#ff7900;color:#fff;border-radius:12px" onclick="evaluerReponse()" id="obj-btn-send">
+        <i class="bi bi-send-fill me-1"></i>Envoyer ma réponse
+      </button>
+      <button class="btn btn-outline-secondary" onclick="passerObjection()" title="Passer">
+        <i class="bi bi-skip-forward-fill"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Feedback objection -->
+  <div id="obj-feedback" style="display:none">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div class="score-circle" id="obj-score-circle" style="border-color:#198754;color:#198754">—</div>
+          <div>
+            <div class="fw-bold fs-5" id="obj-score-txt"></div>
+            <small class="text-muted" id="obj-soncase-txt"></small>
+          </div>
+        </div>
+        <div id="obj-feedback-text" style="font-size:.9rem;line-height:1.6;white-space:pre-wrap"></div>
+        <hr>
+        <div class="mb-2">
+          <small class="fw-semibold text-success"><i class="bi bi-check-circle me-1"></i>Réponse idéale Marvesting :</small>
+          <div class="obj-bubble mt-1" id="obj-reponse-type" style="font-style:normal;font-size:.88rem"></div>
+        </div>
+        <div class="d-flex gap-2 mt-3">
+          <button class="btn fw-bold flex-fill" style="background:#ff7900;color:#fff;border-radius:12px" onclick="prochaineObjection()">
+            <i class="bi bi-arrow-right-circle me-1"></i>Objection suivante
+          </button>
+          <button class="btn btn-outline-secondary" onclick="rejouerObjection()">
+            <i class="bi bi-arrow-repeat me-1"></i>Rejouer
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     MODAL FEEDBACK SESSION
 ═══════════════════════════════════════════════════ -->
 <div class="modal fade" id="feedbackModal" tabindex="-1">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -317,187 +318,240 @@
 
 {% block scripts %}
 <script>
-// ── État global ────────────────────────────────────
+// ══════════════════════════════════════════════════
+// État global
+// ══════════════════════════════════════════════════
 let sessionId = null;
+let currentMode = 'les_deux';
 let isListening = false;
 let isSpeaking = false;
 let recognition = null;
+let objRecognition = null;
 let synth = window.speechSynthesis;
 let voiceFr = null;
-let currentMode = 'les_deux';
-let autoSpeak = true;
+let useElevenLabs = false; // détecté au démarrage
 
-// ── Sélection de voix française ────────────────────
+// Objection state
+let currentObjection = null;
+let objScores = [];
+let objCount = 0;
+
+// ── Voix française ────────────────────────────────
 function loadVoices() {
-  const voices = synth.getVoices();
-  voiceFr = voices.find(v => v.lang.startsWith('fr') && v.localService)
-           || voices.find(v => v.lang.startsWith('fr'))
-           || voices[0];
+  const v = synth.getVoices();
+  voiceFr = v.find(x => x.lang.startsWith('fr') && x.localService)
+           || v.find(x => x.lang.startsWith('fr')) || v[0];
 }
 loadVoices();
 if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = loadVoices;
 
-// ── Initialisation SpeechRecognition ──────────────
-function initRecognition() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) return null;
-  const r = new SR();
-  r.lang = 'fr-FR';
-  r.continuous = false;
-  r.interimResults = true;
-  r.onstart = () => setVoiceStatus('🔴 En écoute…', 'listening');
-  r.onresult = (e) => {
-    let t = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
-    document.getElementById('msg-input').value = t;
-    autoResize(document.getElementById('msg-input'));
-  };
-  r.onend = () => {
-    setVoiceStatus('Prêt', '');
-    isListening = false;
-    document.getElementById('btn-mic').classList.remove('listening');
-    document.getElementById('mic-icon').className = 'bi bi-mic-fill';
-    const txt = document.getElementById('msg-input').value.trim();
-    if (txt) sendMessage();
-  };
-  r.onerror = (e) => {
-    console.warn('Speech error', e.error);
-    setVoiceStatus('Prêt', '');
-    isListening = false;
-    document.getElementById('btn-mic').classList.remove('listening');
-    document.getElementById('mic-icon').className = 'bi bi-mic-fill';
-  };
-  return r;
+// ── Détection ElevenLabs ──────────────────────────
+async function checkElevenLabs() {
+  try {
+    const r = await fetch('/api/tts', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({text:'test', speaker:'client'})
+    });
+    useElevenLabs = r.ok && r.headers.get('content-type') === 'audio/mpeg';
+  } catch { useElevenLabs = false; }
 }
+checkElevenLabs();
 
-// ── Sélection de carte ────────────────────────────
+// ══════════════════════════════════════════════════
+// Sélection de cartes setup
+// ══════════════════════════════════════════════════
 function selectCard(el) {
   const group = el.dataset.group;
   document.querySelectorAll(`[data-group="${group}"]`).forEach(c => c.classList.remove('active'));
   el.classList.add('active');
   if (group === 'mode') {
     currentMode = el.dataset.value;
-    document.getElementById('client-type-section').style.display =
-      currentMode === 'entraineur' ? 'none' : '';
+    const isObj = currentMode === 'objection';
+    const isEntraineur = currentMode === 'entraineur';
+    document.getElementById('client-type-section').style.display = (isObj || isEntraineur) ? 'none' : '';
+    document.getElementById('module-section').style.display = isObj ? 'none' : '';
+    document.getElementById('niveau-section').style.display = isObj ? '' : 'none';
   }
 }
-
 function getSelected(group) {
   const el = document.querySelector(`[data-group="${group}"].active`);
   return el ? el.dataset.value : null;
 }
 
-// ── Démarrer session ──────────────────────────────
-async function demarrerSession() {
-  const mode = getSelected('mode');
-  const module = getSelected('module');
-  const type_client = getSelected('type_client') || 'mefiant';
+// ══════════════════════════════════════════════════
+// Démarrage
+// ══════════════════════════════════════════════════
+async function demarrer() {
+  const mode = getSelected('mode') || 'les_deux';
   document.getElementById('start-error').style.display = 'none';
 
-  const res = await fetch('/api/entraineur/demarrer', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mode, module, type_client })
-  });
-  const data = await res.json();
-  if (!data.ok) {
-    document.getElementById('start-error').textContent = data.error || 'Erreur';
-    document.getElementById('start-error').style.display = '';
+  if (mode === 'objection') {
+    demarrerModeObjections();
     return;
   }
 
+  const module = getSelected('module') || 'competences_terrain';
+  const type_client = getSelected('type_client') || 'mefiant';
+
+  const res = await fetch('/api/entraineur/demarrer', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({mode, module, type_client})
+  });
+  const data = await res.json();
+  if (!data.ok) {
+    const err = document.getElementById('start-error');
+    err.textContent = data.error || 'Erreur'; err.style.display = '';
+    return;
+  }
   sessionId = data.session_id;
   currentMode = mode;
 
-  // Badges
-  const modeLabels = { client:'🎭 Roleplay', entraineur:'🧠 Coach', les_deux:'🔥 Simulation' };
+  const modeLabels = {client:'🎭 Roleplay', entraineur:'🧠 Coach', les_deux:'🔥 Simulation'};
   document.getElementById('session-badge-mode').textContent = modeLabels[mode] || mode;
-  const moduleEl = document.querySelector(`[data-group="module"][data-value="${module}"]`);
-  document.getElementById('session-badge-module').textContent = moduleEl ? moduleEl.querySelector('.fw-semibold').textContent.trim() : module;
-  const clientEl = document.querySelector(`[data-group="type_client"][data-value="${type_client}"]`);
-  document.getElementById('session-badge-client').textContent = clientEl ? clientEl.querySelector('.fw-semibold').textContent.trim() : type_client;
+  const modEl = document.querySelector(`[data-group="module"][data-value="${module}"]`);
+  document.getElementById('session-badge-module').textContent = modEl ? modEl.querySelector('.fw-semibold').textContent.trim() : module;
+  const clEl = document.querySelector(`[data-group="type_client"][data-value="${type_client}"]`);
+  document.getElementById('session-badge-client').textContent = clEl ? clEl.querySelector('.fw-semibold').textContent.trim() : type_client;
 
-  // Afficher phase entraînement
   document.getElementById('setup-phase').style.display = 'none';
-  const tp = document.getElementById('training-phase');
-  tp.style.display = 'flex';
+  document.getElementById('training-phase').style.display = 'flex';
 
-  // Message d'accueil
   const intros = {
     client: "Session démarrée. Je suis ton prospect. Frappe à ma porte — vas-y !",
     entraineur: "Prêt à coacher. Raconte-moi ta dernière visite ou soumets-moi une objection.",
-    les_deux: "Session démarrée. Je joue le client. Frappe à ma porte !\nDis \"feedback\" quand tu veux le bilan."
+    les_deux: "Session démarrée. Je joue le client.\nDis « feedback » quand tu veux le bilan."
   };
   addBubble('system', intros[mode] || 'Session démarrée.');
 
-  recognition = initRecognition();
-  if (!recognition) addBubble('system', '⚠️ Micro non disponible sur ce navigateur — utilise le clavier.');
-
+  recognition = initRecognition('msg-input', () => sendMessage());
+  if (!recognition) addBubble('system', '⚠️ Micro non disponible — utilise le clavier.');
   document.getElementById('msg-input').focus();
 }
 
-// ── Envoyer message ───────────────────────────────
+// ══════════════════════════════════════════════════
+// Mode Objections
+// ══════════════════════════════════════════════════
+function demarrerModeObjections() {
+  objScores = []; objCount = 0;
+  document.getElementById('setup-phase').style.display = 'none';
+  document.getElementById('objection-phase').style.display = '';
+  const niv = getSelected('niveau') || '';
+  const labels = {'':'🎲 Aléatoire', facile:'🟢 Facile', moyen:'🟡 Moyen', difficile:'🔴 Difficile'};
+  document.getElementById('obj-niveau-badge').textContent = labels[niv] || 'Aléatoire';
+  objRecognition = initRecognition('obj-input', () => evaluerReponse());
+  chargerObjection();
+}
+
+async function chargerObjection() {
+  document.getElementById('obj-feedback').style.display = 'none';
+  document.getElementById('obj-input').value = '';
+  document.getElementById('obj-btn-send').disabled = false;
+  const niv = getSelected('niveau') || '';
+  const res = await fetch('/api/entraineur/objection/aleatoire' + (niv ? `?niveau=${niv}` : ''));
+  currentObjection = await res.json();
+  objCount++;
+  document.getElementById('obj-count').textContent = objCount;
+  document.getElementById('obj-text').textContent = '« ' + currentObjection.objection + ' »';
+  document.getElementById('obj-categorie').textContent = currentObjection.categorie + ' — SONCASE : ' + currentObjection.soncase;
+  const nivColors = {facile:'text-bg-success', moyen:'text-bg-warning', difficile:'text-bg-danger'};
+  const pill = document.getElementById('obj-niveau-pill');
+  pill.className = 'badge ' + (nivColors[currentObjection.niveau] || 'text-bg-secondary');
+  pill.textContent = currentObjection.niveau;
+
+  // Lire l'objection à voix haute
+  speakText(currentObjection.objection, 'client');
+}
+
+async function evaluerReponse() {
+  const reponse = document.getElementById('obj-input').value.trim();
+  if (!reponse || !currentObjection) return;
+  document.getElementById('obj-btn-send').disabled = true;
+  document.getElementById('obj-feedback').style.display = '';
+  document.getElementById('obj-feedback-text').textContent = '…';
+  document.getElementById('obj-score-circle').textContent = '…';
+
+  const res = await fetch('/api/entraineur/objection/evaluer', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({objection_id: currentObjection.id, reponse})
+  });
+  const d = await res.json();
+  if (d.error) { document.getElementById('obj-feedback-text').textContent = '⚠️ ' + d.error; return; }
+
+  const score = d.score || 0;
+  objScores.push(score);
+  const wins = objScores.filter(s => s >= 7).length;
+  const avg = objScores.length ? (objScores.reduce((a,b)=>a+b,0)/objScores.length).toFixed(1) : '—';
+  document.getElementById('obj-wins').textContent = `${wins}/${objScores.length}`;
+  document.getElementById('obj-avg').textContent = avg;
+
+  const color = score >= 7 ? '#198754' : score >= 5 ? '#fd7e14' : '#dc3545';
+  const circle = document.getElementById('obj-score-circle');
+  circle.style.borderColor = color; circle.style.color = color;
+  circle.innerHTML = score + '<span style="font-size:.6em">/10</span>';
+  document.getElementById('obj-score-txt').textContent = score >= 8 ? '🔥 Excellente réponse !' : score >= 6 ? '👍 Bonne réponse' : score >= 4 ? '⚠️ À améliorer' : '❌ Réponse insuffisante';
+  document.getElementById('obj-soncase-txt').textContent = 'Catégorie SONCASE : ' + d.soncase + ' — ' + d.categorie;
+  document.getElementById('obj-feedback-text').textContent = d.feedback;
+  document.getElementById('obj-reponse-type').textContent = d.reponse_type;
+
+  // Lire le feedback
+  speakText(d.feedback.split('\n')[0], 'coach');
+}
+
+function passerObjection() { chargerObjection(); }
+function prochaineObjection() { chargerObjection(); }
+function rejouerObjection() {
+  document.getElementById('obj-feedback').style.display = 'none';
+  document.getElementById('obj-input').value = '';
+  document.getElementById('obj-btn-send').disabled = false;
+  speakText(currentObjection.objection, 'client');
+}
+
+// ══════════════════════════════════════════════════
+// Chat session
+// ══════════════════════════════════════════════════
 async function sendMessage() {
   const input = document.getElementById('msg-input');
   const text = input.value.trim();
   if (!text || !sessionId) return;
-
-  input.value = '';
-  autoResize(input);
+  input.value = ''; autoResize(input);
   addBubble('user', text);
-
   const forceFeedback = /\bfeedback\b|\bfin\b|\banalyse\b|\bbilan\b/i.test(text);
-
   setTyping(true);
   try {
     const res = await fetch('/api/entraineur/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id: sessionId, message: text, force_feedback: forceFeedback })
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({session_id: sessionId, message: text, force_feedback: forceFeedback})
     });
     const data = await res.json();
     setTyping(false);
     if (data.error) { addBubble('system', '⚠️ ' + data.error); return; }
-
     const isCoach = data.is_coach;
     addBubble('ai', data.reply, isCoach ? 'coach' : 'client');
-
-    if (autoSpeak) speak(data.reply, isCoach);
-
+    speakText(data.reply, isCoach ? 'coach' : 'client');
     if (forceFeedback || (currentMode === 'les_deux' && data.message_count >= 18)) {
       setTimeout(demanderFeedback, 1200);
     }
-  } catch (e) {
-    setTyping(false);
-    addBubble('system', '⚠️ Erreur réseau. Réessaie.');
-  }
+  } catch { setTyping(false); addBubble('system', '⚠️ Erreur réseau.'); }
 }
 
-// ── Feedback final ────────────────────────────────
 async function demanderFeedback() {
   if (!sessionId) return;
   const modal = new bootstrap.Modal(document.getElementById('feedbackModal'));
   modal.show();
-  document.getElementById('feedback-body').innerHTML = `
-    <div class="text-center py-4">
-      <div class="spinner-border" style="color:#ff7900"></div>
-      <p class="mt-2 text-muted">Analyse en cours…</p>
-    </div>`;
-
+  document.getElementById('feedback-body').innerHTML = `<div class="text-center py-4"><div class="spinner-border" style="color:#ff7900"></div><p class="mt-2 text-muted">Analyse en cours…</p></div>`;
   try {
-    const res = await fetch('/api/entraineur/feedback/' + sessionId, { method: 'POST' });
+    const res = await fetch('/api/entraineur/feedback/' + sessionId, {method:'POST'});
     const d = await res.json();
     if (d.error) { document.getElementById('feedback-body').innerHTML = `<p class="text-danger">${d.error}</p>`; return; }
     renderFeedback(d);
-  } catch(e) {
-    document.getElementById('feedback-body').innerHTML = '<p class="text-danger">Erreur réseau.</p>';
-  }
+  } catch { document.getElementById('feedback-body').innerHTML = '<p class="text-danger">Erreur réseau.</p>'; }
 }
 
 function renderFeedback(d) {
   const score = d.score || 0;
   const color = score >= 7 ? '#198754' : score >= 5 ? '#fd7e14' : '#dc3545';
-  let html = `
+  document.getElementById('feedback-body').innerHTML = `
     <div class="text-center mb-4">
       <div class="score-circle" style="border-color:${color};color:${color}">${score}<span style="font-size:.7rem">/10</span></div>
       <p class="text-muted fst-italic">${d.feedback_global || ''}</p>
@@ -506,70 +560,125 @@ function renderFeedback(d) {
       <div class="col-md-6">
         <div class="card border-success h-100">
           <div class="card-header bg-success text-white fw-semibold">✅ Points forts</div>
-          <ul class="list-group list-group-flush">
-            ${(d.points_forts||[]).map(p=>`<li class="list-group-item">${p}</li>`).join('')}
-          </ul>
+          <ul class="list-group list-group-flush">${(d.points_forts||[]).map(p=>`<li class="list-group-item">${p}</li>`).join('')}</ul>
         </div>
       </div>
       <div class="col-md-6">
         <div class="card border-warning h-100">
           <div class="card-header bg-warning text-dark fw-semibold">⚠️ À améliorer</div>
-          <ul class="list-group list-group-flush">
-            ${(d.a_ameliorer||[]).map(p=>`<li class="list-group-item">${p}</li>`).join('')}
-          </ul>
+          <ul class="list-group list-group-flush">${(d.a_ameliorer||[]).map(p=>`<li class="list-group-item">${p}</li>`).join('')}</ul>
         </div>
       </div>
     </div>
     <div class="card mt-3 border-primary">
       <div class="card-header bg-primary text-white fw-semibold">💡 Techniques recommandées</div>
-      <ul class="list-group list-group-flush">
-        ${(d.techniques_recommandees||[]).map(t=>`<li class="list-group-item">${t}</li>`).join('')}
-      </ul>
+      <ul class="list-group list-group-flush">${(d.techniques_recommandees||[]).map(t=>`<li class="list-group-item">${t}</li>`).join('')}</ul>
     </div>`;
-  document.getElementById('feedback-body').innerHTML = html;
 }
 
-// ── Micro ─────────────────────────────────────────
+// ══════════════════════════════════════════════════
+// Voix
+// ══════════════════════════════════════════════════
+async function speakText(text, speaker) {
+  if (!text) return;
+  synth.cancel();
+  const clean = text.replace(/[✅⚠️💡🏆🎯🧠⚙️🤝🔥]/g,'').replace(/\*\*/g,'').slice(0, 500);
+
+  if (useElevenLabs) {
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({text: clean, speaker})
+      });
+      if (res.ok && res.headers.get('content-type') === 'audio/mpeg') {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        isSpeaking = true;
+        setVoiceStatus('🔊 Parole IA…');
+        getBtnMic().classList.add('mic-speaking');
+        audio.onended = () => {
+          isSpeaking = false; setVoiceStatus('Prêt');
+          getBtnMic().classList.remove('mic-speaking');
+          URL.revokeObjectURL(url);
+        };
+        audio.play();
+        return;
+      }
+    } catch(e) { console.warn('ElevenLabs fallback:', e); useElevenLabs = false; }
+  }
+
+  // Fallback Web Speech
+  const utt = new SpeechSynthesisUtterance(clean);
+  utt.lang = 'fr-FR'; utt.rate = speaker === 'coach' ? 1.0 : 0.97;
+  if (voiceFr) utt.voice = voiceFr;
+  utt.onstart = () => { isSpeaking = true; setVoiceStatus('🔊 Parole IA…'); getBtnMic().classList.add('mic-speaking'); };
+  utt.onend  = () => { isSpeaking = false; setVoiceStatus('Prêt'); getBtnMic().classList.remove('mic-speaking'); };
+  synth.speak(utt);
+}
+
+function getBtnMic() {
+  const mode = document.getElementById('objection-phase').style.display !== 'none';
+  return document.getElementById(mode ? 'obj-btn-mic' : 'btn-mic');
+}
+
+// ══════════════════════════════════════════════════
+// Speech Recognition
+// ══════════════════════════════════════════════════
+function initRecognition(inputId, onEnd) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return null;
+  const r = new SR();
+  r.lang = 'fr-FR'; r.continuous = false; r.interimResults = true;
+  r.onstart = () => setVoiceStatus('🔴 En écoute…');
+  r.onresult = (e) => {
+    let t = ''; for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
+    document.getElementById(inputId).value = t;
+    if (inputId === 'msg-input') autoResize(document.getElementById(inputId));
+  };
+  r.onend = () => {
+    setVoiceStatus('Prêt'); isListening = false;
+    document.querySelectorAll('#btn-mic, #obj-btn-mic').forEach(b => b.classList.remove('mic-listening'));
+    const txt = document.getElementById(inputId).value.trim();
+    if (txt) onEnd();
+  };
+  r.onerror = () => { setVoiceStatus('Prêt'); isListening = false; };
+  return r;
+}
+
 function toggleMic() {
-  if (!recognition) { addBubble('system', '⚠️ Micro non disponible sur ce navigateur.'); return; }
-  if (isSpeaking) { synth.cancel(); isSpeaking = false; }
-  if (isListening) {
-    recognition.stop();
-  } else {
+  if (!recognition) { addBubble('system','⚠️ Micro non disponible.'); return; }
+  if (isSpeaking) synth.cancel();
+  if (isListening) { recognition.stop(); }
+  else {
     document.getElementById('msg-input').value = '';
     isListening = true;
-    document.getElementById('btn-mic').classList.add('listening');
-    document.getElementById('mic-icon').className = 'bi bi-mic-fill';
+    document.getElementById('btn-mic').classList.add('mic-listening');
     recognition.start();
   }
 }
 
-// ── TTS ───────────────────────────────────────────
-function speak(text, isCoach) {
-  if (!synth) return;
-  synth.cancel();
-  const clean = text.replace(/[✅⚠️💡🏆🎯🧠⚙️🤝]/g, '').replace(/\*\*/g, '');
-  const utt = new SpeechSynthesisUtterance(clean);
-  utt.lang = 'fr-FR';
-  utt.rate = isCoach ? 1.0 : 0.97;
-  utt.pitch = isCoach ? 1.05 : 1.0;
-  if (voiceFr) utt.voice = voiceFr;
-  utt.onstart = () => { isSpeaking = true; setVoiceStatus('🔊 Parole IA…', 'speaking'); document.getElementById('btn-mic').classList.add('speaking'); };
-  utt.onend = () => { isSpeaking = false; setVoiceStatus('Prêt', ''); document.getElementById('btn-mic').classList.remove('speaking'); document.getElementById('mic-icon').className = 'bi bi-mic-fill'; };
-  synth.speak(utt);
+function toggleObjMic() {
+  if (!objRecognition) { alert('Micro non disponible sur ce navigateur.'); return; }
+  if (isSpeaking) synth.cancel();
+  if (isListening) { objRecognition.stop(); }
+  else {
+    document.getElementById('obj-input').value = '';
+    isListening = true;
+    document.getElementById('obj-btn-mic').classList.add('mic-listening');
+    objRecognition.start();
+  }
 }
 
-// ── Utilitaires UI ────────────────────────────────
+// ══════════════════════════════════════════════════
+// Utilitaires UI
+// ══════════════════════════════════════════════════
 function addBubble(who, text, subtype) {
   const area = document.getElementById('chat-area');
   const div = document.createElement('div');
-  if (who === 'user') {
-    div.className = 'bubble bubble-user';
-  } else if (who === 'system') {
-    div.className = 'bubble-system';
-  } else {
-    div.className = `bubble bubble-ai ${subtype || ''}`;
-  }
+  if (who === 'user') div.className = 'bubble bubble-user';
+  else if (who === 'system') div.className = 'bubble-system';
+  else div.className = `bubble bubble-ai ${subtype || ''}`;
   div.textContent = text;
   area.appendChild(div);
   area.scrollTop = area.scrollHeight;
@@ -583,34 +692,26 @@ function setTyping(on) {
     typingEl.innerHTML = '<span class="text-muted fst-italic">…</span>';
     document.getElementById('chat-area').appendChild(typingEl);
     document.getElementById('chat-area').scrollTop = 99999;
-  } else if (typingEl) {
-    typingEl.remove();
-    typingEl = null;
-  }
+  } else if (typingEl) { typingEl.remove(); typingEl = null; }
 }
 
-function setVoiceStatus(msg, cls) {
+function setVoiceStatus(msg) {
   const el = document.getElementById('voice-status');
-  el.textContent = msg;
+  if (el) el.textContent = msg;
 }
 
-function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-}
-
-function autoResize(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-}
+function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }
 
 function retourSetup() {
   if (isSpeaking) synth.cancel();
   if (isListening && recognition) recognition.stop();
+  if (isListening && objRecognition) objRecognition.stop();
   sessionId = null;
   document.getElementById('chat-area').innerHTML = '';
   document.getElementById('training-phase').style.display = 'none';
+  document.getElementById('objection-phase').style.display = 'none';
   document.getElementById('setup-phase').style.display = '';
-  location.reload();
 }
 </script>
 {% endblock %}

@@ -1352,10 +1352,6 @@ def effacer_adresses():
 
 
 # ---------------------------------------------------------------------------
-# Démarrage
-# ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
 # Routes Entraîneur IA
 # ---------------------------------------------------------------------------
 
@@ -1578,6 +1574,248 @@ def entraineur_sessions():
         }
         for s in sessions
     ])
+
+
+# ---------------------------------------------------------------------------
+# Objections PAP — base de données
+# ---------------------------------------------------------------------------
+
+OBJECTIONS_PAP = [
+    {"id":  1, "objection": "Je suis chez Free, c'est moins cher qu'Orange.", "categorie": "Prix", "soncase": "A", "niveau": "facile",
+     "reponse_type": "Si aujourd'hui Free vous offre moins cher, c'est parce que vous payez en débit, en service et en stabilité. Concrètement, combien vous coûte une coupure internet quand vous travaillez de chez vous ?"},
+    {"id":  2, "objection": "Ça marche très bien comme ça, je ne vois pas pourquoi changer.", "categorie": "Confort", "soncase": "C", "niveau": "facile",
+     "reponse_type": "C'est exactement ce que je viens vérifier. Si tout est parfait, je vous le confirme et je repars. Mais si on peut améliorer quelque chose sans changer vos habitudes ni votre budget, c'est intéressant non ?"},
+    {"id":  3, "objection": "Je vais réfléchir.", "categorie": "Indécision", "soncase": "C", "niveau": "moyen",
+     "reponse_type": "Réfléchir à quoi précisément ? Si c'est une question de prix, on peut y revenir. Si c'est une question de timing, les techniciens sont dans votre zone uniquement cette semaine. Qu'est-ce qui vous retient ?"},
+    {"id":  4, "objection": "C'est trop cher.", "categorie": "Prix", "soncase": "A", "niveau": "facile",
+     "reponse_type": "Trop cher par rapport à quoi ? Votre abonnement actuel ? Montrez-moi votre facture, on compare ensemble. Souvent les clients découvrent qu'ils paient déjà autant voire plus pour moins de services."},
+    {"id":  5, "objection": "Je suis locataire, je ne peux pas décider ça.", "categorie": "Obstacle pratique", "soncase": "C", "niveau": "moyen",
+     "reponse_type": "Bonne nouvelle — en tant que locataire, vous avez tout à fait le droit de souscrire à un abonnement internet. C'est votre contrat à votre nom, pas une modification du logement. Votre propriétaire n'a rien à voir là-dedans."},
+    {"id":  6, "objection": "Mon voisin a eu des problèmes avec Orange.", "categorie": "Mauvaise expérience", "soncase": "S", "niveau": "moyen",
+     "reponse_type": "Je comprends, et c'est justement pourquoi je suis là. Les problèmes passés venaient souvent d'une installation ADSL ou d'une box ancienne génération. Ce qu'on installe aujourd'hui c'est une toute nouvelle technologie fibre avec un SAV dédié. Votre voisin était sur quel type de ligne ?"},
+    {"id":  7, "objection": "Je ne veux pas m'engager sur 24 mois.", "categorie": "Engagement", "soncase": "C", "niveau": "moyen",
+     "reponse_type": "L'engagement de 24 mois c'est en échange des avantages tarifaires et des 6 mois offerts. Après ces 24 mois, vous êtes libre. Et franchement, si le service est bon — et il l'est — vous ne voudrez pas partir. C'est vraiment le seul frein ?"},
+    {"id":  8, "objection": "Envoyez-moi une brochure, je regarderai.", "categorie": "Faux intérêt", "soncase": "C", "niveau": "difficile",
+     "reponse_type": "Les brochures ne répondent pas à vos questions spécifiques. Là j'ai tout ce qu'il faut et je peux personnaliser l'offre selon votre situation maintenant. Qu'est-ce qui vous intéresse le plus dans ce que je vous ai présenté ?"},
+    {"id":  9, "objection": "Je vais en parler à mon mari / ma femme d'abord.", "categorie": "Décisionnaire absent", "soncase": "C", "niveau": "moyen",
+     "reponse_type": "Bien sûr, c'est une décision qui vous concerne tous les deux. Il est là en ce moment ? Sinon, quand est-ce que je peux repasser pour que vous soyez ensemble ? Je préfère qu'on règle ça avec la bonne personne."},
+    {"id": 10, "objection": "Vous êtes le 3ème vendeur Orange à passer cette semaine.", "categorie": "Méfiance", "soncase": "S", "niveau": "difficile",
+     "reponse_type": "Je comprends que ça puisse agacer. Sachez que je ne viens pas vendre à tout prix — je viens faire un diagnostic de votre ligne. Si rien ne justifie un changement, je vous le dis honnêtement et je repars. Vous permettez juste que je vérifie ?"},
+    {"id": 11, "objection": "Je peux trouver la même chose moins cher sur internet.", "categorie": "Prix", "soncase": "A", "niveau": "moyen",
+     "reponse_type": "Sur internet vous ne trouvez que le tarif affiché — pas l'installation prise en charge à 149€, pas le technicien chez vous, pas mon suivi après. Et surtout pas les 6 premiers mois au tarif réduit. C'est une offre terrain exclusive."},
+    {"id": 12, "objection": "Je n'ai pas besoin d'internet si rapide.", "categorie": "Besoin", "soncase": "N", "niveau": "facile",
+     "reponse_type": "Dites-moi, combien d'appareils êtes-vous à utiliser internet en même temps chez vous ? TV, téléphone, tablette, ordinateur... Souvent on réalise qu'on en a plus besoin qu'on ne pensait, surtout avec les plateformes streaming."},
+    {"id": 13, "objection": "Je suis trop vieux pour tout ça, je ne comprends rien à la technologie.", "categorie": "Confort", "soncase": "C", "niveau": "moyen",
+     "reponse_type": "C'est exactement pour ça qu'on envoie un technicien à domicile qui installe tout, configure tout et vous explique. Vous n'avez rien à faire. Et si vous avez une question après, le SAV est disponible 24h/24. Vous n'avez pas à tout comprendre — on s'en occupe."},
+    {"id": 14, "objection": "L'ADSL me suffit amplement.", "categorie": "Besoin", "soncase": "C", "niveau": "moyen",
+     "reponse_type": "L'ADSL c'est une technologie qui est en train d'être progressivement abandonnée. Dans votre zone, les lignes ADSL ne seront plus maintenues d'ici quelques années. Autant faire la transition maintenant dans de bonnes conditions plutôt que d'être forcé de le faire en urgence."},
+    {"id": 15, "objection": "Je viens juste de signer chez SFR / Bouygues.", "categorie": "Concurrent", "soncase": "A", "niveau": "difficile",
+     "reponse_type": "Vous avez signé quand ? Si c'est dans les 14 jours, vous êtes encore dans votre délai de rétractation légal. Et si c'est l'offre qui vous a convaincu, laissez-moi juste vous montrer ce qu'on propose — si c'est pareil vous ne perdez rien à comparer."},
+    {"id": 16, "objection": "Je dois d'abord finir mon engagement actuel.", "categorie": "Engagement", "soncase": "A", "niveau": "moyen",
+     "reponse_type": "C'est souvent moins bloquant qu'on ne le croit. Combien de mois il vous reste ? On peut programmer l'installation pour la fin de votre engagement — vous signez aujourd'hui, on installe plus tard. Ça vous permet d'avoir les meilleures conditions tarifaires maintenant."},
+    {"id": 17, "objection": "Je n'ai pas le temps là.", "categorie": "Disponibilité", "soncase": "C", "niveau": "facile",
+     "reponse_type": "Je comprends, je serai bref. Juste 2 minutes pour faire le diagnostic de votre prise et vous dire si vous êtes concerné. Si non, je repars. Si oui, on fixe un rendez-vous qui vous convient. Ça prend moins de temps qu'un coup de fil au SAV."},
+    {"id": 18, "objection": "Orange coupe souvent, j'en ai déjà eu.", "categorie": "Mauvaise expérience", "soncase": "S", "niveau": "difficile",
+     "reponse_type": "Quand aviez-vous Orange ? La fibre optique et l'ADSL c'est vraiment deux technologies différentes. La fibre c'est une ligne dédiée, pas partagée. Le taux de coupure est 4 fois plus bas qu'en ADSL. Ce que vous avez vécu ne se reproduira pas avec ce qu'on installe."},
+    {"id": 19, "objection": "Je vais regarder sur le site Orange directement.", "categorie": "Faux intérêt", "soncase": "A", "niveau": "difficile",
+     "reponse_type": "Sur le site vous ne trouverez pas cette offre — c'est une offre exclusive terrain avec les frais d'installation offerts et les 6 premiers mois réduits. En plus vous n'aurez personne pour faire le diagnostic et s'assurer que tout est compatible chez vous."},
+    {"id": 20, "objection": "Mon fils/ma fille gère tout ça pour moi, faudrait lui parler.", "categorie": "Décisionnaire absent", "soncase": "C", "niveau": "moyen",
+     "reponse_type": "Pas de problème, votre fils/fille peut appeler le numéro sur ma carte. Mais avant, laissez-moi juste faire le diagnostic de votre installation — comme ça quand il/elle appelle, on aura déjà toutes les infos. Ça lui fera gagner du temps."},
+]
+
+SYSTEM_PROMPT_OBJECTION = """Tu es le coach vente de Heikel. Il vient de recevoir cette objection d'un prospect porte-à-porte :
+
+OBJECTION : « {objection} »
+CATÉGORIE : {categorie}
+PROFIL SONCASE : {soncase}
+
+Heikel a répondu : « {reponse_heikel} »
+
+{methodo}
+
+Évalue sa réponse et donne-lui un coaching concis :
+1. Score /10
+2. Ce qui était bon (1-2 points max)
+3. Ce qui manquait ou était à éviter
+4. La réponse idéale selon la méthode Marvesting (reformulée exactement comme il devrait la dire)
+5. La technique SONCASE ou étape de la méthode à retenir
+
+Style : direct, tutoiement, 8 lignes max. Pas de blabla."""
+
+
+# ---------------------------------------------------------------------------
+# Route Progression
+# ---------------------------------------------------------------------------
+
+@app.route("/progression")
+@login_required
+def progression():
+    sessions = (
+        SessionEntrainement.query
+        .filter(SessionEntrainement.score.isnot(None))
+        .order_by(SessionEntrainement.created_at.asc())
+        .all()
+    )
+    total = SessionEntrainement.query.count()
+    terminees = SessionEntrainement.query.filter_by(terminee=True).count()
+
+    scores = [s.score for s in sessions if s.score is not None]
+    avg_score = round(sum(scores) / len(scores), 1) if scores else None
+    best_score = max(scores) if scores else None
+
+    by_module = {}
+    for key, info in MODULES_ENTRAINEMENT.items():
+        module_scores = [s.score for s in sessions if s.module == key and s.score is not None]
+        by_module[key] = {
+            "label": info["label"],
+            "color": info["color"],
+            "avg": round(sum(module_scores) / len(module_scores), 1) if module_scores else None,
+            "count": len(module_scores),
+        }
+
+    chart_data = [
+        {
+            "date": s.created_at.strftime("%d/%m"),
+            "score": s.score,
+            "module": MODULES_ENTRAINEMENT.get(s.module, {}).get("label", s.module),
+        }
+        for s in sessions[-30:]
+    ]
+
+    return render_template(
+        "progression.html",
+        total=total,
+        terminees=terminees,
+        avg_score=avg_score,
+        best_score=best_score,
+        by_module=by_module,
+        chart_data=chart_data,
+        sessions=sessions[-10:][::-1],
+        modules=MODULES_ENTRAINEMENT,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Routes Objections
+# ---------------------------------------------------------------------------
+
+@app.route("/api/entraineur/objection/aleatoire")
+@login_required
+def objection_aleatoire():
+    import random
+    niveau = request.args.get("niveau")
+    pool = [o for o in OBJECTIONS_PAP if not niveau or o["niveau"] == niveau]
+    if not pool:
+        pool = OBJECTIONS_PAP
+    obj = random.choice(pool)
+    return jsonify(obj)
+
+
+@app.route("/api/entraineur/objection/evaluer", methods=["POST"])
+@login_required
+def objection_evaluer():
+    import anthropic as _anthropic
+    import json as _json
+
+    data = request.get_json() or {}
+    objection_id = data.get("objection_id")
+    reponse_heikel = (data.get("reponse") or "").strip()
+
+    if not reponse_heikel:
+        return jsonify({"error": "Réponse vide"}), 400
+
+    obj = next((o for o in OBJECTIONS_PAP if o["id"] == objection_id), None)
+    if not obj:
+        return jsonify({"error": "Objection introuvable"}), 404
+
+    prompt = SYSTEM_PROMPT_OBJECTION.format(
+        objection=obj["objection"],
+        categorie=obj["categorie"],
+        soncase=obj["soncase"],
+        reponse_heikel=reponse_heikel,
+        methodo=_METHODO_MARVESTING,
+    )
+
+    try:
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            return jsonify({"error": "ANTHROPIC_API_KEY non configuré"}), 500
+
+        client = _anthropic.Anthropic(api_key=api_key)
+        resp = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=800,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        feedback = resp.content[0].text.strip()
+
+        # Extract score from text
+        score = None
+        import re as _re
+        m = _re.search(r'(\d+)\s*/\s*10', feedback)
+        if m:
+            score = int(m.group(1))
+
+        return jsonify({
+            "feedback": feedback,
+            "score": score,
+            "reponse_type": obj.get("reponse_type", ""),
+            "categorie": obj["categorie"],
+            "soncase": obj["soncase"],
+        })
+    except Exception as exc:
+        app.logger.error("Objection evaluer error: %s", exc)
+        return jsonify({"error": str(exc)}), 500
+
+
+# ---------------------------------------------------------------------------
+# Route TTS — ElevenLabs
+# ---------------------------------------------------------------------------
+
+@app.route("/api/tts", methods=["POST"])
+@login_required
+def api_tts():
+    import requests as _requests
+
+    api_key = os.environ.get("ELEVENLABS_API_KEY")
+    if not api_key:
+        return jsonify({"error": "no_key"}), 200
+
+    data = request.get_json() or {}
+    text = (data.get("text") or "").strip()
+    speaker = data.get("speaker", "client")
+
+    if not text:
+        return jsonify({"error": "Texte vide"}), 400
+
+    text = text[:500]
+
+    voice_client = os.environ.get("ELEVENLABS_VOICE_CLIENT", "XB0fDUnXU5powFXDhCwa")
+    voice_coach  = os.environ.get("ELEVENLABS_VOICE_COACH",  "EXAVITQu4vr4xnSDxMaL")
+    voice_id = voice_coach if speaker == "coach" else voice_client
+
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+    headers = {
+        "Accept": "audio/mpeg",
+        "Content-Type": "application/json",
+        "xi-api-key": api_key,
+    }
+    payload = {
+        "text": text,
+        "model_id": "eleven_multilingual_v2",
+        "voice_settings": {"stability": 0.50, "similarity_boost": 0.75},
+    }
+
+    try:
+        resp = _requests.post(url, json=payload, headers=headers, timeout=15)
+        if resp.status_code == 200:
+            from flask import Response as _R
+            return _R(resp.content, mimetype="audio/mpeg")
+        app.logger.error("ElevenLabs error %s: %s", resp.status_code, resp.text[:200])
+        return jsonify({"error": f"ElevenLabs {resp.status_code}"}), 502
+    except Exception as exc:
+        app.logger.error("TTS error: %s", exc)
+        return jsonify({"error": str(exc)}), 500
 
 
 def creer_scheduler():
