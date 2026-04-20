@@ -1790,8 +1790,9 @@ def api_tts():
 
     text = text[:500]
 
+    # Charlotte (FR féminin) pour le prospect, Adam (EN/multilingual masculin) pour le coach
     voice_client = os.environ.get("ELEVENLABS_VOICE_CLIENT", "XB0fDUnXU5powFXDhCwa")
-    voice_coach  = os.environ.get("ELEVENLABS_VOICE_COACH",  "EXAVITQu4vr4xnSDxMaL")
+    voice_coach  = os.environ.get("ELEVENLABS_VOICE_COACH",  "pNInz6obpgDQGcFmaJgB")
     voice_id = voice_coach if speaker == "coach" else voice_client
 
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
