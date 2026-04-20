@@ -49,6 +49,31 @@
   </div>
 </div>
 
+<!-- Streak + alerte module faible -->
+<div class="d-flex gap-3 mb-4 flex-wrap">
+  <div class="card border-0 shadow-sm flex-grow-1" style="border-left:4px solid #ff7900 !important;border-left-width:4px !important">
+    <div class="card-body py-2 d-flex align-items-center gap-3">
+      <span style="font-size:2rem">🔥</span>
+      <div>
+        <div class="fw-bold fs-5">{{ streak }} jour{{ 's' if streak > 1 }} de suite</div>
+        <small class="text-muted">{% if streak == 0 %}Entraîne-toi aujourd'hui pour démarrer ta série !{% elif streak < 3 %}Continue, tu es sur une bonne lancée.{% elif streak < 7 %}Solide — tu es régulier.{% else %}Incroyable régularité ! 💪{% endif %}</small>
+      </div>
+    </div>
+  </div>
+  {% if worst_module %}
+  <div class="card border-warning flex-grow-1">
+    <div class="card-body py-2 d-flex align-items-center gap-3">
+      <span style="font-size:2rem">⚠️</span>
+      <div>
+        <div class="fw-bold">Module à travailler : {{ modules[worst_module].label }}</div>
+        <small class="text-muted">C'est ton point le plus faible — priorise-le ce soir.</small>
+      </div>
+      <a href="{{ url_for('entraineur') }}" class="btn btn-sm btn-warning ms-auto">Travailler →</a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
 <!-- Courbe + Modules -->
 <div class="row g-4 mb-4">
 

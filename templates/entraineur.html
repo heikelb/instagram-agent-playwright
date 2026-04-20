@@ -105,6 +105,13 @@
           <small class="text-muted">Objection aléatoire → tu réponds → score immédiat</small>
         </div>
       </div>
+      <!-- Mode debriefing -->
+      <div class="col-md-4">
+        <div class="select-card" data-group="mode" data-value="debriefing" onclick="selectCard(this)">
+          <div class="fw-semibold">📋 Debriefing terrain</div>
+          <small class="text-muted">Raconte ta vraie visite → analyse étape par étape</small>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -241,7 +248,7 @@
   <div class="d-flex gap-3 mb-3" style="font-size:.85rem">
     <span class="badge text-bg-light border">🎯 Objection <span id="obj-count">1</span></span>
     <span class="badge text-bg-light border">📊 Score moyen : <span id="obj-avg">—</span></span>
-    <span class="badge text-bg-light border">✅ Réussies : <span id="obj-wins">0</span>/0</span>
+    <span class="badge text-bg-light border">✅ Réussies : <span id="obj-wins">0/0</span></span>
   </div>
 
   <!-- Carte objection courante -->
@@ -367,10 +374,11 @@ function selectCard(el) {
   el.classList.add('active');
   if (group === 'mode') {
     currentMode = el.dataset.value;
-    const isObj = currentMode === 'objection';
+    const isObj       = currentMode === 'objection';
+    const isDebrief   = currentMode === 'debriefing';
     const isEntraineur = currentMode === 'entraineur';
-    document.getElementById('client-type-section').style.display = (isObj || isEntraineur) ? 'none' : '';
-    document.getElementById('module-section').style.display = isObj ? 'none' : '';
+    document.getElementById('client-type-section').style.display = (isObj || isEntraineur || isDebrief) ? 'none' : '';
+    document.getElementById('module-section').style.display = (isObj || isDebrief) ? 'none' : '';
     document.getElementById('niveau-section').style.display = isObj ? '' : 'none';
   }
 }
@@ -418,9 +426,10 @@ async function demarrer() {
   document.getElementById('training-phase').style.display = 'flex';
 
   const intros = {
-    client: "Session démarrée. Je suis ton prospect. Frappe à ma porte — vas-y !",
+    client:     "Session démarrée. Je suis ton prospect. Frappe à ma porte — vas-y !",
     entraineur: "Prêt à coacher. Raconte-moi ta dernière visite ou soumets-moi une objection.",
-    les_deux: "Session démarrée. Je joue le client.\nDis « feedback » quand tu veux le bilan."
+    les_deux:   "Session démarrée. Je joue le client. Dis « feedback » quand tu veux le bilan.",
+    debriefing: "Debriefing activé. Raconte-moi ta visite — du moment où tu as frappé à la porte jusqu'à la fin. Je t'arrête si besoin, sinon raconte tout."
   };
   addBubble('system', intros[mode] || 'Session démarrée.');
 

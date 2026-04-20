@@ -310,6 +310,7 @@ MODES_ENTRAINEMENT = {
     "client": "Je joue le client",
     "entraineur": "Je t'entraîne et te coache",
     "les_deux": "Simulation complète + feedback",
+    "debriefing": "Debriefing d'une vraie visite",
 }
 
 _METHODO_MARVESTING = """
@@ -641,6 +642,23 @@ def dashboard():
         Vente.statut.in_(["en_attente", "confirme"]),
     ).order_by(Vente.date_rdv).all()
 
+    # Stats entraîneur pour le widget dashboard
+    derniere_session = (
+        SessionEntrainement.query
+        .order_by(SessionEntrainement.created_at.desc())
+        .first()
+    )
+    sessions_aujourd_hui = SessionEntrainement.query.filter(
+        db.func.date(SessionEntrainement.created_at) == aujourd_hui
+    ).count()
+    scores_recents = [
+        s.score for s in SessionEntrainement.query
+        .filter(SessionEntrainement.score.isnot(None))
+        .order_by(SessionEntrainement.created_at.desc())
+        .limit(5).all()
+    ]
+    score_moyen_recent = round(sum(scores_recents) / len(scores_recents), 1) if scores_recents else None
+
     return render_template(
         "dashboard.html",
         total=total,
@@ -652,6 +670,11 @@ def dashboard():
         ventes_recentes=ventes_recentes,
         rdv_demain_liste=rdv_demain_liste,
         aujourd_hui=aujourd_hui,
+        derniere_session=derniere_session,
+        sessions_aujourd_hui=sessions_aujourd_hui,
+        score_moyen_recent=score_moyen_recent,
+        modules=MODULES_ENTRAINEMENT,
+        modes=MODES_ENTRAINEMENT,
     )
 
 
@@ -1361,6 +1384,8 @@ def _build_system_prompt(sess, force_coach=False):
     module_focus = f"{module_info.get('label', '')} — {module_info.get('description', '')}"
     type_client_desc = f"{type_client_info.get('label', '')} : {type_client_info.get('description', '')}"
 
+    if sess.mode == "debriefing":
+        return SYSTEM_PROMPT_DEBRIEFING.format(methodo=_METHODO_MARVESTING)
     if sess.mode == "client":
         return SYSTEM_PROMPT_CLIENT.format(
             type_client_desc=type_client_desc,
@@ -1411,9 +1436,9 @@ def entraineur_demarrer():
 
     if mode not in MODES_ENTRAINEMENT:
         return jsonify({"error": "Mode invalide"}), 400
-    if module not in MODULES_ENTRAINEMENT:
+    if mode != "debriefing" and module not in MODULES_ENTRAINEMENT:
         return jsonify({"error": "Module invalide"}), 400
-    if type_client not in TYPES_CLIENT:
+    if mode not in ("debriefing", "entraineur") and type_client not in TYPES_CLIENT:
         return jsonify({"error": "Type client invalide"}), 400
 
     sess = SessionEntrainement(mode=mode, module=module, type_client=type_client)
@@ -1621,7 +1646,48 @@ OBJECTIONS_PAP = [
      "reponse_type": "Sur le site vous ne trouverez pas cette offre — c'est une offre exclusive terrain avec les frais d'installation offerts et les 6 premiers mois réduits. En plus vous n'aurez personne pour faire le diagnostic et s'assurer que tout est compatible chez vous."},
     {"id": 20, "objection": "Mon fils/ma fille gère tout ça pour moi, faudrait lui parler.", "categorie": "Décisionnaire absent", "soncase": "C", "niveau": "moyen",
      "reponse_type": "Pas de problème, votre fils/fille peut appeler le numéro sur ma carte. Mais avant, laissez-moi juste faire le diagnostic de votre installation — comme ça quand il/elle appelle, on aura déjà toutes les infos. Ça lui fera gagner du temps."},
+    {"id": 21, "objection": "Je vais regarder sur internet d'abord et je verrai.", "categorie": "Faux intérêt", "soncase": "A", "niveau": "difficile",
+     "reponse_type": "Sur internet vous tomberez sur les offres grand public à plein tarif. Là vous avez une offre terrain exclusive avec les frais d'installation offerts et 6 mois réduits — elle n'est pas en ligne. Qu'est-ce qui vous retient là, maintenant ?"},
+    {"id": 22, "objection": "J'ai pas de moyen de paiement sous la main.", "categorie": "Pratique", "soncase": "C", "niveau": "facile",
+     "reponse_type": "Pas de souci, aujourd'hui on fait juste la souscription et le RDV technicien. Le prélèvement commence seulement après l'installation. Vous avez bien un RIB ou vos coordonnées bancaires quelque part ? On peut même faire ça depuis votre téléphone."},
+    {"id": 23, "objection": "Mon voisin attend depuis 3 mois l'installation d'Orange.", "categorie": "Mauvaise expérience", "soncase": "S", "niveau": "difficile",
+     "reponse_type": "Je comprends et c'est frustrant. Les délais varient selon les zones — dans votre secteur on a des techniciens disponibles la semaine prochaine. C'est justement pour ça qu'on fait le diagnostic maintenant : pour réserver le créneau avant que les disponibilités partent."},
+    {"id": 24, "objection": "Je préfère garder mon opérateur actuel, ça fait des années.", "categorie": "Fidélité", "soncase": "S", "niveau": "moyen",
+     "reponse_type": "La fidélité c'est une qualité — mais votre opérateur, lui, l'a-t-il récompensée ? Souvent les anciens clients paient plus cher que les nouveaux. Combien payez-vous actuellement ? On va comparer ensemble."},
+    {"id": 25, "objection": "Vous avez une carte de visite ? Je vous rappellerai.", "categorie": "Esquive", "soncase": "C", "niveau": "difficile",
+     "reponse_type": "Je n'ai pas de carte sur moi, et franchement les rappels se font rarement — je ne vous en veux pas, c'est humain. Ce que je vous propose : 10 minutes maintenant pour faire le diagnostic. Si ça ne correspond pas, vous me dites non et c'est terminé. C'est honnête non ?"},
+    {"id": 26, "objection": "J'ai essayé de changer une fois, c'était un cauchemar administratif.", "categorie": "Confort", "soncase": "C", "niveau": "moyen",
+     "reponse_type": "Je vous entends — et c'est exactement pour ça qu'on gère tout à votre place. La portabilité du numéro, la résiliation de l'ancien contrat, l'installation à domicile. Vous n'avez rien à faire sauf ouvrir la porte au technicien. Qu'est-ce qui avait bloqué la dernière fois ?"},
+    {"id": 27, "objection": "C'est quoi le numéro du service client si j'ai un problème après ?", "categorie": "Sécurité", "soncase": "S", "niveau": "facile",
+     "reponse_type": "C'est le 3900, disponible 7j/7. Et en plus de ça, si vous avez un souci dans les 30 premiers jours, je reste votre interlocuteur direct — vous m'appelez et je remonte le problème. C'est d'ailleurs une vraie différence avec une souscription en ligne."},
+    {"id": 28, "objection": "Les prix vont encore augmenter dans 6 mois de toute façon.", "categorie": "Prix", "soncase": "A", "niveau": "moyen",
+     "reponse_type": "C'est vrai que les prix évoluent dans tout le marché télécom. Justement — en souscrivant aujourd'hui vous bloquez le tarif promotionnel pendant 12 mois. Et les 6 premiers mois sont à prix réduit. Attendre ne fera qu'augmenter ce que vous paierez."},
+    {"id": 29, "objection": "Je suis en télétravail, je peux pas me permettre une coupure pendant l'installation.", "categorie": "Sécurité", "soncase": "S", "niveau": "moyen",
+     "reponse_type": "Très bonne question. L'installation fibre prend en moyenne 2h. On choisit ensemble un créneau où vous êtes disponible — vendredi après-midi, samedi matin. Et pendant ce temps-là vous pouvez utiliser la 4G de votre téléphone en partage de connexion. Quel créneau vous arrangerait ?"},
+    {"id": 30, "objection": "Mon mari dit qu'Orange c'est trop cher et qu'on ne changera pas.", "categorie": "Décisionnaire absent", "soncase": "A", "niveau": "difficile",
+     "reponse_type": "Je comprends. Et si votre mari voyait les chiffres concrets — ce que vous payez aujourd'hui versus ce qu'on propose avec plus de services — est-ce que ça changerait peut-être son avis ? Il est là ? Ou je peux repasser quand vous êtes ensemble ?"},
 ]
+
+SYSTEM_PROMPT_DEBRIEFING = """Tu es le coach vente de Heikel — expert PAP fibre Orange, méthode Marvesting.
+
+Heikel va te raconter une visite terrain qu'il vient de faire. Tu vas analyser cette visite étape par étape selon la méthode Marvesting et lui donner un feedback précis et actionnable.
+
+{methodo}
+
+FORMAT DE TON ANALYSE :
+1. Écoute d'abord le récit complet de Heikel (laisse-le raconter)
+2. Quand il a fini, analyse chaque étape qu'il a mentionnée :
+   - Ce qui était bon (avec citation de ce qu'il a dit)
+   - Ce qui était raté (moment précis + pourquoi selon Marvesting)
+   - Ce qu'il aurait dû dire à la place (script exact)
+3. Identifie les 2-3 points prioritaires à travailler
+4. Score global /10
+
+POINTS DE VIGILANCE sur Heikel :
+- Taux d'ouverture (~20%) — surveille l'accroche et le geste clé
+- Pitch trop tôt — s'il a présenté l'offre avant que le prospect verbalise son problème, signale-le immédiatement
+
+Style : direct, tutoiement, concret. Pas de blabla."""
 
 SYSTEM_PROMPT_OBJECTION = """Tu es le coach vente de Heikel. Il vient de recevoir cette objection d'un prospect porte-à-porte :
 
@@ -1682,6 +1748,27 @@ def progression():
         for s in sessions[-30:]
     ]
 
+    # Streak : jours consécutifs avec au moins une session
+    all_sessions_all = SessionEntrainement.query.order_by(SessionEntrainement.created_at.desc()).all()
+    streak = 0
+    if all_sessions_all:
+        today = date.today()
+        seen_days = sorted(set(s.created_at.date() for s in all_sessions_all), reverse=True)
+        expected = today
+        for d in seen_days:
+            if d == expected:
+                streak += 1
+                expected -= timedelta(days=1)
+            elif d < expected:
+                break
+
+    # Module le plus faible
+    worst_module = None
+    if by_module:
+        scored = {k: v for k, v in by_module.items() if v["avg"] is not None}
+        if scored:
+            worst_module = min(scored, key=lambda k: scored[k]["avg"])
+
     return render_template(
         "progression.html",
         total=total,
@@ -1692,6 +1779,8 @@ def progression():
         chart_data=chart_data,
         sessions=sessions[-10:][::-1],
         modules=MODULES_ENTRAINEMENT,
+        streak=streak,
+        worst_module=worst_module,
     )
 
 
