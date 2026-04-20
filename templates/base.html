@@ -122,6 +122,12 @@
             <i class="bi bi-file-earmark-excel me-1"></i>Import
           </a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint == 'entraineur' %}active{% endif %}"
+             href="{{ url_for('entraineur') }}">
+            <i class="bi bi-trophy-fill me-1"></i>Entraîneur
+          </a>
+        </li>
       </ul>
       <ul class="navbar-nav ms-auto">
         <li class="nav-item">
