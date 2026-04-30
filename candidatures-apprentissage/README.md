@@ -4,9 +4,28 @@ Objectif : trouver un patron pour un apprentissage en fabrication de bijoux (CAP
 
 ## Structure
 
-- `candidatures.csv` — fichier de suivi principal (à ouvrir avec LibreOffice / Excel / Google Sheets)
+- `candidatures.csv` — **suivi actif** des ateliers contactés (statut, dates, notes)
+- `prospects_sirene.csv` — **pool brut** de 364 entreprises Lyon + Dijon (NAF 32.13Z et 47.77Z) issues de l'API SIRENE — à piocher pour alimenter `candidatures.csv`
 - `lettre-motivation-modele.md` — modèle de lettre à personnaliser
-- `pistes-supplementaires.md` — sources pour enrichir la liste
+- `scripts/fetch_sirene.py` — script Python pour régénérer `prospects_sirene.csv`
+
+## Source de données
+
+Pages Jaunes bloque le scraping (DataDome). On utilise à la place l'API publique
+**`recherche-entreprises.api.gouv.fr`** (open data, base SIRENE INSEE). Codes NAF visés :
+
+- `32.13Z` — Fabrication d'articles de joaillerie et bijouterie (priorité pour apprentissage)
+- `47.77Z` — Commerce de détail d'articles d'horlogerie et de bijouterie
+
+Pour rafraîchir le pool :
+
+```bash
+cd candidatures-apprentissage
+python3 scripts/fetch_sirene.py --output prospects_sirene.csv
+```
+
+Limite : SIRENE n'a pas les téléphones/emails. Pour les enrichir : recherche manuelle
+(Google « Nom de l'atelier Lyon ») ou WebSearch ciblée par batch.
 
 ## Workflow quotidien
 
