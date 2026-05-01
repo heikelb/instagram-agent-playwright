@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Claude Mastery — Top 1%</title>
+  <meta name="description" content="Maîtrisez Claude Code comme le top 1%. Quiz gamifié sur Skills, Prompting, Co-Work, Routines et Design.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Background particles -->
+  <div id="particles"></div>
+
+  <!-- XP floating text -->
+  <div id="xp-floats"></div>
+
+  <!-- Confetti -->
+  <div id="confetti"></div>
+
+  <!-- ── NAVBAR ── -->
+  <nav id="navbar" class="hidden">
+    <button class="nav-back" onclick="goBack()" aria-label="Retour">←</button>
+    <div class="nav-xp"><span id="nav-xp-count">0</span> XP</div>
+    <button class="nav-profile" onclick="showScreen('profile')" aria-label="Profil">👤</button>
+  </nav>
+
+  <!-- ══════════════════════════════════════════
+       SCREEN: HOME
+  ══════════════════════════════════════════ -->
+  <div id="screen-home" class="screen active">
+    <div class="home-hero">
+      <div class="home-badge">TOP 1% CLAUDE</div>
+      <h1 class="home-title">
+        <span class="gradient-text">Claude</span><br>Mastery
+      </h1>
+      <p class="home-subtitle">
+        Devenez expert Claude en jouant.<br>
+        5 modules · Quiz · XP · Achievements
+      </p>
+      <div class="home-stats">
+        <div class="stat">
+          <span class="stat-number">5</span>
+          <span class="stat-label">Modules</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">40</span>
+          <span class="stat-label">Questions</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">12</span>
+          <span class="stat-label">Succès</span>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="showScreen('modules')">
+        Commencer l'aventure →
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCREEN: MODULES
+  ══════════════════════════════════════════ -->
+  <div id="screen-modules" class="screen">
+    <div class="screen-header">
+      <h2>Vos modules</h2>
+      <div class="level-badge" id="level-badge">Novice</div>
+    </div>
+    <div class="xp-bar-container">
+      <div class="xp-bar-labels">
+        <span id="xp-current">0 XP</span>
+        <span id="xp-next">500 XP</span>
+      </div>
+      <div class="xp-bar">
+        <div class="xp-bar-fill" id="xp-bar-fill" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="modules-grid" id="modules-grid"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCREEN: QUIZ
+  ══════════════════════════════════════════ -->
+  <div id="screen-quiz" class="screen">
+
+    <!-- Header bar -->
+    <div class="quiz-header">
+      <div class="quiz-module-info">
+        <span id="quiz-module-icon">⚡</span>
+        <span id="quiz-module-name">Module</span>
+      </div>
+      <div class="quiz-lives" id="quiz-lives">
+        <span class="life-heart">❤️</span>
+        <span class="life-heart">❤️</span>
+        <span class="life-heart">❤️</span>
+      </div>
+      <div class="quiz-xp"><span id="quiz-xp-earned">0</span> XP</div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="quiz-progress-bar">
+      <div class="quiz-progress-fill" id="quiz-progress-fill" style="width:0%"></div>
+    </div>
+
+    <!-- Question card -->
+    <div class="quiz-card" id="quiz-card">
+      <!-- Timer ring -->
+      <div class="quiz-timer-container">
+        <svg class="timer-ring" viewBox="0 0 60 60" aria-hidden="true">
+          <circle class="timer-ring-bg" cx="30" cy="30" r="26"/>
+          <circle class="timer-ring-progress" id="timer-circle" cx="30" cy="30" r="26"
+            style="stroke-dasharray:163.36; stroke-dashoffset:0"/>
+        </svg>
+        <span class="timer-text" id="timer-text">30</span>
+      </div>
+
+      <div class="question-counter">
+        Question <span id="q-current">1</span>/<span id="q-total">8</span>
+      </div>
+
+      <p class="question-text" id="question-text">Chargement…</p>
+
+      <div class="answers-grid" id="answers-grid"></div>
+    </div>
+
+    <!-- Explanation panel (revealed after answer) -->
+    <div class="explanation-panel hidden" id="explanation-panel">
+      <div class="explanation-icon" id="explanation-icon">✅</div>
+      <p id="explanation-text"></p>
+      <button class="btn-continue" id="btn-continue">Continuer →</button>
+    </div>
+
+    <!-- Streak badge -->
+    <div class="streak-display hidden" id="streak-display">
+      <span class="streak-fire">🔥</span>
+      <span id="streak-count">0</span> de suite !
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCREEN: RESULTS
+  ══════════════════════════════════════════ -->
+  <div id="screen-results" class="screen">
+    <div class="results-container">
+      <div class="results-stars" id="results-stars">☆☆☆</div>
+      <h2 class="results-title" id="results-title">Module Terminé !</h2>
+      <p class="results-subtitle" id="results-subtitle">Excellent travail !</p>
+
+      <div class="results-stats">
+        <div class="result-stat">
+          <span class="result-stat-icon">⚡</span>
+          <span class="result-stat-value" id="result-xp">0</span>
+          <span class="result-stat-label">XP gagnés</span>
+        </div>
+        <div class="result-stat">
+          <span class="result-stat-icon">✅</span>
+          <span class="result-stat-value" id="result-correct">0/8</span>
+          <span class="result-stat-label">Correctes</span>
+        </div>
+        <div class="result-stat">
+          <span class="result-stat-icon">🔥</span>
+          <span class="result-stat-value" id="result-streak">0</span>
+          <span class="result-stat-label">Max streak</span>
+        </div>
+      </div>
+
+      <div class="achievements-earned" id="achievements-earned"></div>
+
+      <div class="results-buttons">
+        <button class="btn-secondary" id="btn-retry">Rejouer</button>
+        <button class="btn-primary" onclick="showScreen('modules')">Modules →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCREEN: PROFILE
+  ══════════════════════════════════════════ -->
+  <div id="screen-profile" class="screen">
+
+    <div class="profile-hero">
+      <div class="profile-avatar" id="profile-avatar">🌱</div>
+      <h2 class="profile-level" id="profile-level">Novice</h2>
+      <p class="profile-xp" id="profile-xp">0 XP total</p>
+    </div>
+
+    <div class="profile-section">
+      <h3>Progression des modules</h3>
+      <div id="module-progress-list"></div>
+    </div>
+
+    <div class="profile-section">
+      <h3>Succès <span id="achievements-count">(0/12)</span></h3>
+      <div class="achievements-grid" id="achievements-grid"></div>
+    </div>
+
+    <button class="btn-danger" onclick="resetGame()">🗑 Recommencer depuis zéro</button>
+
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
