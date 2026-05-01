@@ -5,7 +5,7 @@ import re
 from datetime import datetime, date, timedelta
 
 import hashlib
-from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify, session, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin, current_user
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -700,6 +700,12 @@ def scan_affiche():
 @app.route("/offline")
 def offline():
     return render_template("offline.html")
+
+# ── Claude Mastery Game ────────────────────────────────────────────────────
+@app.route("/claude-mastery")
+@app.route("/claude-mastery/<path:filename>")
+def claude_mastery(filename="index.html"):
+    return send_from_directory("claude-mastery-game", filename)
 
 
 # ---------------------------------------------------------------------------
