@@ -17,7 +17,9 @@ const ACHIEVEMENTS = [
   { id: 'module_cowork',    icon: '🤝', name: 'Team Player',      desc: 'Terminer le module Co-Work' },
   { id: 'module_routines',  icon: '⚙️', name: 'Automator',        desc: 'Terminer le module Routines' },
   { id: 'module_design',    icon: '🎨', name: 'Designer Pro',     desc: 'Terminer le module Design' },
-  { id: 'all_modules',      icon: '🏆', name: 'Claude Whisperer', desc: 'Terminer les 5 modules' },
+  { id: 'module_agents',    icon: '🤖', name: 'Agent Commander',  desc: 'Terminer le module Armée d\'Agents' },
+  { id: 'module_vision',    icon: '👑', name: 'CEO Mode',          desc: 'Terminer le module Vision & Délégation' },
+  { id: 'all_modules',      icon: '🏆', name: 'AI CEO',            desc: 'Terminer les 7 modules — vous êtes dans le top 1%' },
   { id: 'survivor',         icon: '❤️', name: 'Survivant',        desc: 'Terminer un module avec 1 vie restante' },
 ];
 
@@ -509,6 +511,208 @@ const MODULES = [
         ],
         correct: 2,
         explain: "Le golden path est le parcours utilisateur principal et prévu pour une feature. Pour une feature de login : entrer email/password valides → cliquer Login → être redirigé. Il faut tester ce chemin + les edge cases (mauvais password, email invalide, réseau lent) avant de valider une implémentation."
+      }
+    ]
+  },
+
+  // ── MODULE 6 ────────────────────────────────────────────────────────────
+  {
+    id: 'agents',
+    title: 'Armée d\'Agents',
+    subtitle: 'Orchestrez vos agents IA',
+    icon: '🤖',
+    colorStart: '#0EA5E9',
+    colorEnd: '#6366F1',
+    achievementId: 'module_agents',
+    questions: [
+      {
+        q: "Qu'est-ce qu'un système multi-agents avec Claude Code ?",
+        options: [
+          "Avoir plusieurs comptes Claude avec des utilisateurs différents",
+          "Un agent orchestrateur qui délègue des sous-tâches à des agents spécialisés",
+          "Installer Claude Code sur plusieurs machines simultanément",
+          "Combiner GPT, Gemini et Claude dans un même workflow"
+        ],
+        correct: 1,
+        explain: "Un système multi-agents = un agent orchestrateur (le manager) qui comprend la vision globale et délègue à des agents spécialisés (Explore, Plan, Code, Test…). Chacun a un rôle précis. Vous interagissez uniquement avec l'orchestrateur — votre armée travaille en parallèle pour vous."
+      },
+      {
+        q: "L'agent orchestrateur dans votre armée doit...",
+        options: [
+          "Tout exécuter lui-même pour garder le contrôle total",
+          "Décomposer la tâche principale, déléguer aux workers, et synthétiser les résultats",
+          "Uniquement surveiller sans jamais toucher au code",
+          "Être le modèle IA le plus puissant et coûteux disponible"
+        ],
+        correct: 1,
+        explain: "L'orchestrateur est le \"manager\" de votre armée. Il comprend la vision, décompose le projet en sous-tâches claires, délègue à des agents spécialisés — en parallèle quand c'est possible — et synthétise les résultats. Vous ne parlez qu'à lui, il gère le reste."
+      },
+      {
+        q: "Pour créer votre armée d'agents, quelle est la PREMIÈRE étape ?",
+        options: [
+          "Apprendre Python pour coder des agents from scratch",
+          "Choisir le modèle IA le plus puissant pour chaque rôle",
+          "Identifier et lister toutes vos tâches répétitives avec leur fréquence et durée",
+          "Créer une infrastructure serveur pour héberger les agents"
+        ],
+        correct: 2,
+        explain: "Avant d'automatiser, sachez quoi automatiser. Listez toutes vos tâches répétitives : emails récurrents, rapports, recherche, compilation de données… Notez leur fréquence et le temps passé. C'est votre backlog d'automatisation. Commencez par haute fréquence + faible valeur ajoutée de votre part."
+      },
+      {
+        q: "Un \"brief d'agent\" efficace doit toujours contenir...",
+        options: [
+          "Uniquement le résultat désiré en une phrase courte",
+          "Contexte + Objectif précis + Critères de succès + Contraintes",
+          "Une description détaillée de chaque étape d'exécution à suivre",
+          "Le code source existant que l'agent doit améliorer"
+        ],
+        correct: 1,
+        explain: "Les 4 piliers d'un bon brief : Contexte (qui vous êtes, quel est le projet), Objectif précis (output attendu), Critères de succès (comment valider que c'est réussi), Contraintes (limites, règles). Sans ces 4 éléments, l'agent improvise. Avec eux, il exécute exactement votre vision."
+      },
+      {
+        q: "Pour créer une app complète avec vos agents, la meilleure décomposition est...",
+        options: [
+          "Un seul agent puissant qui fait tout de A à Z",
+          "Un agent par fichier de code du projet",
+          "Orchestrateur → Agent Specs → Agent Code → Agent Tests → Agent Deploy",
+          "D'abord GPT-4 pour la structure, puis Claude pour les détails"
+        ],
+        correct: 2,
+        explain: "Pour une app complète : l'orchestrateur reçoit votre vision, puis délègue. Agent Specs (définit ce qu'on construit), Code (implémente), Tests (valide), Deploy (livre). Certains peuvent tourner en parallèle (Code + skeleton Tests), d'autres en séquence (Deploy après Tests verts). Vous ne touchez qu'à la vision."
+      },
+      {
+        q: "Comment vérifier le travail de vos agents sans tout re-vérifier vous-même ?",
+        options: [
+          "Faire confiance aux agents — ils ne font jamais d'erreurs significatives",
+          "Lire chaque ligne de code produit pour être sûr",
+          "Définir des checkpoints avec des critères de validation objectifs et mesurables",
+          "Demander à un autre agent de vérifier le premier"
+        ],
+        correct: 2,
+        explain: "Définissez des checkpoints automatisables : les tests passent ? La spec est respectée ? Les métriques de performance sont dans les limites ? Avec des critères objectifs, vous validez en secondes. Trust but verify — vous évaluez la qualité du résultat, pas chaque ligne de code."
+      },
+      {
+        q: "La différence entre un agent \"autonome\" et un agent \"supervisé\" est...",
+        options: [
+          "L'agent autonome est plus rapide, l'agent supervisé est plus précis",
+          "L'agent autonome prend des décisions seul, l'agent supervisé vous consulte pour les choix clés",
+          "L'agent autonome coûte plus cher en tokens",
+          "Il n'y a aucune différence pratique entre les deux modes"
+        ],
+        correct: 1,
+        explain: "Agent autonome = agit et décide seul jusqu'au résultat final (fort blast radius si erreur). Agent supervisé = s'arrête aux décisions importantes pour vous consulter (plus sûr, plus contrôlé). Pour débuter : supervisé. Pour les tâches maîtrisées et réversibles : autonome. Calibrez selon l'impact."
+      },
+      {
+        q: "L'objectif final d'une armée d'agents bien configurée est...",
+        options: [
+          "Ne plus jamais avoir à travailler du tout",
+          "Remplacer tous vos collaborateurs humains",
+          "Opérer à grande échelle avec votre vision comme seul input",
+          "Avoir le code le plus parfait techniquement possible"
+        ],
+        correct: 2,
+        explain: "L'objectif : passer de \"je fais\" à \"je pense et je valide\". Votre input = votre vision et vos décisions stratégiques. Les agents gèrent l'opérationnel. Vous pouvez alors travailler sur plusieurs projets en parallèle, aller 10x plus vite, et rester focus sur la valeur que vous seul apportez."
+      }
+    ]
+  },
+
+  // ── MODULE 7 ────────────────────────────────────────────────────────────
+  {
+    id: 'vision',
+    title: 'Vision & Délégation',
+    subtitle: 'Pensez CEO, pas opérateur',
+    icon: '👑',
+    colorStart: '#FBBF24',
+    colorEnd: '#F97316',
+    achievementId: 'module_vision',
+    questions: [
+      {
+        q: "Le rôle d'un \"CEO de ses agents IA\" consiste à...",
+        options: [
+          "Maîtriser la programmation pour coder chaque agent manuellement",
+          "Surveiller chaque action de chaque agent en temps réel",
+          "Définir la vision, valider les outputs clés, et ajuster la stratégie",
+          "Choisir les meilleurs modèles IA pour chaque type de tâche"
+        ],
+        correct: 2,
+        explain: "CEO de vos agents = Vision (où on va), Validation (est-ce que c'est aligné ?), Ajustement (corriger la direction). L'exécution appartient aux agents. Plus vous clarifiez votre vision en amont, mieux vos agents exécutent. C'est exactement \"être dans la réflexion, pas dans l'opérationnel\"."
+      },
+      {
+        q: "Quelle décision ne devriez-vous JAMAIS déléguer à un agent IA ?",
+        options: [
+          "Écrire le code d'un nouveau module fonctionnel",
+          "Rédiger des emails de suivi ou de relance",
+          "Définir la direction stratégique de votre projet ou business",
+          "Créer les tests automatisés d'une nouvelle feature"
+        ],
+        correct: 2,
+        explain: "La direction stratégique — quoi construire, pour qui, pourquoi, quelle valeur — reste toujours chez vous. Les agents exécutent brillamment le \"comment\". Vous êtes le seul à avoir votre contexte, vos valeurs, votre vision unique. Ne déléguez jamais le \"pourquoi\" et le \"quoi au plus haut niveau\"."
+      },
+      {
+        q: "Pour transformer votre objectif annuel en tâches agentiques, la méthode est...",
+        options: [
+          "Donner l'objectif directement à un agent et le laisser tout planifier",
+          "Décomposer : Objectif → Projets → Jalons → Tâches → Sous-tâches délégables",
+          "Créer un tableur Excel et le partager avec Claude",
+          "Suivre Scrum avec des sprints de 2 semaines pilotés par un agent"
+        ],
+        correct: 1,
+        explain: "La décomposition stratégique : Objectif annuel → 3-5 projets majeurs → Jalons mensuels (milestones) → Tâches hebdomadaires → Sous-tâches avec brief précis pour les agents. Vous gérez les jalons et décisions. Les agents gèrent les sous-tâches. Chaque niveau descend en granularité."
+      },
+      {
+        q: "Les 3 niveaux d'opération avec votre armée d'agents sont...",
+        options: [
+          "Débutant, Intermédiaire, Expert",
+          "Frontend, Backend, Infrastructure",
+          "Stratégique (vous), Tactique (orchestrateur), Opérationnel (agents workers)",
+          "Planification, Exécution, Review"
+        ],
+        correct: 2,
+        explain: "Niveau Stratégique = VOUS : vision, direction, décisions à fort impact. Niveau Tactique = Orchestrateur : décompose, planifie, coordonne les workers. Niveau Opérationnel = Agents Workers : exécutent les tâches précises (code, tests, recherche, rédaction). Restez au niveau Stratégique — c'est là que vous créez de la valeur."
+      },
+      {
+        q: "Pour identifier quoi automatiser en priorité, la règle est...",
+        options: [
+          "Automatiser ce qui est le plus difficile techniquement d'abord",
+          "Automatiser aléatoirement et voir ce qui marche",
+          "Automatiser par impact × fréquence : haute fréquence + faible valeur ajoutée de votre part",
+          "Attendre d'avoir un grand volume de travail avant d'automatiser"
+        ],
+        correct: 2,
+        explain: "La matrice de priorité : (1) Un agent peut-il faire ça ? (2) Combien de temps ça prend par semaine ? (3) Quel serait l'impact si automatisé ? Multipliez fréquence × impact. Commencez par le meilleur ratio. Exemples à fort score : rapports récurrents, recherche d'information, emails template, compilation de données."
+      },
+      {
+        q: "La différence entre \"confier une tâche\" et \"déléguer avec vision\" est...",
+        options: [
+          "La taille de la tâche — petite = confier, grande = déléguer",
+          "Confier = dicter les étapes. Déléguer = donner le résultat voulu + contexte + autonomie sur le comment",
+          "Confier = pour l'IA, Déléguer = pour les humains uniquement",
+          "Il n'y a aucune différence significative en pratique"
+        ],
+        correct: 1,
+        explain: "Confier = \"fais exactement ces étapes dans cet ordre\". Déléguer = \"voici le résultat attendu, pourquoi c'est important, et les contraintes — trouve comment y arriver\". La vraie délégation donne de l'autonomie sur le comment tout en étant crystal-clear sur le quoi et le pourquoi. C'est ainsi qu'on crée des agents vraiment autonomes."
+      },
+      {
+        q: "Un bon système de feedback pour améliorer votre armée d'agents consiste à...",
+        options: [
+          "Remplacer les agents qui font des erreurs par de nouveaux agents",
+          "Documenter chaque erreur d'agent pour affiner les briefs et mettre à jour CLAUDE.md",
+          "Passer systématiquement à des modèles IA plus puissants et coûteux",
+          "Surveiller les agents 24h/24 pour corriger en temps réel"
+        ],
+        correct: 1,
+        explain: "Chaque erreur d'agent est une information : le brief était trop vague ? Le contexte manquait ? La contrainte n'était pas explicite ? Documentez les leçons dans CLAUDE.md. Vos agents s'améliorent parce que vos briefs s'améliorent — c'est la boucle d'apprentissage. L'armée devient plus efficace à chaque itération."
+      },
+      {
+        q: "Pour un débutant qui veut construire son armée d'agents cette année, par où commencer ?",
+        options: [
+          "Apprendre Python pendant 6 mois pour créer des agents custom depuis zéro",
+          "Attendre d'avoir une grande équipe ou entreprise avant d'utiliser des agents",
+          "Automatiser UNE seule tâche récurrente, observer, apprendre, puis étendre progressivement",
+          "Tout automatiser en même temps pour avoir un maximum d'impact immédiat"
+        ],
+        correct: 2,
+        explain: "La règle du débutant stratégique : commencez par UNE automatisation. Choisissez une tâche que vous faites souvent et qui vous prend du temps. Automatisez-la avec Claude. Observez ce qui marche ou non. Améliorez le brief. Puis étendez à une deuxième tâche. L'armée se construit agent par agent — pas en un jour. La maîtrise vient de la pratique, pas de la théorie."
       }
     ]
   }

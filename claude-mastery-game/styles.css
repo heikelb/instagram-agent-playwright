@@ -251,6 +251,41 @@ body {
   transition: width 0.8s cubic-bezier(0.34,1.56,0.64,1);
 }
 
+/* ── JOURNEY BANNER ── */
+.journey-banner {
+  width: 100%;
+  background: linear-gradient(135deg, rgba(124,58,237,0.08), rgba(251,191,36,0.08));
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.journey-steps {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+}
+.journey-step {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  flex: 1; opacity: 0.4; transition: opacity 0.3s;
+}
+.journey-step.done { opacity: 0.7; }
+.journey-step.active { opacity: 1; }
+.journey-step.active .js-icon {
+  filter: drop-shadow(0 0 6px rgba(251,191,36,0.6));
+  animation: pulse-icon 2s ease-in-out infinite;
+}
+@keyframes pulse-icon {
+  0%,100% { transform: scale(1); }
+  50%      { transform: scale(1.15); }
+}
+.js-icon { font-size: 20px; }
+.js-label { font-size: 10px; font-weight: 600; color: var(--muted); text-align: center; }
+.journey-step.active .js-label { color: #FBBF24; }
+.journey-arrow { color: var(--muted); font-size: 14px; flex-shrink: 0; }
+.journey-motto {
+  font-size: 12px; color: var(--muted); text-align: center;
+  font-weight: 500; font-style: italic;
+}
+
 .modules-grid {
   display: flex; flex-direction: column; gap: 12px; width: 100%;
 }

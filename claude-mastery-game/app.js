@@ -55,8 +55,8 @@ function initHome() {
 
 function spawnParticles() {
   const container = document.getElementById('particles');
-  const colors = ['#7C3AED', '#2563EB', '#059669', '#EC4899', '#F59E0B'];
-  for (let i = 0; i < 18; i++) {
+  const colors = ['#7C3AED', '#2563EB', '#059669', '#EC4899', '#F59E0B', '#0EA5E9', '#FBBF24'];
+  for (let i = 0; i < 22; i++) {
     const p = document.createElement('div');
     p.className = 'particle';
     const size = Math.random() * 6 + 3;
@@ -85,6 +85,8 @@ function renderModules() {
   document.getElementById('xp-bar-fill').style.width = pct + '%';
   document.getElementById('xp-current').textContent = gs.xp + ' XP';
   document.getElementById('xp-next').textContent = level.maxXP + ' XP';
+
+  updateJourneyBanner();
 
   MODULES.forEach((mod, idx) => {
     const mState = gs.modules[mod.id];
@@ -119,6 +121,45 @@ function starsHTML(count) {
   let s = '';
   for (let i = 0; i < 3; i++) s += i < count ? '⭐' : '☆';
   return s;
+}
+
+// ── JOURNEY BANNER ─────────────────────────────────────────────────────
+function updateJourneyBanner() {
+  // Map modules to journey phases
+  // Phase 0 (Outils): skills, prompting
+  // Phase 1 (Communication): cowork, routines, design
+  // Phase 2 (Armée): agents
+  // Phase 3 (AI CEO): vision
+  const phases = [
+    ['skills', 'prompting'],
+    ['cowork', 'routines', 'design'],
+    ['agents'],
+    ['vision']
+  ];
+
+  let currentPhase = 0;
+  phases.forEach((ids, i) => {
+    const allDone = ids.every(id => gs.modules[id] && gs.modules[id].completed);
+    if (allDone) currentPhase = Math.min(i + 1, 3);
+  });
+
+  const mottos = [
+    'Maîtrisez les outils avant de diriger.',
+    'Communiquez avec précision, déléguez avec confiance.',
+    'Votre armée prend forme — vous approchez du sommet.',
+    '✨ Vous opérez au niveau vision. Top 1% atteint.'
+  ];
+
+  for (let i = 0; i < 4; i++) {
+    const el = document.getElementById('js-' + i);
+    if (!el) continue;
+    el.classList.remove('done', 'active');
+    if (i < currentPhase) el.classList.add('done');
+    else if (i === currentPhase) el.classList.add('active');
+  }
+
+  const motto = document.getElementById('journey-motto');
+  if (motto) motto.textContent = mottos[currentPhase];
 }
 
 // ── QUIZ START ──────────────────────────────────────────────────────────
