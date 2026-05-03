@@ -703,6 +703,11 @@ def offline():
 
 # ── Claude Mastery Game ────────────────────────────────────────────────────
 @app.route("/claude-mastery")
+def claude_mastery_redirect():
+    from flask import redirect
+    return redirect("/claude-mastery/")
+
+@app.route("/claude-mastery/")
 @app.route("/claude-mastery/<path:filename>")
 def claude_mastery(filename="index.html"):
     return send_from_directory("claude-mastery-game", filename)

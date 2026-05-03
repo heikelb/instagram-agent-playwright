@@ -101,16 +101,19 @@ function renderModules() {
     const statusClass = isLocked ? 'locked' : (mState.completed ? 'done' : 'new');
 
     card.innerHTML = `
-      <div class="module-icon-wrap" style="background: linear-gradient(135deg, ${mod.colorStart}, ${mod.colorEnd})">
-        ${mod.icon}
-      </div>
-      <div class="module-info">
-        <div class="module-title">${mod.title}</div>
-        <div class="module-subtitle">${mod.subtitle}</div>
-      </div>
-      <div class="module-meta">
-        <div class="module-stars">${stars}</div>
-        <div class="module-status ${statusClass}">${statusText}</div>
+      <div class="module-color-bar" style="background: linear-gradient(180deg, ${mod.colorStart}, ${mod.colorEnd})"></div>
+      <div class="module-card-inner">
+        <div class="module-icon-wrap" style="background: linear-gradient(135deg, ${mod.colorStart}, ${mod.colorEnd})">
+          ${mod.icon}
+        </div>
+        <div class="module-info">
+          <div class="module-title">${mod.title}</div>
+          <div class="module-subtitle">${mod.subtitle}</div>
+        </div>
+        <div class="module-meta">
+          <div class="module-stars">${stars}</div>
+          <div class="module-status ${statusClass}">${statusText}</div>
+        </div>
       </div>
     `;
     grid.appendChild(card);
