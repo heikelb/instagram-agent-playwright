@@ -373,47 +373,54 @@ function _renderSceneContent(scene, index, scenes, mod) {
 }
 
 function _renderOrbitEmoji(castEl, item, i) {
-  // Orbit wrapper: a div centred at (item.x, item.y) that rotates
-  const wrapper = document.createElement('div');
-  wrapper.style.cssText = `
+  // Use a single element with c-orbit which does rotate->translateX->counter-rotate
+  // The element is positioned at the orbit centre (item.x, item.y)
+  const el = document.createElement('div');
+  el.className = 'cast-emoji';
+  const r = item.orbitRadius || 55;
+  el.style.cssText = `
     position: absolute;
     left: ${item.x}%;
     top: ${item.y}%;
-    width: 0; height: 0;
-    animation: c-orbit ${item.duration || '3s'} ${item.delay || '0s'} infinite linear;
-  `;
-
-  const emoji = document.createElement('div');
-  const r = item.orbitRadius || 55;
-  emoji.style.cssText = `
-    position: absolute;
     font-size: ${item.size}px;
-    left: ${r}px;
-    top: 0;
-    transform: translate(-50%, -50%);
-    user-select: none;
-    line-height: 1;
-    counter-reset: none;
+    animation: c-orbit-r${r} ${item.duration || '3s'} ${item.delay || '0s'} infinite linear;
+    user-select: none; line-height: 1;
   `;
 
   const parts = item.e.split('/');
-  emoji.textContent = parts[0];
+  el.textContent = parts[0];
 
   if (parts.length > 1) {
     const sub = document.createElement('div');
     sub.style.cssText = `
-      position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+      position: absolute; top: 100%; left: 50%;
       font-size: ${Math.max(9, Math.round(item.size * 0.28))}px;
       font-weight: 900; color: white;
       background: rgba(0,0,0,0.5); padding: 1px 5px; border-radius: 4px;
       white-space: nowrap; font-family: monospace; margin-top: 2px;
     `;
     sub.textContent = '/' + parts[1];
-    emoji.appendChild(sub);
+    el.appendChild(sub);
   }
 
-  wrapper.appendChild(emoji);
-  castEl.appendChild(wrapper);
+  // Inject a dynamic keyframe for this orbit radius if not already present
+  _ensureOrbitKeyframe(r);
+
+  castEl.appendChild(el);
+}
+
+function _ensureOrbitKeyframe(r) {
+  const id = `c-orbit-r${r}`;
+  if (document.getElementById(id)) return;
+  const style = document.createElement('style');
+  style.id = id;
+  style.textContent = `
+    @keyframes ${id} {
+      0%   { transform: translate(-50%, -50%) rotate(0deg) translateX(${r}px) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg) translateX(${r}px) rotate(-360deg); }
+    }
+  `;
+  document.head.appendChild(style);
 }
 
 function _typewriterText(el, text) {
