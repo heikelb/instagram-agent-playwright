@@ -32,6 +32,38 @@ const MODULES = [
     colorStart: '#7C3AED',
     colorEnd: '#4F46E5',
     achievementId: 'module_skills',
+    lessons: [
+      {
+        icon: '⚡',
+        title: 'Les Skills, c\'est quoi ?',
+        visual: 'command',
+        bullets: [
+          'Un skill = un <strong>agent spécialisé</strong> avec ses propres outils',
+          'On l\'active en tapant <code>/nom-du-skill</code> dans le chat',
+          'Chaque skill a une expertise très précise — comme un collègue expert'
+        ]
+      },
+      {
+        icon: '🚀',
+        title: 'Les Skills essentiels à connaître',
+        visual: 'list',
+        bullets: [
+          '<code>/init</code> → génère CLAUDE.md pour contextualiser votre projet',
+          '<code>/review</code> → revue de code complète avant un merge',
+          '<code>/update-config</code> → configure les automatisations (hooks)'
+        ]
+      },
+      {
+        icon: '🤖',
+        title: 'Skills avancés pour aller plus loin',
+        visual: 'grid',
+        bullets: [
+          '<code>/loop</code> → répète une tâche à intervalle (ex: toutes les 5 min)',
+          '<code>/session-start-hook</code> → configure l\'environnement au démarrage',
+          '<code>/fewer-permission-prompts</code> → réduit les interruptions de permission'
+        ]
+      }
+    ],
     questions: [
       {
         q: "Qu'est-ce qu'un \"skill\" dans Claude Code ?",
@@ -121,6 +153,38 @@ const MODULES = [
   {
     id: 'prompting',
     title: 'Prompter Claude Code',
+    lessons: [
+      {
+        icon: '🎯',
+        title: 'La règle d\'or : Plan d\'abord',
+        visual: 'flow',
+        bullets: [
+          'Demandez <strong>d\'abord un plan</strong>, validez-le, puis lancez l\'exécution',
+          'Claude présente ses idées comme <strong>redirectibles</strong> — pas définitives',
+          'Une bonne direction = 10x meilleur résultat final'
+        ]
+      },
+      {
+        icon: '📄',
+        title: 'CLAUDE.md : la mémoire permanente',
+        visual: 'file',
+        bullets: [
+          'CLAUDE.md est lu <strong>automatiquement</strong> à chaque session',
+          'Il contient le contexte, les conventions, les commandes du projet',
+          'Créez-le avec <code>/init</code> — c\'est votre premier réflexe sur un projet'
+        ]
+      },
+      {
+        icon: '🔍',
+        title: 'Référencez précisément votre code',
+        visual: 'code',
+        bullets: [
+          'Utilisez le format <code>fichier.js:42</code> pour indiquer une ligne précise',
+          'Claude navigue directement à cet endroit — zéro ambiguité',
+          'Ne copiez-collez pas du code — pointez vers lui'
+        ]
+      }
+    ],
     subtitle: "L'art de communiquer avec Claude",
     icon: '🎯',
     colorStart: '#2563EB',
@@ -224,6 +288,38 @@ const MODULES = [
     icon: '🤝',
     colorStart: '#059669',
     colorEnd: '#0D9488',
+    lessons: [
+      {
+        icon: '🤝',
+        title: 'Vos agents spécialisés',
+        visual: 'agents',
+        bullets: [
+          '<strong>Explore</strong> → trouve du code, localise des fichiers (lecture seule, ultra rapide)',
+          '<strong>Plan</strong> → conçoit la stratégie et les trade-offs architecturaux',
+          '<strong>General-purpose</strong> → tâches complexes multi-étapes'
+        ]
+      },
+      {
+        icon: '⚡',
+        title: 'Parallèle = 10x plus rapide',
+        visual: 'parallel',
+        bullets: [
+          'Envoyez plusieurs agents dans <strong>un seul message</strong> pour les paralléliser',
+          'Tâches indépendantes → parallèle. Tâches liées → séquentiel',
+          'Foreground = besoin du résultat. Background = travail indépendant'
+        ]
+      },
+      {
+        icon: '🔍',
+        title: 'Trust but Verify',
+        visual: 'verify',
+        bullets: [
+          'Le résumé d\'un agent = son <strong>intention</strong>, pas forcément ce qu\'il a fait',
+          'Vérifiez toujours les vrais changements avant de valider',
+          'Votre prompt doit prouver que <strong>vous</strong> avez compris — l\'agent exécute'
+        ]
+      }
+    ],
     achievementId: 'module_cowork',
     questions: [
       {
@@ -323,6 +419,38 @@ const MODULES = [
     icon: '⚙️',
     colorStart: '#D97706',
     colorEnd: '#DC2626',
+    lessons: [
+      {
+        icon: '⚙️',
+        title: 'Les Hooks : votre assistant 24h/24',
+        visual: 'hook',
+        bullets: [
+          'Un hook = une <strong>commande shell automatique</strong> déclenchée par un événement',
+          'Configurés dans <code>settings.json</code> — pas dans chaque prompt',
+          'Ils s\'exécutent même quand vous n\'écrivez rien'
+        ]
+      },
+      {
+        icon: '🔔',
+        title: 'Les 3 événements clés',
+        visual: 'events',
+        bullets: [
+          '<strong>PreToolUse</strong> → s\'exécute avant chaque appel d\'outil',
+          '<strong>Stop</strong> → s\'exécute quand Claude termine sa réponse',
+          '<strong>SessionStart</strong> → configure l\'environnement au démarrage'
+        ]
+      },
+      {
+        icon: '🤖',
+        title: '"À chaque fois que…" → Hook',
+        visual: 'auto',
+        bullets: [
+          'Tout comportement récurrent = un hook dans <code>settings.json</code>',
+          'Utilisez <code>/update-config</code> pour les configurer sans toucher les fichiers',
+          'Résultat : Claude fait automatiquement ce que vous lui demandiez à chaque fois'
+        ]
+      }
+    ],
     achievementId: 'module_routines',
     questions: [
       {
@@ -422,6 +550,38 @@ const MODULES = [
     icon: '🎨',
     colorStart: '#EC4899',
     colorEnd: '#8B5CF6',
+    lessons: [
+      {
+        icon: '👁️',
+        title: 'Testez dans le navigateur. Toujours.',
+        visual: 'browser',
+        bullets: [
+          'TypeScript qui compile ≠ interface qui <strong>ressemble</strong> à ce que vous voulez',
+          'Après chaque changement UI → démarrez le serveur → vérifiez dans le navigateur',
+          'Si vous ne pouvez pas tester visuellement, <strong>dites-le</strong> — ne prétendez pas que c\'est fini'
+        ]
+      },
+      {
+        icon: '📸',
+        title: 'Claude voit vos images',
+        visual: 'image',
+        bullets: [
+          'Partagez un <strong>screenshot</strong> d\'un bug visuel ou d\'un design de référence',
+          'Claude analyse la maquette Figma exportée pour implémenter précisément',
+          'Feedback visuel + screenshot = la boucle d\'itération la plus efficace'
+        ]
+      },
+      {
+        icon: '✍️',
+        title: 'Le brief design parfait',
+        visual: 'brief',
+        bullets: [
+          '<strong>Contexte</strong> : qui sont les utilisateurs, quel est le produit',
+          '<strong>Contraintes</strong> : stack tech, performance, accessibilité',
+          '<strong>Résultat attendu</strong> : décrivez précisément ce que vous voulez voir'
+        ]
+      }
+    ],
     achievementId: 'module_design',
     questions: [
       {
@@ -524,6 +684,38 @@ const MODULES = [
     colorStart: '#0EA5E9',
     colorEnd: '#6366F1',
     achievementId: 'module_agents',
+    lessons: [
+      {
+        icon: '🏗️',
+        title: 'L\'architecture de votre armée',
+        visual: 'army',
+        bullets: [
+          '<strong>Vous</strong> → donnez la vision à l\'Orchestrateur',
+          '<strong>Orchestrateur</strong> → décompose et délègue aux Workers',
+          '<strong>Workers</strong> → exécutent (code, tests, recherche, déploiement)'
+        ]
+      },
+      {
+        icon: '📋',
+        title: 'Le Brief d\'Agent parfait',
+        visual: 'brief2',
+        bullets: [
+          '<strong>Contexte</strong> : qui vous êtes, quel est le projet',
+          '<strong>Objectif précis</strong> : ce que l\'agent doit produire exactement',
+          '<strong>Critères de succès + Contraintes</strong> : comment valider le résultat'
+        ]
+      },
+      {
+        icon: '📈',
+        title: 'Automatisez par priorité',
+        visual: 'priority',
+        bullets: [
+          'Listez toutes vos tâches répétitives avec <strong>fréquence × durée</strong>',
+          'Commencez par <strong>haute fréquence + faible valeur ajoutée</strong> de votre part',
+          'Une automatisation à la fois — l\'armée se construit progressivement'
+        ]
+      }
+    ],
     questions: [
       {
         q: "Qu'est-ce qu'un système multi-agents avec Claude Code ?",
@@ -623,6 +815,38 @@ const MODULES = [
     subtitle: 'Pensez CEO, pas opérateur',
     icon: '👑',
     colorStart: '#FBBF24',
+    lessons: [
+      {
+        icon: '👑',
+        title: 'Vous = CEO de vos agents',
+        visual: 'ceo',
+        bullets: [
+          '<strong>Stratégique (vous)</strong> : vision, direction, décisions importantes',
+          '<strong>Tactique (orchestrateur)</strong> : décompose, planifie, coordonne',
+          '<strong>Opérationnel (workers)</strong> : exécutent les tâches précises'
+        ]
+      },
+      {
+        icon: '🚫',
+        title: 'Ce qu\'on ne délègue JAMAIS',
+        visual: 'nope',
+        bullets: [
+          'La <strong>direction stratégique</strong> reste toujours chez vous',
+          'Votre vision unique, vos valeurs, votre "pourquoi" — irremplaçables',
+          'Les agents exécutent le <strong>comment</strong> — vous décidez le <strong>quoi</strong>'
+        ]
+      },
+      {
+        icon: '🔄',
+        title: 'La boucle d\'amélioration continue',
+        visual: 'loop',
+        bullets: [
+          'Chaque erreur d\'agent = une information pour <strong>améliorer votre brief</strong>',
+          'Documentez les leçons dans CLAUDE.md — l\'armée s\'améliore à chaque itération',
+          'Objectif final : votre <strong>vision seule</strong> suffit à tout déclencher'
+        ]
+      }
+    ],
     colorEnd: '#F97316',
     achievementId: 'module_vision',
     questions: [

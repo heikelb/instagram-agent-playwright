@@ -106,6 +106,49 @@
   </div>
 
   <!-- ══════════════════════════════════════════
+       SCREEN: LESSON (avant le quiz)
+  ══════════════════════════════════════════ -->
+  <div id="screen-lesson" class="screen">
+
+    <!-- Top bar -->
+    <div class="lesson-topbar">
+      <button class="nav-back" onclick="exitLesson()">✕</button>
+      <div class="lesson-dots-wrap" id="lesson-dots"></div>
+      <button class="lesson-skip-btn" onclick="skipLesson()">Passer</button>
+    </div>
+
+    <!-- Slide content -->
+    <div class="lesson-slide-wrap">
+      <!-- Animated visual -->
+      <div class="lesson-visual" id="lesson-visual">
+        <div class="lesson-visual-bg" id="lesson-visual-bg"></div>
+        <div class="lesson-visual-icon" id="lesson-visual-icon">⚡</div>
+      </div>
+
+      <!-- Text content -->
+      <div class="lesson-content">
+        <h2 class="lesson-title" id="lesson-title">Titre</h2>
+        <ul class="lesson-bullets" id="lesson-bullets"></ul>
+      </div>
+    </div>
+
+    <!-- Bottom bar -->
+    <div class="lesson-bottom">
+      <!-- Timer bar -->
+      <div class="lesson-timer-bar">
+        <div class="lesson-timer-fill" id="lesson-timer-fill"></div>
+      </div>
+      <div class="lesson-bottom-btns">
+        <div class="lesson-slide-counter" id="lesson-counter">1 / 3</div>
+        <button class="btn-primary" id="btn-lesson-next" onclick="nextLessonSlide()">
+          Suivant →
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
        SCREEN: QUIZ
   ══════════════════════════════════════════ -->
   <div id="screen-quiz" class="screen">

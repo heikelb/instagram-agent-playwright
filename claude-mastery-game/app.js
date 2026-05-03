@@ -165,8 +165,157 @@ function updateJourneyBanner() {
   if (motto) motto.textContent = mottos[currentPhase];
 }
 
-// ── QUIZ START ──────────────────────────────────────────────────────────
+// ── LESSON SYSTEM ──────────────────────────────────────────────────────
+let ls = null; // lesson state
+
 function startModule(moduleId) {
+  const mod = MODULES.find(m => m.id === moduleId);
+  // Show lessons first if module has them and hasn't been completed yet
+  if (mod.lessons && mod.lessons.length > 0) {
+    startLesson(mod);
+  } else {
+    launchQuiz(moduleId);
+  }
+}
+
+function startLesson(mod) {
+  ls = {
+    mod,
+    index: 0,
+    timer: null,
+    timeLeft: 12,
+    bulletTimers: []
+  };
+  applyLessonTheme(mod);
+  showScreen('lesson');
+  renderLessonSlide();
+}
+
+function applyLessonTheme(mod) {
+  const root = document.documentElement;
+  root.style.setProperty('--lesson-color', mod.colorStart);
+  root.style.setProperty('--lesson-gradient', `linear-gradient(135deg, ${mod.colorStart}, ${mod.colorEnd})`);
+}
+
+function renderLessonSlide() {
+  const slide = ls.mod.lessons[ls.index];
+  const total = ls.mod.lessons.length;
+
+  // Dots
+  const dotsWrap = document.getElementById('lesson-dots');
+  dotsWrap.innerHTML = '';
+  for (let i = 0; i < total; i++) {
+    const d = document.createElement('div');
+    d.className = 'lesson-dot' + (i === ls.index ? ' active' : i < ls.index ? ' done' : '');
+    dotsWrap.appendChild(d);
+  }
+
+  // Counter
+  document.getElementById('lesson-counter').textContent = (ls.index + 1) + ' / ' + total;
+
+  // Visual
+  document.getElementById('lesson-visual-icon').textContent = slide.icon;
+
+  // Add floating shapes for depth
+  const vBg = document.getElementById('lesson-visual-bg');
+  vBg.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const s = document.createElement('div');
+    const size = 60 + i * 50;
+    s.className = 'lesson-visual-shape';
+    s.style.cssText = `
+      width:${size}px; height:${size}px;
+      left:${10 + i*25}%; top:${10 + i*20}%;
+      animation-duration:${3 + i * 1.5}s;
+      animation-delay:${i * 0.7}s;
+    `;
+    vBg.appendChild(s);
+  }
+
+  // Title (animate)
+  const titleEl = document.getElementById('lesson-title');
+  titleEl.style.opacity = '0';
+  titleEl.textContent = slide.title;
+  setTimeout(() => { titleEl.style.transition = 'opacity 0.5s'; titleEl.style.opacity = '1'; }, 50);
+
+  // Bullets — appear one by one
+  ls.bulletTimers.forEach(clearTimeout);
+  ls.bulletTimers = [];
+  const bulletsEl = document.getElementById('lesson-bullets');
+  bulletsEl.innerHTML = '';
+
+  slide.bullets.forEach((text, i) => {
+    const li = document.createElement('li');
+    li.className = 'lesson-bullet-item';
+    li.innerHTML = `<span class="bullet-num">${i + 1}</span><span>${text}</span>`;
+    bulletsEl.appendChild(li);
+    const t = setTimeout(() => li.classList.add('visible'), 300 + i * 500);
+    ls.bulletTimers.push(t);
+  });
+
+  // Next button label
+  const isLast = ls.index === total - 1;
+  document.getElementById('btn-lesson-next').textContent = isLast ? '🚀 Commencer le Quiz' : 'Suivant →';
+
+  // Timer bar
+  startLessonTimer();
+}
+
+function startLessonTimer() {
+  if (ls.timer) clearInterval(ls.timer);
+  ls.timeLeft = 12;
+  const fill = document.getElementById('lesson-timer-fill');
+  fill.style.transition = 'none';
+  fill.style.width = '100%';
+
+  setTimeout(() => {
+    fill.style.transition = `width ${ls.timeLeft}s linear`;
+    fill.style.width = '0%';
+  }, 100);
+
+  ls.timer = setInterval(() => {
+    ls.timeLeft--;
+    if (ls.timeLeft <= 0) {
+      clearInterval(ls.timer);
+      nextLessonSlide();
+    }
+  }, 1000);
+}
+
+function nextLessonSlide() {
+  if (!ls) return;
+  clearInterval(ls.timer);
+  ls.bulletTimers.forEach(clearTimeout);
+
+  ls.index++;
+  if (ls.index >= ls.mod.lessons.length) {
+    const moduleId = ls.mod.id;
+    ls = null;
+    launchQuiz(moduleId);
+  } else {
+    renderLessonSlide();
+  }
+}
+
+function skipLesson() {
+  if (!ls) return;
+  clearInterval(ls.timer);
+  ls.bulletTimers.forEach(clearTimeout);
+  const moduleId = ls.mod.id;
+  ls = null;
+  launchQuiz(moduleId);
+}
+
+function exitLesson() {
+  if (!ls) return;
+  clearInterval(ls.timer);
+  ls.bulletTimers.forEach(clearTimeout);
+  ls = null;
+  showScreen('modules');
+}
+
+// ── QUIZ LAUNCH (after lessons) ──────────────────────────────────────────
+function launchQuiz(moduleId) {
   const mod = MODULES.find(m => m.id === moduleId);
   gs.modules[moduleId].attempts++;
   saveGS();
@@ -419,7 +568,7 @@ function showGameOver() {
 function retryModule() {
   const overlay = document.getElementById('game-over-overlay');
   if (overlay) overlay.remove();
-  startModule(qs.moduleId);
+  launchQuiz(qs.moduleId);
 }
 
 function exitToModules() {
@@ -536,7 +685,7 @@ function showResults(correct, total, stars) {
 
   if (stars >= 2) triggerConfetti();
 
-  document.getElementById('btn-retry').onclick = () => startModule(qs.moduleId);
+  document.getElementById('btn-retry').onclick = () => startModule(qs.moduleId); // re-show lessons on retry
 }
 
 // ── PROFILE ────────────────────────────────────────────────────────────
