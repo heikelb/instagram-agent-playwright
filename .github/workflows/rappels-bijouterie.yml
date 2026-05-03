@@ -1,0 +1,74 @@
+name: Rappels SMS – Recherche Patron Bijouterie
+
+# ─────────────────────────────────────────────────────────────────
+# Horaires adaptés aux ateliers bijouterie (ouverture ~9h, déj 12h-14h, fermeture ~18h)
+#
+# Les heures sont en UTC. Paris = UTC+2 (été CEST) / UTC+1 (hiver CET)
+#   • 9h30 Paris (été)  = 07h30 UTC  → créneau matin
+#   • 14h00 Paris (été) = 12h00 UTC  → créneau début après-midi
+#   • 17h00 Paris (été) = 15h00 UTC  → créneau fin après-midi
+#
+# Du lundi au samedi (les artisans travaillent souvent le samedi)
+# ─────────────────────────────────────────────────────────────────
+on:
+  schedule:
+    - cron: '30 7 * * 1-6'   # 9h30 Paris (été) – rappel matin
+    - cron: '0 12 * * 1-6'   # 14h00 Paris (été) – rappel début aprem
+    - cron: '0 15 * * 1-6'   # 17h00 Paris (été) – rappel fin aprem
+
+  # Déclenchement manuel (pour tester)
+  workflow_dispatch:
+    inputs:
+      moment:
+        description: 'Créneau du rappel'
+        required: true
+        default: 'matin'
+        type: choice
+        options:
+          - matin
+          - debut_aprem
+          - fin_aprem
+
+jobs:
+  send-sms:
+    name: Envoyer rappel SMS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: rappels_sms/requirements.txt
+
+      - name: Installer les dépendances
+        run: pip install -r rappels_sms/requirements.txt
+
+      # Détermine le créneau selon l'heure UTC du déclenchement (ou l'input manuel)
+      - name: Déterminer le créneau
+        id: creneau
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "moment=${{ github.event.inputs.moment }}" >> $GITHUB_OUTPUT
+          else
+            HOUR=$(date -u +%H)
+            if [ "$HOUR" -le "09" ]; then
+              echo "moment=matin" >> $GITHUB_OUTPUT
+            elif [ "$HOUR" -le "13" ]; then
+              echo "moment=debut_aprem" >> $GITHUB_OUTPUT
+            else
+              echo "moment=fin_aprem" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Envoyer le SMS de rappel
+        env:
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN:  ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_FROM_NUMBER: ${{ secrets.TWILIO_FROM_NUMBER }}
+          RECIPIENT_NUMBER:   ${{ secrets.RECIPIENT_NUMBER }}
+        run: python rappels_sms/send_reminder.py ${{ steps.creneau.outputs.moment }}
