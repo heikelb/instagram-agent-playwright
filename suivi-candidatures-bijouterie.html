@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recherche Patron – CAP Bijouterie Lyon</title>
+    <style>
+        :root {
+            --primary: #7c3aed;
+            --primary-light: #ede9fe;
+            --bg: #f5f3ff;
+            --card: #ffffff;
+            --text: #1e1b4b;
+            --text-light: #6b7280;
+            --border: #e5e7eb;
+            --green: #10b981;
+            --orange: #f59e0b;
+            --red: #ef4444;
+            --blue: #3b82f6;
+            --shadow: 0 2px 12px rgba(0,0,0,0.07);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding-bottom: 100px;
+        }
+
+        /* ── HEADER ── */
+        .header {
+            background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%);
+            color: white;
+            padding: 18px 16px 14px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 3px 12px rgba(91,33,182,0.35);
+        }
+
+        .header-top { display: flex; align-items: center; gap: 10px; margin-bottom: 3px; }
+        .header h1 { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
+        .header p  { font-size: 12px; opacity: 0.8; margin-bottom: 12px; }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
+
+        .stat {
+            background: rgba(255,255,255,0.15);
+            border-radius: 10px;
+            padding: 7px 4px 5px;
+            text-align: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .stat-num  { font-size: 22px; font-weight: 800; display: block; line-height: 1; }
+        .stat-label{ font-size: 10px; opacity: 0.85; margin-top: 2px; display: block; }
+        .stat.found{ background: rgba(16,185,129,0.3); }
+
+        /* ── REMINDER BANNER ── */
+        .reminder-banner {
+            display: none;
+            margin: 10px 12px 0;
+            background: #fff7ed;
+            border: 1.5px solid #fed7aa;
+            border-left: 5px solid var(--orange);
+            border-radius: 10px;
+            padding: 11px 14px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .reminder-banner.show { display: block; }
+        .reminder-banner strong { color: #c2410c; }
+
+        /* ── FILTER TABS ── */
+        .filters {
+            padding: 10px 12px 6px;
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .filters::-webkit-scrollbar { display: none; }
+
+        .filter-btn {
+            border: none;
+            padding: 7px 13px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            background: white;
+            color: var(--text-light);
+            box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+            transition: all 0.15s;
+        }
+
+        .filter-btn.active { background: var(--primary); color: white; }
+
+        /* ── SECTION TITLE ── */
+        .section-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-light);
+            padding: 14px 14px 6px;
+        }
+
+        /* ── CARDS ── */
+        .cards { padding: 0 12px; display: flex; flex-direction: column; gap: 10px; }
+
+        .card {
+            background: var(--card);
+            border-radius: 14px;
+            padding: 14px;
+            box-shadow: var(--shadow);
+            border: 2px solid transparent;
+            transition: border-color 0.2s;
+        }
+
+        .card.urgent { border-color: var(--orange); }
+        .card.found  { border-color: var(--green);  }
+
+        /* Card header */
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 7px;
+        }
+
+        .card-name {
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.3;
+            flex: 1;
+        }
+
+        .card-type {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 20px;
+            white-space: nowrap;
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .card-type.cfa { background: #fef3c7; color: #b45309; }
+
+        /* Card info */
+        .card-info {
+            font-size: 12.5px;
+            color: var(--text-light);
+            margin-bottom: 10px;
+            line-height: 1.7;
+        }
+
+        .card-info a { color: var(--primary); text-decoration: none; }
+        .card-info .tel { font-weight: 700; color: var(--text); font-size: 14px; }
+
+        /* Urgent / days badge */
+        .days-badge {
+            display: none;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 5px 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .days-badge.show      { display: block; }
+        .days-badge.overdue   { background: #fff7ed; color: #c2410c; }
+        .days-badge.ok        { background: #f0fdf4; color: #15803d; }
+
+        /* Status buttons */
+        .status-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--text-light);
+            margin-bottom: 7px;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .s-btn {
+            border: 2px solid transparent;
+            padding: 8px 5px;
+            border-radius: 9px;
+            font-size: 11.5px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.12s;
+            line-height: 1.2;
+        }
+
+        .s-btn:hover { filter: brightness(0.93); }
+
+        /* Statuts */
+        .s-btn[data-s="À contacter"]         { background:#f3f4f6; color:#374151; }
+        .s-btn[data-s="À contacter"].on      { background:#374151; color:white; }
+
+        .s-btn[data-s="Candidature envoyée"] { background:#eff6ff; color:#1d4ed8; }
+        .s-btn[data-s="Candidature envoyée"].on { background:#2563eb; color:white; }
+
+        .s-btn[data-s="En attente"]          { background:#fffbeb; color:#b45309; }
+        .s-btn[data-s="En attente"].on       { background:#d97706; color:white; }
+
+        .s-btn[data-s="RDV obtenu"]          { background:#faf5ff; color:#6d28d9; }
+        .s-btn[data-s="RDV obtenu"].on       { background:#7c3aed; color:white; }
+
+        .s-btn[data-s="Refus"]               { background:#fef2f2; color:#b91c1c; }
+        .s-btn[data-s="Refus"].on            { background:#dc2626; color:white; }
+
+        .s-btn[data-s="Patron trouvé !"]     { background:#ecfdf5; color:#065f46; grid-column: span 2; font-size: 13px; padding: 10px; }
+        .s-btn[data-s="Patron trouvé !"].on  { background:#059669; color:white; }
+
+        /* Toggle details */
+        .toggle-btn {
+            background: none;
+            border: none;
+            font-size: 12px;
+            color: var(--text-light);
+            cursor: pointer;
+            text-decoration: underline;
+            padding: 2px 0;
+        }
+
+        .details-section { display: none; margin-top: 10px; }
+        .details-section.open { display: block; }
+
+        .detail-field { margin-bottom: 10px; }
+        .detail-field label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--text-light);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .detail-field input[type="date"],
+        .detail-field textarea {
+            width: 100%;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 13px;
+            font-family: inherit;
+            color: var(--text);
+            background: #fafafa;
+            resize: none;
+        }
+
+        .detail-field input[type="date"]:focus,
+        .detail-field textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: white;
+        }
+
+        /* ── FAB ── */
+        .fab {
+            position: fixed;
+            bottom: 22px;
+            right: 16px;
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            font-size: 30px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 18px rgba(124,58,237,0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.15s;
+            z-index: 50;
+        }
+
+        .fab:active { transform: scale(0.93); }
+
+        /* ── TOAST ── */
+        .toast {
+            position: fixed;
+            bottom: 95px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e1b4b;
+            color: white;
+            padding: 10px 22px;
+            border-radius: 22px;
+            font-size: 13px;
+            font-weight: 600;
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.25s;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .toast.show { opacity: 1; }
+
+        /* ── MODAL ── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            display: none;
+            align-items: flex-end;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal {
+            background: white;
+            width: 100%;
+            border-radius: 20px 20px 0 0;
+            padding: 22px 18px 30px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .modal h2 { font-size: 17px; font-weight: 800; margin-bottom: 18px; }
+
+        .modal .field { margin-bottom: 14px; }
+        .modal .field label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-light);
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .modal .field input,
+        .modal .field textarea,
+        .modal .field select {
+            width: 100%;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            padding: 11px 13px;
+            font-size: 14px;
+            font-family: inherit;
+            color: var(--text);
+            resize: vertical;
+        }
+
+        .modal .field input:focus,
+        .modal .field textarea:focus,
+        .modal .field select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .modal-actions { display: flex; gap: 8px; margin-top: 6px; }
+
+        .btn-primary {
+            flex: 1;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 13px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: var(--text);
+            border: none;
+            padding: 13px 18px;
+            border-radius: 12px;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        /* ── EMPTY STATE ── */
+        .empty {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+        /* Delete button inside card */
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #d1d5db;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 2px 4px;
+            margin-left: 4px;
+        }
+
+        .delete-btn:hover { color: var(--red); }
+
+        /* ── RESET BUTTON ── */
+        .reset-area {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .reset-btn {
+            background: none;
+            border: 1.5px solid #d1d5db;
+            color: var(--text-light);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .reset-btn:hover { border-color: var(--red); color: var(--red); }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<div class="header">
+    <div class="header-top">
+        <div>
+            <h1>💎 Recherche Patron</h1>
+            <p>CAP Bijouterie Fabrication · Lyon</p>
+        </div>
+    </div>
+    <div class="stats">
+        <div class="stat">
+            <span class="stat-num" id="stat-total">0</span>
+            <span class="stat-label">Total</span>
+        </div>
+        <div class="stat">
+            <span class="stat-num" id="stat-contact">0</span>
+            <span class="stat-label">Contactés</span>
+        </div>
+        <div class="stat">
+            <span class="stat-num" id="stat-wait">0</span>
+            <span class="stat-label">En attente</span>
+        </div>
+        <div class="stat found">
+            <span class="stat-num" id="stat-found">0</span>
+            <span class="stat-label">Patron ✓</span>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════ REMINDER BANNER ═══════════════════ -->
+<div class="reminder-banner" id="reminderBanner">
+    <strong>⏰ Rappel !</strong>
+    Tu as <strong id="reminderCount">0</strong> contact(s) qui attendent ta relance depuis plus de 7 jours.
+    Ils apparaissent en orange dans la liste 👇
+</div>
+
+<!-- ═══════════════════ FILTERS ═══════════════════ -->
+<div class="filters" id="filterBar">
+    <button class="filter-btn active" data-f="tous"              onclick="setFilter(this)">Tous</button>
+    <button class="filter-btn"        data-f="À contacter"       onclick="setFilter(this)">🔵 À contacter</button>
+    <button class="filter-btn"        data-f="Candidature envoyée" onclick="setFilter(this)">📤 Envoyé</button>
+    <button class="filter-btn"        data-f="En attente"        onclick="setFilter(this)">⏳ En attente</button>
+    <button class="filter-btn"        data-f="RDV obtenu"        onclick="setFilter(this)">📅 RDV</button>
+    <button class="filter-btn"        data-f="Patron trouvé !"   onclick="setFilter(this)">🏆 Patron</button>
+    <button class="filter-btn"        data-f="Refus"             onclick="setFilter(this)">❌ Refus</button>
+</div>
+
+<!-- ═══════════════════ CONTENT ═══════════════════ -->
+<div id="content"></div>
+
+<!-- ═══════════════════ FAB ═══════════════════ -->
+<button class="fab" onclick="openModal()" title="Ajouter un patron">+</button>
+
+<!-- ═══════════════════ TOAST ═══════════════════ -->
+<div class="toast" id="toast"></div>
+
+<!-- ═══════════════════ MODAL ═══════════════════ -->
+<div class="modal-overlay" id="addModal" onclick="handleOverlayClick(event)">
+    <div class="modal">
+        <h2>Ajouter un patron</h2>
+        <div class="field">
+            <label>Nom *</label>
+            <input type="text" id="newNom" placeholder="Ex: Atelier Bijoux Dupont" />
+        </div>
+        <div class="field">
+            <label>Type</label>
+            <select id="newType">
+                <option value="Artisan bijoutier">Artisan bijoutier</option>
+                <option value="Artisan joaillier">Artisan joaillier</option>
+                <option value="Grande maison">Grande maison</option>
+                <option value="Atelier-boutique">Atelier-boutique</option>
+                <option value="CFA">CFA / École</option>
+                <option value="Autre">Autre</option>
+            </select>
+        </div>
+        <div class="field">
+            <label>Adresse</label>
+            <input type="text" id="newAdresse" placeholder="Ex: 12 rue des Arts, Lyon 1" />
+        </div>
+        <div class="field">
+            <label>Téléphone</label>
+            <input type="tel" id="newTel" placeholder="04 XX XX XX XX" />
+        </div>
+        <div class="field">
+            <label>Site web</label>
+            <input type="url" id="newSite" placeholder="https://..." />
+        </div>
+        <div class="field">
+            <label>Notes</label>
+            <textarea id="newNotes" rows="3" placeholder="Informations utiles, contact, conseils..."></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal()">Annuler</button>
+            <button class="btn-primary"   onclick="addPatron()">Ajouter</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════ SCRIPT ═══════════════════ -->
+<script>
+// ─────────────────────────────────────────────────
+// DONNÉES PAR DÉFAUT
+// ─────────────────────────────────────────────────
+const DEFAULT_PATRONS = [
+    // ── ATELIERS & ARTISANS ─────────────────────
+    {
+        id: 1,
+        nom: "Maison Sauvat (Dalloz Joaillerie)",
+        type: "Grande maison",
+        priorite: "haute",
+        adresse: "Lentilly (proche Lyon)",
+        telephone: "",
+        site: "https://dalloz-joaillerie.com/contact/",
+        notes: "Acceptent des apprentis. Atelier haute joaillerie à Lyon. Faire une candidature via le site."
+    },
+    {
+        id: 2,
+        nom: "Chavany Bijoux",
+        type: "Artisan joaillier",
+        priorite: "haute",
+        adresse: "114 Bd de la Croix-Rousse, Lyon 4",
+        telephone: "",
+        site: "https://chavany-bijoux.com",
+        notes: "Virginie Bernard, artisan joaillier depuis +25 ans. Petite structure sympa, se présenter en personne."
+    },
+    {
+        id: 3,
+        nom: "Sanlys Joaillerie",
+        type: "Artisan joaillier",
+        priorite: "haute",
+        adresse: "Pentes de la Croix-Rousse, Lyon 1",
+        telephone: "",
+        site: "https://www.sanlysjoaillerie.com",
+        notes: "Fondé en 2011. Bijouterie de proximité, fabrication sur mesure."
+    },
+    {
+        id: 4,
+        nom: "Antoine Puygrenier",
+        type: "Artisan bijoutier",
+        priorite: "haute",
+        adresse: "Presqu'île, Lyon (centre)",
+        telephone: "",
+        site: "https://antoinepuygrenier.com",
+        notes: "Artisan depuis 2004. Atelier de fabrication en Presqu'île. Spécialité : mokume-gane, filigrane."
+    },
+    {
+        id: 5,
+        nom: "Atelier MAS",
+        type: "Artisan joaillier",
+        priorite: "haute",
+        adresse: "18 rue Pierre Corneille, Lyon 6",
+        telephone: "",
+        site: "https://bijouterie-ateliermas.com",
+        notes: "Créé en 2015. Fabrication bijoux sur mesure avec rigueur artisanale."
+    },
+    {
+        id: 6,
+        nom: "L'Atelier Joaillier",
+        type: "Artisan joaillier",
+        priorite: "haute",
+        adresse: "Lyon 2, près de Bellecour",
+        telephone: "",
+        site: "https://www.latelierjoaillier.com",
+        notes: "Atelier créé en 2015 par Richard et Svetlana. Petite structure, bon contact possible."
+    },
+    {
+        id: 7,
+        nom: "Maison Favier",
+        type: "Artisan joaillier",
+        priorite: "haute",
+        adresse: "Croix-Rousse, Lyon 4",
+        telephone: "",
+        site: "https://maisonfavier.com",
+        notes: "Philippe Favier, artisan bijoutier depuis 1995. Fabrication 100% française, artisanale."
+    },
+    {
+        id: 8,
+        nom: "Charles Arteon Joaillier",
+        type: "Artisan joaillier",
+        priorite: "haute",
+        adresse: "101 Bis rue Prés Edouard Herriot, Lyon 2",
+        telephone: "04 72 04 90 50",
+        site: "",
+        notes: "Grossiste joaillerie. Création et fabrication. Appeler directement au téléphone."
+    },
+    {
+        id: 9,
+        nom: "Murial – Artisan Bijouterie",
+        type: "Artisan bijoutier",
+        priorite: "haute",
+        adresse: "6 rue Servient, Lyon 3",
+        telephone: "04 72 61 98 51",
+        site: "https://murielthevenet.fr",
+        notes: "Fabrication argent et or, pièces de série et uniques. Appeler directement."
+    },
+    {
+        id: 10,
+        nom: "Rémy Challier",
+        type: "Joaillier créateur",
+        priorite: "normale",
+        adresse: "Passage de l'Argue, Presqu'île, Lyon",
+        telephone: "",
+        site: "https://remychallier.com",
+        notes: "Joaillier créateur, fabrication sur mesure dans un espace intimiste."
+    },
+    {
+        id: 11,
+        nom: "Sophie Mouleyre",
+        type: "Artisan bijoutier",
+        priorite: "normale",
+        adresse: "22 rue René Leynaud, Lyon 1",
+        telephone: "",
+        site: "https://www.sophiemouleyre.com",
+        notes: "Atelier-boutique depuis 2011. Bijoux contemporains faits main."
+    },
+    {
+        id: 12,
+        nom: "Atelier d'Or",
+        type: "Artisan joaillier",
+        priorite: "normale",
+        adresse: "Lyon",
+        telephone: "",
+        site: "https://www.atelier-or.com",
+        notes: "Artisan joaillier créateur à Lyon."
+    },
+    {
+        id: 13,
+        nom: "Atelier 962",
+        type: "Artisan bijoutier",
+        priorite: "normale",
+        adresse: "Lyon",
+        telephone: "",
+        site: "https://atelier962.com",
+        notes: "Bijouterie artisanale à Lyon."
+    },
+    {
+        id: 14,
+        nom: "Lafabriq",
+        type: "Atelier-boutique",
+        priorite: "normale",
+        adresse: "Lyon",
+        telephone: "",
+        site: "https://lafabriq.fr",
+        notes: "Atelier-boutique de création de bijoux."
+    },
+    {
+        id: 15,
+        nom: "Arthur Gudsonn",
+        type: "Joaillier créateur",
+        priorite: "normale",
+        adresse: "Lyon",
+        telephone: "",
+        site: "https://arthurgudsonn.fr",
+        notes: "Formé à la SEPR Lyon. Sensible aux apprentis. Bijoux sur mesure artisanaux."
+    },
+    // ── CFAs – À contacter pour avoir leur liste de patrons ──
+    {
+        id: 16,
+        nom: "SEPR – École des Métiers",
+        type: "CFA",
+        priorite: "haute",
+        adresse: "Lyon",
+        telephone: "",
+        site: "https://www.sepr.edu/offres/",
+        notes: "PRIORITÉ ! Demander la liste des patrons partenaires pour le CAP bijouterie. ~150 apprenants/an. Aller voir directement le service alternance."
+    },
+    {
+        id: 17,
+        nom: "GRETA CFA Lyon Métropole",
+        type: "CFA",
+        priorite: "haute",
+        adresse: "Lyon",
+        telephone: "",
+        site: "https://greta-cfa.ac-lyon.fr",
+        notes: "Proposent le CAP bijouterie en apprentissage. Demander la liste des patrons partenaires au service alternance."
+    },
+    {
+        id: 18,
+        nom: "Lycée Hector Guimard",
+        type: "CFA",
+        priorite: "haute",
+        adresse: "Lyon",
+        telephone: "",
+        site: "https://hector-guimard.ent.auvergnerhonealpes.fr",
+        notes: "CAP bijouterie en apprentissage sur 1 an. Contacter le service formation pour obtenir les contacts patrons."
+    },
+    {
+        id: 19,
+        nom: "Haute École de Joaillerie Lyon",
+        type: "CFA",
+        priorite: "haute",
+        adresse: "Lyon 8e",
+        telephone: "",
+        site: "https://hauteecoledejoaillerie.com/haute-ecole-de-joaillerie-lyon/",
+        notes: "Formations en alternance. Tests d'entrée. Demander la liste des patrons partenaires. Journées portes ouvertes régulières."
+    },
+    {
+        id: 20,
+        nom: "CMA Auvergne-Rhône-Alpes",
+        type: "CFA",
+        priorite: "normale",
+        adresse: "Lyon",
+        telephone: "",
+        site: "https://www.cma-auvergnerhonealpes.fr",
+        notes: "Chambre des Métiers et de l'Artisanat. Bourse de l'alternance. Peuvent mettre en relation avec des artisans bijoutiers."
+    }
+];
+
+const STATUSES = [
+    "À contacter",
+    "Candidature envoyée",
+    "En attente",
+    "RDV obtenu",
+    "Refus",
+    "Patron trouvé !"
+];
+
+const STATUS_EMOJI = {
+    "À contacter":         "🔵",
+    "Candidature envoyée": "📤",
+    "En attente":          "⏳",
+    "RDV obtenu":          "📅",
+    "Refus":               "❌",
+    "Patron trouvé !":     "🏆"
+};
+
+// ─────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────
+let patrons = [];
+let currentFilter = 'tous';
+
+// ─────────────────────────────────────────────────
+// PERSISTENCE
+// ─────────────────────────────────────────────────
+function loadData() {
+    const saved = localStorage.getItem('bijouterie-v3');
+    if (saved) {
+        try {
+            patrons = JSON.parse(saved);
+            // Merge any new default patrons not yet in saved data
+            DEFAULT_PATRONS.forEach(def => {
+                if (!patrons.find(p => p.id === def.id)) {
+                    patrons.push({ ...def, status: "À contacter", lastContact: null });
+                }
+            });
+        } catch (e) {
+            resetToDefault();
+        }
+    } else {
+        resetToDefault();
+    }
+}
+
+function resetToDefault() {
+    patrons = DEFAULT_PATRONS.map(p => ({ ...p, status: "À contacter", lastContact: null }));
+    saveData();
+}
+
+function saveData() {
+    localStorage.setItem('bijouterie-v3', JSON.stringify(patrons));
+}
+
+// ─────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────
+function daysSince(patron) {
+    if (!patron.lastContact) return null;
+    const diff = Date.now() - new Date(patron.lastContact).getTime();
+    return Math.floor(diff / 86400000);
+}
+
+function isUrgent(patron) {
+    const needsFollowUp = patron.status === "Candidature envoyée" || patron.status === "En attente";
+    const d = daysSince(patron);
+    return needsFollowUp && d !== null && d >= 7;
+}
+
+// ─────────────────────────────────────────────────
+// FILTER
+// ─────────────────────────────────────────────────
+function setFilter(btn) {
+    currentFilter = btn.dataset.f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+}
+
+// ─────────────────────────────────────────────────
+// ACTIONS
+// ─────────────────────────────────────────────────
+function setStatus(id, status) {
+    const p = patrons.find(x => x.id === id);
+    if (!p) return;
+    p.status = status;
+    // Auto-set last contact date when relevant
+    if (["Candidature envoyée", "En attente", "RDV obtenu"].includes(status)) {
+        if (!p.lastContact) {
+            p.lastContact = new Date().toISOString().split('T')[0];
+        }
+    }
+    saveData();
+    render();
+    showToast(STATUS_EMOJI[status] + "  " + status);
+}
+
+function setDate(id, date) {
+    const p = patrons.find(x => x.id === id);
+    if (!p) return;
+    p.lastContact = date || null;
+    saveData();
+    render();
+}
+
+function setNotes(id, notes) {
+    const p = patrons.find(x => x.id === id);
+    if (!p) return;
+    p.notes = notes;
+    saveData();
+}
+
+function deletePatron(id) {
+    if (!confirm("Supprimer ce patron ?")) return;
+    patrons = patrons.filter(p => p.id !== id);
+    saveData();
+    render();
+    showToast("🗑️  Supprimé");
+}
+
+function toggleDetails(id) {
+    const el = document.getElementById('det-' + id);
+    const btn = document.getElementById('tog-' + id);
+    const open = el.classList.toggle('open');
+    btn.textContent = open ? '▲ Réduire' : '▼ Notes & date contact';
+}
+
+// ─────────────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────────────
+function render() {
+    // Stats
+    const total   = patrons.length;
+    const contact = patrons.filter(p => ["Candidature envoyée","En attente","RDV obtenu"].includes(p.status)).length;
+    const waiting = patrons.filter(p => p.status === "En attente").length;
+    const found   = patrons.filter(p => p.status === "Patron trouvé !").length;
+
+    document.getElementById('stat-total').textContent   = total;
+    document.getElementById('stat-contact').textContent = contact;
+    document.getElementById('stat-wait').textContent    = waiting;
+    document.getElementById('stat-found').textContent   = found;
+
+    // Reminder banner
+    const urgents = patrons.filter(isUrgent);
+    const banner  = document.getElementById('reminderBanner');
+    if (urgents.length > 0) {
+        banner.classList.add('show');
+        document.getElementById('reminderCount').textContent = urgents.length;
+    } else {
+        banner.classList.remove('show');
+    }
+
+    // Filtered list
+    let filtered = currentFilter === 'tous'
+        ? [...patrons]
+        : patrons.filter(p => p.status === currentFilter);
+
+    // Sort: urgent > haute priorité > normale
+    filtered.sort((a, b) => {
+        const ua = isUrgent(a) ? 0 : 1;
+        const ub = isUrgent(b) ? 0 : 1;
+        if (ua !== ub) return ua - ub;
+        const pa = a.priorite === 'haute' ? 0 : 1;
+        const pb = b.priorite === 'haute' ? 0 : 1;
+        return pa - pb;
+    });
+
+    const artisans = filtered.filter(p => p.type !== 'CFA');
+    const cfas     = filtered.filter(p => p.type === 'CFA');
+
+    let html = '';
+
+    if (artisans.length === 0 && cfas.length === 0) {
+        html = '<div class="empty">Aucun patron dans cette catégorie 🙂</div>';
+    } else {
+        if (artisans.length > 0) {
+            if (cfas.length > 0) html += '<div class="section-title">🔨 Ateliers & Artisans</div>';
+            html += '<div class="cards">' + artisans.map(renderCard).join('') + '</div>';
+        }
+        if (cfas.length > 0) {
+            html += '<div class="section-title">🏫 CFAs — Demander leur liste de patrons</div>';
+            html += '<div class="cards">' + cfas.map(renderCard).join('') + '</div>';
+        }
+    }
+
+    html += `<div class="reset-area">
+        <button class="reset-btn" onclick="confirmReset()">
+            ↺ Remettre les données par défaut
+        </button>
+    </div>`;
+
+    document.getElementById('content').innerHTML = html;
+
+    // Reattach event listeners for textarea and date inputs
+    patrons.forEach(p => {
+        const ta = document.getElementById('notes-' + p.id);
+        if (ta) ta.addEventListener('input', e => setNotes(p.id, e.target.value));
+
+        const di = document.getElementById('date-' + p.id);
+        if (di) di.addEventListener('change', e => setDate(p.id, e.target.value));
+    });
+}
+
+function renderCard(p) {
+    const urgent = isUrgent(p);
+    const found  = p.status === "Patron trouvé !";
+    const days   = daysSince(p);
+
+    let cardClass = 'card';
+    if (urgent) cardClass += ' urgent';
+    if (found)  cardClass += ' found';
+
+    const typeClass = p.type === 'CFA' ? 'card-type cfa' : 'card-type';
+    const star = p.priorite === 'haute' ? '⭐ ' : '';
+
+    // Info line
+    let info = '';
+    if (p.adresse)   info += `<div>📍 ${p.adresse}</div>`;
+    if (p.telephone) info += `<div>📞 <a href="tel:${p.telephone}" class="tel">${p.telephone}</a></div>`;
+    if (p.site) {
+        const label = p.site.replace(/^https?:\/\//, '').replace(/\/$/, '');
+        info += `<div>🌐 <a href="${p.site}" target="_blank">${label}</a></div>`;
+    }
+
+    // Days badge
+    let daysBadge = '';
+    if (urgent) {
+        daysBadge = `<div class="days-badge show overdue">⏰ Relancer ! ${days} jours sans réponse</div>`;
+    } else if (days !== null && ["Candidature envoyée","En attente"].includes(p.status)) {
+        daysBadge = `<div class="days-badge show ok">✓ Contacté il y a ${days} jour${days > 1 ? 's' : ''}</div>`;
+    }
+
+    // Status buttons
+    const sBtns = STATUSES.map(s => {
+        const active = p.status === s ? 'on' : '';
+        const span   = s === "Patron trouvé !" ? ' style="grid-column:span 2"' : '';
+        return `<button class="s-btn ${active}" data-s="${s}"${span} onclick="setStatus(${p.id},'${s}')">${STATUS_EMOJI[s]} ${s}</button>`;
+    }).join('');
+
+    const today = new Date().toISOString().split('T')[0];
+
+    return `
+<div class="${cardClass}" id="card-${p.id}">
+    <div class="card-header">
+        <div class="card-name">${star}${p.nom}</div>
+        <div style="display:flex;align-items:center;gap:0">
+            <div class="${typeClass}">${p.type}</div>
+            <button class="delete-btn" onclick="deletePatron(${p.id})" title="Supprimer">✕</button>
+        </div>
+    </div>
+    <div class="card-info">${info}</div>
+    ${daysBadge}
+    <div class="status-label">Statut :</div>
+    <div class="status-grid">${sBtns}</div>
+    <button class="toggle-btn" id="tog-${p.id}" onclick="toggleDetails(${p.id})">▼ Notes & date contact</button>
+    <div class="details-section" id="det-${p.id}">
+        <div class="detail-field" style="margin-top:10px">
+            <label>Date du dernier contact</label>
+            <input type="date" id="date-${p.id}" value="${p.lastContact || ''}" max="${today}" />
+        </div>
+        <div class="detail-field">
+            <label>Notes</label>
+            <textarea id="notes-${p.id}" rows="3" placeholder="Tes notes, retours, prochaine action...">${p.notes || ''}</textarea>
+        </div>
+    </div>
+</div>`;
+}
+
+// ─────────────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────────────
+let _toastTimer;
+function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ─────────────────────────────────────────────────
+// MODAL
+// ─────────────────────────────────────────────────
+function openModal() {
+    document.getElementById('addModal').classList.add('open');
+    document.getElementById('newNom').focus();
+}
+
+function closeModal() {
+    document.getElementById('addModal').classList.remove('open');
+    ['newNom','newAdresse','newTel','newSite','newNotes'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    document.getElementById('newType').selectedIndex = 0;
+}
+
+function handleOverlayClick(e) {
+    if (e.target === e.currentTarget) closeModal();
+}
+
+function addPatron() {
+    const nom = document.getElementById('newNom').value.trim();
+    if (!nom) { showToast('⚠️  Le nom est obligatoire !'); return; }
+
+    const newId = patrons.reduce((max, p) => Math.max(max, p.id), 0) + 1;
+    patrons.unshift({
+        id: newId,
+        nom,
+        type:      document.getElementById('newType').value,
+        priorite:  'normale',
+        adresse:   document.getElementById('newAdresse').value.trim(),
+        telephone: document.getElementById('newTel').value.trim(),
+        site:      document.getElementById('newSite').value.trim(),
+        notes:     document.getElementById('newNotes').value.trim(),
+        status:    "À contacter",
+        lastContact: null
+    });
+
+    saveData();
+    closeModal();
+    currentFilter = 'tous';
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.f === 'tous'));
+    render();
+    showToast('✅  Patron ajouté !');
+}
+
+// ─────────────────────────────────────────────────
+// RESET
+// ─────────────────────────────────────────────────
+function confirmReset() {
+    if (confirm("⚠️ Remettre TOUTES les données à zéro ?\n\nToute la progression sera perdue.")) {
+        resetToDefault();
+        render();
+        showToast('↺  Données réinitialisées');
+    }
+}
+
+// ─────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────
+loadData();
+render();
+
+// Demander permission notification au premier lancement
+if ('Notification' in window && Notification.permission === 'default') {
+    // On attend un geste utilisateur pour demander la permission
+    document.addEventListener('click', function requestNotif() {
+        Notification.requestPermission();
+        document.removeEventListener('click', requestNotif);
+    }, { once: true });
+}
+</script>
+</body>
+</html>
