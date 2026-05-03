@@ -352,24 +352,15 @@ function _renderSceneContent(scene, index, scenes, mod) {
     dotsEl.appendChild(d);
   });
 
-  // Progress bar
+  // Progress bar — shows position in story, no auto-advance
   const isLast = index === scenes.length - 1;
   const fill = document.getElementById('story-progress-fill');
-  fill.style.transition = 'none';
-  fill.style.width = '0%';
-  setTimeout(() => {
-    fill.style.transition = `width ${scene.duration || 6000}ms linear`;
-    fill.style.width = '100%';
-  }, 60);
+  fill.style.transition = 'width 0.4s ease';
+  fill.style.width = ((index + 1) / scenes.length * 100) + '%';
 
   // Next button label
   const btn = document.getElementById('story-next-btn');
   btn.textContent = isLast ? 'Commencer le Quiz 🚀' : 'Scène suivante →';
-
-  // Auto-advance timer
-  story.timer = setTimeout(() => {
-    nextStoryScene();
-  }, scene.duration || 6000);
 }
 
 function _renderOrbitEmoji(castEl, item, i) {
