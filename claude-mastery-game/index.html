@@ -106,42 +106,39 @@
   </div>
 
   <!-- ══════════════════════════════════════════
-       SCREEN: LESSON (avant le quiz)
+       SCREEN: STORY (animation avant le quiz)
   ══════════════════════════════════════════ -->
-  <div id="screen-lesson" class="screen">
+  <div id="screen-story" class="screen">
 
     <!-- Top bar -->
-    <div class="lesson-topbar">
-      <button class="nav-back" onclick="exitLesson()">✕</button>
-      <div class="lesson-dots-wrap" id="lesson-dots"></div>
-      <button class="lesson-skip-btn" onclick="skipLesson()">Passer</button>
+    <div class="story-topbar">
+      <button class="story-exit-btn" onclick="exitStory()">✕</button>
+      <div class="story-module-title" id="story-module-title"></div>
+      <button class="story-skip" onclick="skipStory()">Quiz →</button>
     </div>
 
-    <!-- Slide content -->
-    <div class="lesson-slide-wrap">
-      <!-- Animated visual -->
-      <div class="lesson-visual" id="lesson-visual">
-        <div class="lesson-visual-bg" id="lesson-visual-bg"></div>
-        <div class="lesson-visual-icon" id="lesson-visual-icon">⚡</div>
-      </div>
-
-      <!-- Text content -->
-      <div class="lesson-content">
-        <h2 class="lesson-title" id="lesson-title">Titre</h2>
-        <ul class="lesson-bullets" id="lesson-bullets"></ul>
-      </div>
+    <!-- La scène animée principale -->
+    <div class="story-stage" id="story-stage">
+      <div class="story-bg" id="story-bg"></div>
+      <div class="story-cast" id="story-cast"></div>
+      <div class="story-bubble" id="story-bubble"></div>
     </div>
 
-    <!-- Bottom bar -->
-    <div class="lesson-bottom">
-      <!-- Timer bar -->
-      <div class="lesson-timer-bar">
-        <div class="lesson-timer-fill" id="lesson-timer-fill"></div>
+    <!-- Narration typewriter -->
+    <div class="story-narrator">
+      <div class="narrator-icon">📖</div>
+      <p class="narrator-text" id="narrator-text"></p>
+    </div>
+
+    <!-- Contrôles -->
+    <div class="story-controls">
+      <div class="story-progress-bar">
+        <div class="story-progress-fill" id="story-progress-fill"></div>
       </div>
-      <div class="lesson-bottom-btns">
-        <div class="lesson-slide-counter" id="lesson-counter">1 / 3</div>
-        <button class="btn-primary" id="btn-lesson-next" onclick="nextLessonSlide()">
-          Suivant →
+      <div class="story-nav">
+        <div class="story-dots" id="story-dots"></div>
+        <button class="btn-primary story-next-btn" id="story-next-btn" onclick="nextStoryScene()">
+          Scène suivante →
         </button>
       </div>
     </div>

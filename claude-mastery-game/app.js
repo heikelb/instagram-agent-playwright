@@ -43,6 +43,8 @@ function goBack() {
   if (currentScreen === 'quiz') {
     if (qs && qs.timer) clearInterval(qs.timer);
     showScreen('modules');
+  } else if (currentScreen === 'story') {
+    exitStory();
   } else {
     showScreen('modules');
   }
@@ -165,152 +167,295 @@ function updateJourneyBanner() {
   if (motto) motto.textContent = mottos[currentPhase];
 }
 
-// ── LESSON SYSTEM ──────────────────────────────────────────────────────
-let ls = null; // lesson state
+// ── STORY SYSTEM ───────────────────────────────────────────────────────
+let story = {
+  moduleId: null,
+  mod: null,
+  sceneIndex: 0,
+  timer: null,
+  typeTimer: null
+};
 
 function startModule(moduleId) {
   const mod = MODULES.find(m => m.id === moduleId);
-  // Show lessons first if module has them and hasn't been completed yet
-  if (mod.lessons && mod.lessons.length > 0) {
-    startLesson(mod);
+  if (mod.story && mod.story.scenes && mod.story.scenes.length > 0) {
+    startStory(moduleId);
   } else {
     launchQuiz(moduleId);
   }
 }
 
-function startLesson(mod) {
-  ls = {
-    mod,
-    index: 0,
-    timer: null,
-    timeLeft: 12,
-    bulletTimers: []
-  };
-  applyLessonTheme(mod);
-  showScreen('lesson');
-  renderLessonSlide();
+function startStory(moduleId) {
+  const mod = MODULES.find(m => m.id === moduleId);
+  story.moduleId = moduleId;
+  story.mod = mod;
+  story.sceneIndex = 0;
+  if (story.timer) clearTimeout(story.timer);
+  if (story.typeTimer) clearInterval(story.typeTimer);
+
+  document.getElementById('story-module-title').textContent = mod.story.title;
+  showScreen('story');
+  renderScene(0);
 }
 
-function applyLessonTheme(mod) {
-  const root = document.documentElement;
-  root.style.setProperty('--lesson-color', mod.colorStart);
-  root.style.setProperty('--lesson-gradient', `linear-gradient(135deg, ${mod.colorStart}, ${mod.colorEnd})`);
-}
+function renderScene(index) {
+  const mod = story.mod;
+  const scenes = mod.story.scenes;
+  const scene = scenes[index];
+  if (!scene) return;
 
-function renderLessonSlide() {
-  const slide = ls.mod.lessons[ls.index];
-  const total = ls.mod.lessons.length;
+  story.sceneIndex = index;
 
-  // Dots
-  const dotsWrap = document.getElementById('lesson-dots');
-  dotsWrap.innerHTML = '';
-  for (let i = 0; i < total; i++) {
-    const d = document.createElement('div');
-    d.className = 'lesson-dot' + (i === ls.index ? ' active' : i < ls.index ? ' done' : '');
-    dotsWrap.appendChild(d);
-  }
+  // Clear previous timers
+  if (story.timer) clearTimeout(story.timer);
+  if (story.typeTimer) clearInterval(story.typeTimer);
 
-  // Counter
-  document.getElementById('lesson-counter').textContent = (ls.index + 1) + ' / ' + total;
-
-  // Visual
-  document.getElementById('lesson-visual-icon').textContent = slide.icon;
-
-  // Add floating shapes for depth
-  const vBg = document.getElementById('lesson-visual-bg');
-  vBg.innerHTML = '';
-  for (let i = 0; i < 3; i++) {
-    const s = document.createElement('div');
-    const size = 60 + i * 50;
-    s.className = 'lesson-visual-shape';
-    s.style.cssText = `
-      width:${size}px; height:${size}px;
-      left:${10 + i*25}%; top:${10 + i*20}%;
-      animation-duration:${3 + i * 1.5}s;
-      animation-delay:${i * 0.7}s;
-    `;
-    vBg.appendChild(s);
-  }
-
-  // Title (animate)
-  const titleEl = document.getElementById('lesson-title');
-  titleEl.style.opacity = '0';
-  titleEl.textContent = slide.title;
-  setTimeout(() => { titleEl.style.transition = 'opacity 0.5s'; titleEl.style.opacity = '1'; }, 50);
-
-  // Bullets — appear one by one
-  ls.bulletTimers.forEach(clearTimeout);
-  ls.bulletTimers = [];
-  const bulletsEl = document.getElementById('lesson-bullets');
-  bulletsEl.innerHTML = '';
-
-  slide.bullets.forEach((text, i) => {
-    const li = document.createElement('li');
-    li.className = 'lesson-bullet-item';
-    li.innerHTML = `<span class="bullet-num">${i + 1}</span><span>${text}</span>`;
-    bulletsEl.appendChild(li);
-    const t = setTimeout(() => li.classList.add('visible'), 300 + i * 500);
-    ls.bulletTimers.push(t);
-  });
-
-  // Next button label
-  const isLast = ls.index === total - 1;
-  document.getElementById('btn-lesson-next').textContent = isLast ? '🚀 Commencer le Quiz' : 'Suivant →';
-
-  // Timer bar
-  startLessonTimer();
-}
-
-function startLessonTimer() {
-  if (ls.timer) clearInterval(ls.timer);
-  ls.timeLeft = 12;
-  const fill = document.getElementById('lesson-timer-fill');
-  fill.style.transition = 'none';
-  fill.style.width = '100%';
+  // --- Fade out then render ---
+  const stage = document.getElementById('story-stage');
+  stage.classList.add('fade-out');
 
   setTimeout(() => {
-    fill.style.transition = `width ${ls.timeLeft}s linear`;
-    fill.style.width = '0%';
-  }, 100);
-
-  ls.timer = setInterval(() => {
-    ls.timeLeft--;
-    if (ls.timeLeft <= 0) {
-      clearInterval(ls.timer);
-      nextLessonSlide();
-    }
-  }, 1000);
+    stage.classList.remove('fade-out');
+    _renderSceneContent(scene, index, scenes, mod);
+  }, 380);
 }
 
-function nextLessonSlide() {
-  if (!ls) return;
-  clearInterval(ls.timer);
-  ls.bulletTimers.forEach(clearTimeout);
+function _renderSceneContent(scene, index, scenes, mod) {
+  // Background gradient
+  const bg = document.getElementById('story-bg');
+  bg.style.background = `linear-gradient(135deg, ${mod.colorStart}55, ${mod.colorEnd}33)`;
+  bg.style.backdropFilter = 'none';
 
-  ls.index++;
-  if (ls.index >= ls.mod.lessons.length) {
-    const moduleId = ls.mod.id;
-    ls = null;
-    launchQuiz(moduleId);
+  // Render cast
+  const castEl = document.getElementById('story-cast');
+  castEl.innerHTML = '';
+
+  scene.cast.forEach((item, i) => {
+    // Handle orbit special case
+    if (item.anim === 'orbit') {
+      _renderOrbitEmoji(castEl, item, i);
+      return;
+    }
+
+    const el = document.createElement('div');
+    el.className = 'cast-emoji';
+    el.style.left = item.x + '%';
+    el.style.top = item.y + '%';
+    el.style.fontSize = item.size + 'px';
+
+    // Map anim name to keyframe
+    const animMap = {
+      'float':  'c-float',
+      'bounce': 'c-bounce',
+      'pulse':  'c-pulse',
+      'spin':   'c-spin',
+      'shake':  'c-shake',
+      'rain':   'c-rain',
+      'pop-in': 'c-pop-in',
+      'wiggle': 'c-wiggle',
+      'idle':   'c-idle'
+    };
+    const keyframe = animMap[item.anim] || 'c-idle';
+    const iterCount = (item.anim === 'pop-in') ? '1' : 'infinite';
+    const fillMode  = (item.anim === 'pop-in') ? 'both' : 'none';
+
+    el.style.animation = `${keyframe} ${item.duration || '3s'} ${item.delay || '0s'} ${iterCount} ease-in-out ${fillMode}`;
+
+    // For emoji text that contains a slash (like "⚡/init"), show just the emoji part
+    const parts = item.e.split('/');
+    el.textContent = parts[0];
+
+    // Add sub-label if has /text suffix (like /init, /review etc.)
+    if (parts.length > 1) {
+      const sub = document.createElement('div');
+      sub.style.cssText = `
+        position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+        font-size: ${Math.max(9, Math.round(item.size * 0.28))}px;
+        font-weight: 900; color: white;
+        background: rgba(0,0,0,0.5); padding: 1px 5px; border-radius: 4px;
+        white-space: nowrap; font-family: monospace; margin-top: 2px;
+      `;
+      sub.textContent = '/' + parts[1];
+      el.style.position = 'absolute';
+      el.appendChild(sub);
+    }
+
+    castEl.appendChild(el);
+  });
+
+  // Dialogue bubble
+  const bubbleEl = document.getElementById('story-bubble');
+  bubbleEl.innerHTML = '';
+  if (scene.bubble) {
+    const b = scene.bubble;
+    // Position bubble above the target character
+    const stageHeight = 220;
+    const stageWidth = document.getElementById('story-stage').offsetWidth || 340;
+    const bx = (b.targetX / 100) * stageWidth;
+    const by = (b.targetY / 100) * stageHeight;
+    const charSize = b.size || 64;
+
+    const bubble = document.createElement('div');
+    bubble.className = 'dialogue-bubble';
+    bubble.textContent = b.text;
+
+    // Default: bubble above character
+    const offsetY = (charSize / 2) + 48;
+    bubble.style.left = bx + 'px';
+    bubble.style.top = (by - offsetY) + 'px';
+    bubble.style.transform = 'translateX(-50%)';
+    bubble.style.animationDelay = '1.2s';
+    bubble.style.opacity = '0';
+
+    // If side === 'right', tail points left
+    if (b.side === 'right') {
+      bubble.style.cssText += `
+        left: ${bx + charSize / 2 + 8}px;
+        top: ${by - 20}px;
+        transform: none;
+      `;
+      bubble.classList.add('bubble-right');
+    } else if (b.side === 'top') {
+      bubble.style.left = bx + 'px';
+      bubble.style.top = Math.max(8, by - offsetY - 16) + 'px';
+      bubble.style.transform = 'translateX(-50%)';
+    }
+
+    bubbleEl.appendChild(bubble);
+    // Trigger animation after delay
+    setTimeout(() => {
+      bubble.style.animation = 'bubble-appear 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards';
+    }, 1200);
+  }
+
+  // Scene label (character name tag)
+  if (scene.label) {
+    const lbl = document.createElement('div');
+    lbl.className = 'cast-label';
+    lbl.style.left = scene.label.x + '%';
+    lbl.style.top  = scene.label.y + '%';
+    lbl.textContent = scene.label.text;
+    castEl.appendChild(lbl);
+  }
+
+  // Narrator typewriter
+  const narEl = document.getElementById('narrator-text');
+  narEl.textContent = '';
+  _typewriterText(narEl, scene.text);
+
+  // Dots
+  const dotsEl = document.getElementById('story-dots');
+  dotsEl.innerHTML = '';
+  scenes.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'story-dot' + (i === index ? ' active' : i < index ? ' done' : '');
+    dotsEl.appendChild(d);
+  });
+
+  // Progress bar
+  const isLast = index === scenes.length - 1;
+  const fill = document.getElementById('story-progress-fill');
+  fill.style.transition = 'none';
+  fill.style.width = '0%';
+  setTimeout(() => {
+    fill.style.transition = `width ${scene.duration || 6000}ms linear`;
+    fill.style.width = '100%';
+  }, 60);
+
+  // Next button label
+  const btn = document.getElementById('story-next-btn');
+  btn.textContent = isLast ? 'Commencer le Quiz 🚀' : 'Scène suivante →';
+
+  // Auto-advance timer
+  story.timer = setTimeout(() => {
+    nextStoryScene();
+  }, scene.duration || 6000);
+}
+
+function _renderOrbitEmoji(castEl, item, i) {
+  // Orbit wrapper: a div centred at (item.x, item.y) that rotates
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = `
+    position: absolute;
+    left: ${item.x}%;
+    top: ${item.y}%;
+    width: 0; height: 0;
+    animation: c-orbit ${item.duration || '3s'} ${item.delay || '0s'} infinite linear;
+  `;
+
+  const emoji = document.createElement('div');
+  const r = item.orbitRadius || 55;
+  emoji.style.cssText = `
+    position: absolute;
+    font-size: ${item.size}px;
+    left: ${r}px;
+    top: 0;
+    transform: translate(-50%, -50%);
+    user-select: none;
+    line-height: 1;
+    counter-reset: none;
+  `;
+
+  const parts = item.e.split('/');
+  emoji.textContent = parts[0];
+
+  if (parts.length > 1) {
+    const sub = document.createElement('div');
+    sub.style.cssText = `
+      position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+      font-size: ${Math.max(9, Math.round(item.size * 0.28))}px;
+      font-weight: 900; color: white;
+      background: rgba(0,0,0,0.5); padding: 1px 5px; border-radius: 4px;
+      white-space: nowrap; font-family: monospace; margin-top: 2px;
+    `;
+    sub.textContent = '/' + parts[1];
+    emoji.appendChild(sub);
+  }
+
+  wrapper.appendChild(emoji);
+  castEl.appendChild(wrapper);
+}
+
+function _typewriterText(el, text) {
+  if (story.typeTimer) clearInterval(story.typeTimer);
+  let i = 0;
+  el.textContent = '';
+  story.typeTimer = setInterval(() => {
+    if (i < text.length) {
+      el.textContent += text[i];
+      i++;
+    } else {
+      clearInterval(story.typeTimer);
+      story.typeTimer = null;
+    }
+  }, 28);
+}
+
+function nextStoryScene() {
+  if (!story.mod) return;
+  const scenes = story.mod.story.scenes;
+  const next = story.sceneIndex + 1;
+  if (next >= scenes.length) {
+    skipStory();
   } else {
-    renderLessonSlide();
+    renderScene(next);
   }
 }
 
-function skipLesson() {
-  if (!ls) return;
-  clearInterval(ls.timer);
-  ls.bulletTimers.forEach(clearTimeout);
-  const moduleId = ls.mod.id;
-  ls = null;
+function skipStory() {
+  if (story.timer) clearTimeout(story.timer);
+  if (story.typeTimer) clearInterval(story.typeTimer);
+  const moduleId = story.moduleId;
+  story.moduleId = null;
+  story.mod = null;
   launchQuiz(moduleId);
 }
 
-function exitLesson() {
-  if (!ls) return;
-  clearInterval(ls.timer);
-  ls.bulletTimers.forEach(clearTimeout);
-  ls = null;
+function exitStory() {
+  if (story.timer) clearTimeout(story.timer);
+  if (story.typeTimer) clearInterval(story.typeTimer);
+  story.moduleId = null;
+  story.mod = null;
   showScreen('modules');
 }
 

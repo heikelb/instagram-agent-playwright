@@ -32,6 +32,48 @@ const MODULES = [
     colorStart: '#7C3AED',
     colorEnd: '#4F46E5',
     achievementId: 'module_skills',
+    story: {
+      title: 'La Découverte des Super-Pouvoirs',
+      scenes: [
+        {
+          duration: 6000,
+          cast: [
+            { e: '🧑‍💻', x: 50, y: 55, size: 72, anim: 'shake', duration: '0.5s', delay: '0s' },
+            { e: '💻',    x: 50, y: 30, size: 48, anim: 'idle',  duration: '3s',  delay: '0.2s' },
+            { e: '❓',    x: 22, y: 38, size: 36, anim: 'float', duration: '2.2s',delay: '0s' },
+            { e: '❓',    x: 75, y: 28, size: 28, anim: 'float', duration: '2.8s',delay: '0.5s' },
+            { e: '❓',    x: 38, y: 72, size: 24, anim: 'float', duration: '3.1s',delay: '0.3s' }
+          ],
+          bubble: null,
+          label: { text: 'Vous', x: 50, y: 76 },
+          text: 'Vous venez de découvrir Claude Code... par où commencer ?'
+        },
+        {
+          duration: 6000,
+          cast: [
+            { e: '🧑‍💻', x: 28, y: 55, size: 64, anim: 'idle',  duration: '3s',  delay: '0s' },
+            { e: '🧙',   x: 72, y: 48, size: 72, anim: 'pop-in',duration: '0.6s',delay: '0.2s' },
+            { e: '⚡',   x: 72, y: 25, size: 40, anim: 'pulse', duration: '1.5s',delay: '0.8s' }
+          ],
+          bubble: { text: '/init 📁', targetX: 72, targetY: 48, size: 72 },
+          label: { text: 'Mentor', x: 72, y: 76 },
+          text: "Un mentor vous révèle les Skills : des commandes /slash avec des super-pouvoirs."
+        },
+        {
+          duration: 6000,
+          cast: [
+            { e: '🧑‍💻',      x: 50, y: 52, size: 72, anim: 'bounce', duration: '1.2s', delay: '0s' },
+            { e: '⚡/init',  x: 50, y: 52, size: 22, anim: 'orbit',  duration: '3s',   delay: '0s',   orbitRadius: 60, orbitStart: 0 },
+            { e: '🎯/review',x: 50, y: 52, size: 22, anim: 'orbit',  duration: '3s',   delay: '-0.75s',orbitRadius: 60, orbitStart: 90 },
+            { e: '⚙️/config',x: 50, y: 52, size: 22, anim: 'orbit',  duration: '3s',   delay: '-1.5s', orbitRadius: 60, orbitStart: 180 },
+            { e: '🔄/loop',  x: 50, y: 52, size: 22, anim: 'orbit',  duration: '3s',   delay: '-2.25s',orbitRadius: 60, orbitStart: 270 }
+          ],
+          bubble: null,
+          label: null,
+          text: "Chaque skill = un agent spécialisé. Vous êtes maintenant dans le top 1%."
+        }
+      ]
+    },
     lessons: [
       {
         icon: '⚡',
@@ -153,6 +195,49 @@ const MODULES = [
   {
     id: 'prompting',
     title: 'Prompter Claude Code',
+    story: {
+      title: 'Le Chef et le Cuisinier Magique',
+      scenes: [
+        {
+          duration: 6000,
+          cast: [
+            { e: '🤵', x: 22, y: 52, size: 72, anim: 'idle',  duration: '3s',  delay: '0s' },
+            { e: '🍽️', x: 50, y: 52, size: 52, anim: 'pulse', duration: '2.5s',delay: '0.3s' },
+            { e: '👨‍🍳', x: 78, y: 52, size: 72, anim: 'idle',  duration: '3.2s',delay: '0.1s' }
+          ],
+          bubble: null,
+          label: { text: 'Patron (Vous)', x: 22, y: 76 },
+          text: "Claude est un chef cuisinier extraordinaire. Vous êtes le patron du restaurant."
+        },
+        {
+          duration: 6000,
+          cast: [
+            { e: '🤵', x: 22, y: 52, size: 64, anim: 'wiggle',duration: '0.8s',delay: '0s' },
+            { e: '👨‍🍳', x: 72, y: 52, size: 64, anim: 'shake', duration: '0.6s',delay: '0.4s' },
+            { e: '😕', x: 72, y: 28, size: 32, anim: 'pop-in', duration: '0.5s',delay: '0.8s' },
+            { e: '🤢', x: 50, y: 78, size: 40, anim: 'pop-in', duration: '0.5s',delay: '1.2s' }
+          ],
+          bubble: { text: 'Fais quelque chose de bon !', targetX: 22, targetY: 52, size: 64, side: 'right' },
+          label: null,
+          text: "Prompt vague = résultat approximatif. Le chef ne peut pas deviner votre vision."
+        },
+        {
+          duration: 6000,
+          cast: [
+            { e: '🤵', x: 22, y: 52, size: 64, anim: 'idle',  duration: '3s',  delay: '0s' },
+            { e: '📋', x: 44, y: 52, size: 44, anim: 'pop-in', duration: '0.6s',delay: '0.3s' },
+            { e: '👨‍🍳', x: 72, y: 52, size: 64, anim: 'bounce',duration: '1.2s',delay: '0.6s' },
+            { e: '✨', x: 72, y: 26, size: 32, anim: 'pulse',  duration: '1.4s',delay: '0.8s' },
+            { e: '⭐', x: 52, y: 78, size: 26, anim: 'pop-in', duration: '0.4s',delay: '1.0s' },
+            { e: '⭐', x: 50, y: 78, size: 26, anim: 'pop-in', duration: '0.4s',delay: '1.2s' },
+            { e: '⭐', x: 62, y: 78, size: 26, anim: 'pop-in', duration: '0.4s',delay: '1.4s' }
+          ],
+          bubble: null,
+          label: null,
+          text: "Plan d'abord + contexte précis = chef-d'œuvre. Toujours planifier avant d'agir."
+        }
+      ]
+    },
     lessons: [
       {
         icon: '🎯',
@@ -288,6 +373,53 @@ const MODULES = [
     icon: '🤝',
     colorStart: '#059669',
     colorEnd: '#0D9488',
+    story: {
+      title: 'Le Général et ses Agents',
+      scenes: [
+        {
+          duration: 6000,
+          cast: [
+            { e: '😓',  x: 50, y: 52, size: 64, anim: 'shake', duration: '0.7s', delay: '0s' },
+            { e: '📧',  x: 22, y: 22, size: 32, anim: 'rain',  duration: '1.8s', delay: '0s' },
+            { e: '💻',  x: 38, y: 18, size: 28, anim: 'rain',  duration: '2.1s', delay: '0.3s' },
+            { e: '🔍',  x: 62, y: 20, size: 28, anim: 'rain',  duration: '1.9s', delay: '0.6s' },
+            { e: '📊',  x: 78, y: 16, size: 32, anim: 'rain',  duration: '2.3s', delay: '0.2s' },
+            { e: '📁',  x: 15, y: 38, size: 24, anim: 'rain',  duration: '2.0s', delay: '0.8s' },
+            { e: '🗂️',  x: 85, y: 35, size: 24, anim: 'rain',  duration: '1.7s', delay: '0.5s' }
+          ],
+          bubble: null,
+          label: null,
+          text: "Seul face à 100 tâches simultanées... personne ne peut tout faire seul."
+        },
+        {
+          duration: 6000,
+          cast: [
+            { e: '👑', x: 50, y: 40, size: 80, anim: 'pop-in', duration: '0.7s', delay: '0.2s' },
+            { e: '🤖', x: 20, y: 72, size: 56, anim: 'pop-in', duration: '0.5s', delay: '0.6s' },
+            { e: '🤖', x: 50, y: 72, size: 56, anim: 'pop-in', duration: '0.5s', delay: '0.9s' },
+            { e: '🤖', x: 80, y: 72, size: 56, anim: 'pop-in', duration: '0.5s', delay: '1.2s' }
+          ],
+          bubble: null,
+          label: { text: 'Général', x: 50, y: 24 },
+          text: "Révélation : vous êtes un Général. Des agents spécialisés vous attendent."
+        },
+        {
+          duration: 6000,
+          cast: [
+            { e: '👑', x: 50, y: 30, size: 56, anim: 'idle',   duration: '3s',   delay: '0s' },
+            { e: '🤖', x: 18, y: 68, size: 60, anim: 'bounce', duration: '1.3s', delay: '0s' },
+            { e: '🤖', x: 50, y: 68, size: 60, anim: 'bounce', duration: '1.3s', delay: '0.2s' },
+            { e: '🤖', x: 82, y: 68, size: 60, anim: 'bounce', duration: '1.3s', delay: '0.4s' },
+            { e: '🔍', x: 18, y: 46, size: 24, anim: 'pulse',  duration: '1.8s', delay: '0.2s' },
+            { e: '📋', x: 50, y: 46, size: 24, anim: 'pulse',  duration: '1.8s', delay: '0.4s' },
+            { e: '⌨️', x: 82, y: 46, size: 24, anim: 'pulse',  duration: '1.8s', delay: '0.6s' }
+          ],
+          bubble: null,
+          label: null,
+          text: "Parallèle = 10x plus rapide. Vous coordonnez, ils exécutent."
+        }
+      ]
+    },
     lessons: [
       {
         icon: '🤝',
@@ -419,6 +551,47 @@ const MODULES = [
     icon: '⚙️',
     colorStart: '#D97706',
     colorEnd: '#DC2626',
+    story: {
+      title: 'La Maison Qui Pense',
+      scenes: [
+        {
+          duration: 6000,
+          cast: [
+            { e: '🏠', x: 50, y: 48, size: 96, anim: 'idle',  duration: '4s',  delay: '0s' },
+            { e: '💡', x: 30, y: 30, size: 32, anim: 'pulse', duration: '1.6s',delay: '0s' },
+            { e: '🌡️', x: 70, y: 30, size: 28, anim: 'pulse', duration: '2.0s',delay: '0.4s' },
+            { e: '📱', x: 50, y: 22, size: 28, anim: 'pulse', duration: '1.8s',delay: '0.2s' }
+          ],
+          bubble: null,
+          label: null,
+          text: "Imaginez une maison intelligente qui agit automatiquement selon vos gestes."
+        },
+        {
+          duration: 6000,
+          cast: [
+            { e: '🏠', x: 38, y: 52, size: 80, anim: 'idle',   duration: '3s',  delay: '0s' },
+            { e: '🧑‍💻', x: 78, y: 52, size: 56, anim: 'pop-in', duration: '0.6s',delay: '0.3s' },
+            { e: '💡', x: 30, y: 30, size: 36, anim: 'pop-in', duration: '0.5s',delay: '0.8s' },
+            { e: '→',  x: 58, y: 52, size: 32, anim: 'pulse',  duration: '1.2s',delay: '0.4s' }
+          ],
+          bubble: { text: 'ÉVÉNEMENT → ACTION', targetX: 50, targetY: 52, size: 64, side: 'top' },
+          label: null,
+          text: "Partir = lumières off. Dans Claude Code : c'est un HOOK. Événement → réaction auto."
+        },
+        {
+          duration: 6000,
+          cast: [
+            { e: '🎛️', x: 50, y: 45, size: 88, anim: 'pulse', duration: '2.5s', delay: '0s' },
+            { e: '⚙️', x: 25, y: 30, size: 36, anim: 'spin',  duration: '2s',   delay: '0s' },
+            { e: '⚙️', x: 75, y: 30, size: 28, anim: 'spin',  duration: '1.5s', delay: '-0.5s' },
+            { e: '⚙️', x: 50, y: 72, size: 32, anim: 'spin',  duration: '3s',   delay: '-1s' }
+          ],
+          bubble: { text: 'settings.json ⚙️', targetX: 50, targetY: 45, size: 88, side: 'top' },
+          label: null,
+          text: "/update-config programme tout. 'À chaque fois que X → Y.' Automatique. Pour toujours."
+        }
+      ]
+    },
     lessons: [
       {
         icon: '⚙️',
@@ -550,6 +723,49 @@ const MODULES = [
     icon: '🎨',
     colorStart: '#EC4899',
     colorEnd: '#8B5CF6',
+    story: {
+      title: "L'Architecte du Numérique",
+      scenes: [
+        {
+          duration: 6000,
+          cast: [
+            { e: '👷', x: 28, y: 52, size: 72, anim: 'idle',   duration: '3s',   delay: '0s' },
+            { e: '📐', x: 28, y: 24, size: 36, anim: 'pulse',  duration: '2s',   delay: '0.3s' },
+            { e: '📄', x: 55, y: 52, size: 44, anim: 'pop-in', duration: '0.6s', delay: '0.2s' },
+            { e: '🏗️', x: 80, y: 48, size: 64, anim: 'idle',   duration: '4s',   delay: '0.5s' }
+          ],
+          bubble: null,
+          label: { text: 'Architecte', x: 28, y: 76 },
+          text: "Un architecte ne dit pas 'le plan est parfait' sans visiter le bâtiment réel."
+        },
+        {
+          duration: 6000,
+          cast: [
+            { e: '✅', x: 28, y: 44, size: 52, anim: 'pop-in', duration: '0.5s', delay: '0s' },
+            { e: '💻', x: 28, y: 72, size: 36, anim: 'idle',   duration: '3s',   delay: '0.2s' },
+            { e: '≠',  x: 50, y: 52, size: 48, anim: 'pulse',  duration: '1.5s', delay: '0.4s' },
+            { e: '🤢', x: 75, y: 44, size: 52, anim: 'shake',  duration: '0.8s', delay: '0.6s' },
+            { e: '🖥️', x: 75, y: 72, size: 36, anim: 'idle',   duration: '3s',   delay: '0.2s' }
+          ],
+          bubble: null,
+          label: null,
+          text: "Le code peut compiler ✅ et quand même ressembler à rien visuellement 🤢."
+        },
+        {
+          duration: 6000,
+          cast: [
+            { e: '📸', x: 18, y: 52, size: 60, anim: 'bounce', duration: '1.2s', delay: '0s' },
+            { e: '→',  x: 38, y: 52, size: 32, anim: 'pulse',  duration: '1.2s', delay: '0.2s' },
+            { e: '🤖', x: 55, y: 52, size: 60, anim: 'idle',   duration: '3s',   delay: '0.3s' },
+            { e: '→',  x: 72, y: 52, size: 32, anim: 'pulse',  duration: '1.2s', delay: '0.4s' },
+            { e: '✨', x: 88, y: 44, size: 40, anim: 'pulse',  duration: '1.6s', delay: '0.6s' }
+          ],
+          bubble: null,
+          label: null,
+          text: "Claude voit vos images. Screenshot + feedback = correction précise. Testez toujours dans le navigateur."
+        }
+      ]
+    },
     lessons: [
       {
         icon: '👁️',
@@ -684,6 +900,50 @@ const MODULES = [
     colorStart: '#0EA5E9',
     colorEnd: '#6366F1',
     achievementId: 'module_agents',
+    story: {
+      title: 'De Soldat à Général',
+      scenes: [
+        {
+          duration: 6000,
+          cast: [
+            { e: '🧑‍💻', x: 50, y: 60, size: 52, anim: 'shake',  duration: '0.7s', delay: '0s' },
+            { e: '📝',   x: 18, y: 22, size: 28, anim: 'rain',   duration: '2.0s', delay: '0s' },
+            { e: '🐛',   x: 32, y: 16, size: 24, anim: 'rain',   duration: '1.8s', delay: '0.3s' },
+            { e: '🚀',   x: 50, y: 20, size: 26, anim: 'rain',   duration: '2.2s', delay: '0.1s' },
+            { e: '📧',   x: 68, y: 18, size: 24, anim: 'rain',   duration: '1.9s', delay: '0.5s' },
+            { e: '💤',   x: 50, y: 78, size: 28, anim: 'float',  duration: '2.5s', delay: '0.4s' },
+            { e: '🔧',   x: 82, y: 22, size: 26, anim: 'rain',   duration: '2.1s', delay: '0.7s' }
+          ],
+          bubble: null,
+          label: null,
+          text: "Avant : vous faites tout. Coder, tester, déployer, rédiger... impossible de tout gérer."
+        },
+        {
+          duration: 6000,
+          cast: [
+            { e: '💡', x: 50, y: 22, size: 60, anim: 'pulse',  duration: '1.5s', delay: '0s' },
+            { e: '🧑‍💻', x: 50, y: 58, size: 64, anim: 'pop-in', duration: '0.6s', delay: '0.3s' },
+            { e: '👑', x: 50, y: 32, size: 40, anim: 'pop-in', duration: '0.5s', delay: '0.8s' }
+          ],
+          bubble: null,
+          label: null,
+          text: "Révélation : vous n'avez pas à tout faire. Vous pouvez être la tête, pas les mains."
+        },
+        {
+          duration: 6000,
+          cast: [
+            { e: '👑',  x: 50, y: 20, size: 52, anim: 'idle',   duration: '3s',   delay: '0s' },
+            { e: '🤖',  x: 50, y: 52, size: 56, anim: 'bounce', duration: '1.3s', delay: '0.2s' },
+            { e: '🤖',  x: 18, y: 78, size: 44, anim: 'bounce', duration: '1.4s', delay: '0s' },
+            { e: '🤖',  x: 50, y: 78, size: 44, anim: 'bounce', duration: '1.4s', delay: '0.25s' },
+            { e: '🤖',  x: 82, y: 78, size: 44, anim: 'bounce', duration: '1.4s', delay: '0.5s' }
+          ],
+          bubble: null,
+          label: { text: 'CEO', x: 50, y: 32 },
+          text: "Vous → Vision. Orchestrateur → Coordination. Workers → Exécution. C'est votre armée."
+        }
+      ]
+    },
     lessons: [
       {
         icon: '🏗️',
@@ -815,6 +1075,53 @@ const MODULES = [
     subtitle: 'Pensez CEO, pas opérateur',
     icon: '👑',
     colorStart: '#FBBF24',
+    story: {
+      title: 'Le Chef d\'Orchestre',
+      scenes: [
+        {
+          duration: 6000,
+          cast: [
+            { e: '🎹', x: 15, y: 55, size: 52, anim: 'idle',   duration: '3.5s', delay: '0s' },
+            { e: '🎸', x: 32, y: 62, size: 48, anim: 'idle',   duration: '4s',   delay: '0.3s' },
+            { e: '🧑‍💻', x: 50, y: 45, size: 64, anim: 'bounce', duration: '1.4s', delay: '0.1s' },
+            { e: '🪄', x: 62, y: 34, size: 36, anim: 'pulse',  duration: '1.8s', delay: '0.5s' },
+            { e: '🎺', x: 72, y: 55, size: 48, anim: 'idle',   duration: '3.2s', delay: '0.2s' },
+            { e: '🎼', x: 88, y: 42, size: 40, anim: 'float',  duration: '2.5s', delay: '0.4s' }
+          ],
+          bubble: null,
+          label: { text: 'Chef d\'Orchestre', x: 50, y: 72 },
+          text: "Le chef d'orchestre ne joue aucun instrument. Pourtant c'est lui qui crée la musique."
+        },
+        {
+          duration: 6000,
+          cast: [
+            { e: '🎹', x: 18, y: 52, size: 48, anim: 'wiggle', duration: '0.9s', delay: '0s' },
+            { e: '🎸', x: 42, y: 62, size: 44, anim: 'shake',  duration: '0.7s', delay: '0.2s' },
+            { e: '🎺', x: 72, y: 52, size: 48, anim: 'wiggle', duration: '1.0s', delay: '0.1s' },
+            { e: '🌪️', x: 50, y: 36, size: 56, anim: 'spin',   duration: '1.5s', delay: '0.3s' },
+            { e: '😱', x: 50, y: 72, size: 32, anim: 'pop-in', duration: '0.5s', delay: '0.8s' }
+          ],
+          bubble: null,
+          label: null,
+          text: "Sans vision claire = chaos. Vos agents improvisent chacun de leur côté."
+        },
+        {
+          duration: 6000,
+          cast: [
+            { e: '🧑‍💻', x: 50, y: 30, size: 64, anim: 'idle',   duration: '3s',   delay: '0s' },
+            { e: '🪄',  x: 62, y: 20, size: 36, anim: 'pulse',  duration: '1.6s', delay: '0.2s' },
+            { e: '🤖',  x: 20, y: 68, size: 52, anim: 'bounce', duration: '1.3s', delay: '0s' },
+            { e: '🤖',  x: 50, y: 68, size: 52, anim: 'bounce', duration: '1.3s', delay: '0.2s' },
+            { e: '🤖',  x: 80, y: 68, size: 52, anim: 'bounce', duration: '1.3s', delay: '0.4s' },
+            { e: '🎵',  x: 30, y: 44, size: 24, anim: 'float',  duration: '2.2s', delay: '0.3s' },
+            { e: '✨',  x: 70, y: 44, size: 24, anim: 'pulse',  duration: '1.8s', delay: '0.5s' }
+          ],
+          bubble: null,
+          label: { text: 'Satisfait 😌', x: 50, y: 46 },
+          text: "Vision claire + brief précis = harmonie parfaite. Vous pensez. Eux créent."
+        }
+      ]
+    },
     lessons: [
       {
         icon: '👑',
