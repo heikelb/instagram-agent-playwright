@@ -33,44 +33,117 @@ const MODULES = [
     colorEnd: '#4F46E5',
     achievementId: 'module_skills',
     story: {
-      title: 'La Découverte des Super-Pouvoirs',
+      title: 'Les 8 Super-Pouvoirs de Claude',
       scenes: [
         {
-          duration: 6000,
+          // Q1 : Qu'est-ce qu'un skill ?
+          duration: 7000,
           cast: [
-            { e: '🧑‍💻', x: 50, y: 55, size: 72, anim: 'shake', duration: '0.5s', delay: '0s' },
-            { e: '💻',    x: 50, y: 30, size: 48, anim: 'idle',  duration: '3s',  delay: '0.2s' },
-            { e: '❓',    x: 22, y: 38, size: 36, anim: 'float', duration: '2.2s',delay: '0s' },
-            { e: '❓',    x: 75, y: 28, size: 28, anim: 'float', duration: '2.8s',delay: '0.5s' },
-            { e: '❓',    x: 38, y: 72, size: 24, anim: 'float', duration: '3.1s',delay: '0.3s' }
+            { e: '🧑‍💻', x: 50, y: 58, size: 60, anim: 'idle',   duration: '3s',   delay: '0s' },
+            { e: '⚡',    x: 18, y: 30, size: 44, anim: 'bounce', duration: '1.2s', delay: '0s' },
+            { e: '🎯',    x: 82, y: 30, size: 44, anim: 'bounce', duration: '1.3s', delay: '0.2s' },
+            { e: '🔄',    x: 18, y: 72, size: 44, anim: 'bounce', duration: '1.1s', delay: '0.4s' },
+            { e: '🔒',    x: 82, y: 72, size: 44, anim: 'bounce', duration: '1.2s', delay: '0.3s' },
+            { e: '🧠',    x: 50, y: 22, size: 44, anim: 'pulse',  duration: '1.8s', delay: '0.5s' }
           ],
           bubble: null,
-          label: { text: 'Vous', x: 50, y: 76 },
-          text: 'Vous venez de découvrir Claude Code... par où commencer ?'
+          label: { text: 'Votre équipe de /skills', x: 50, y: 82 },
+          text: "Un skill = un agent spécialisé invoqué avec /slash. Comme des super-héros : chacun a ses propres outils et expertise."
         },
         {
-          duration: 6000,
+          // Q2 : /init — premier réflexe sur un nouveau projet
+          duration: 7000,
           cast: [
-            { e: '🧑‍💻', x: 28, y: 55, size: 64, anim: 'idle',  duration: '3s',  delay: '0s' },
-            { e: '🧙',   x: 72, y: 48, size: 72, anim: 'pop-in',duration: '0.6s',delay: '0.2s' },
-            { e: '⚡',   x: 72, y: 25, size: 40, anim: 'pulse', duration: '1.5s',delay: '0.8s' }
+            { e: '🧑‍💻', x: 28, y: 58, size: 60, anim: 'idle',   duration: '3s',   delay: '0s' },
+            { e: '📋',    x: 72, y: 42, size: 72, anim: 'pop-in', duration: '0.5s', delay: '0.6s' },
+            { e: '🧠',    x: 72, y: 18, size: 40, anim: 'pulse',  duration: '1.8s', delay: '1.0s' },
+            { e: '✅',    x: 50, y: 74, size: 36, anim: 'pop-in', duration: '0.4s', delay: '1.5s' }
           ],
-          bubble: { text: '/init 📁', targetX: 72, targetY: 48, size: 72 },
-          label: { text: 'Mentor', x: 72, y: 76 },
-          text: "Un mentor vous révèle les Skills : des commandes /slash avec des super-pouvoirs."
+          bubble: { text: '/init', targetX: 28, targetY: 58, size: 60 },
+          label: { text: 'CLAUDE.md = mémoire permanente', x: 72, y: 72 },
+          text: "/init = PREMIER réflexe sur tout nouveau projet. Il crée CLAUDE.md que Claude relira à chaque session pour connaître votre codebase."
         },
         {
-          duration: 6000,
+          // Q3 : /update-config — hooks et automatisations
+          duration: 7000,
           cast: [
-            { e: '🧑‍💻',      x: 50, y: 52, size: 72, anim: 'bounce', duration: '1.2s', delay: '0s' },
-            { e: '⚡/init',  x: 50, y: 52, size: 22, anim: 'orbit',  duration: '3s',   delay: '0s',   orbitRadius: 60, orbitStart: 0 },
-            { e: '🎯/review',x: 50, y: 52, size: 22, anim: 'orbit',  duration: '3s',   delay: '-0.75s',orbitRadius: 60, orbitStart: 90 },
-            { e: '⚙️/config',x: 50, y: 52, size: 22, anim: 'orbit',  duration: '3s',   delay: '-1.5s', orbitRadius: 60, orbitStart: 180 },
-            { e: '🔄/loop',  x: 50, y: 52, size: 22, anim: 'orbit',  duration: '3s',   delay: '-2.25s',orbitRadius: 60, orbitStart: 270 }
+            { e: '⚙️',   x: 50, y: 28, size: 68, anim: 'spin',   duration: '3s',   delay: '0s' },
+            { e: '📌',    x: 22, y: 62, size: 48, anim: 'pop-in', duration: '0.4s', delay: '0.5s' },
+            { e: '➡️',   x: 50, y: 62, size: 40, anim: 'idle',   duration: '3s',   delay: '0s' },
+            { e: '🤖',    x: 78, y: 62, size: 48, anim: 'pop-in', duration: '0.4s', delay: '0.9s' }
+          ],
+          bubble: null,
+          label: { text: 'Si X → alors Y automatiquement', x: 50, y: 82 },
+          text: "/update-config programme des automatisations. 'À chaque X fais Y' — il configure les hooks dans settings.json pour vous."
+        },
+        {
+          // Q4 : /loop — tâches à intervalles réguliers
+          duration: 7000,
+          cast: [
+            { e: '⏰',    x: 50, y: 26, size: 72, anim: 'wiggle', duration: '1s',   delay: '0s' },
+            { e: '🔄',    x: 50, y: 60, size: 56, anim: 'spin',   duration: '2.5s', delay: '0.3s' },
+            { e: '✅',    x: 22, y: 58, size: 36, anim: 'pop-in', duration: '0.4s', delay: '1.2s' },
+            { e: '✅',    x: 50, y: 74, size: 36, anim: 'pop-in', duration: '0.4s', delay: '2.2s' },
+            { e: '✅',    x: 78, y: 58, size: 36, anim: 'pop-in', duration: '0.4s', delay: '3.2s' }
+          ],
+          bubble: { text: '/loop 5m', targetX: 50, targetY: 26, size: 72 },
+          label: null,
+          text: "/loop exécute une tâche à intervalles réguliers. Parfait pour surveiller un déploiement, poller un statut toutes les 5 minutes."
+        },
+        {
+          // Q5 : /fewer-permission-prompts — réduire les interruptions
+          duration: 7000,
+          cast: [
+            { e: '🙋',    x: 20, y: 25, size: 38, anim: 'pop-in', duration: '0.3s', delay: '0s' },
+            { e: '🙋',    x: 50, y: 18, size: 38, anim: 'pop-in', duration: '0.3s', delay: '0.25s' },
+            { e: '🙋',    x: 80, y: 25, size: 38, anim: 'pop-in', duration: '0.3s', delay: '0.5s' },
+            { e: '😤',    x: 50, y: 58, size: 60, anim: 'shake',  duration: '0.5s', delay: '0.8s' },
+            { e: '🔍',    x: 50, y: 58, size: 64, anim: 'pop-in', duration: '0.4s', delay: '2.0s' },
+            { e: '😌',    x: 50, y: 58, size: 64, anim: 'pop-in', duration: '0.4s', delay: '3.2s' }
+          ],
+          bubble: null,
+          label: { text: 'Scanne vos transcripts → allowlist', x: 50, y: 82 },
+          text: "/fewer-permission-prompts analyse vos historiques et ajoute une allowlist dans .claude/settings.json. Fini les interruptions répétitives."
+        },
+        {
+          // Q6 : /claude-api — se déclenche sur import SDK
+          duration: 7000,
+          cast: [
+            { e: '📄',    x: 28, y: 45, size: 64, anim: 'idle',   duration: '3s',   delay: '0s' },
+            { e: '🔍',    x: 50, y: 38, size: 48, anim: 'float',  duration: '2.2s', delay: '0s' },
+            { e: '📦',    x: 72, y: 32, size: 56, anim: 'pop-in', duration: '0.5s', delay: '0.8s' },
+            { e: '⚡',    x: 72, y: 60, size: 40, anim: 'pulse',  duration: '1.5s', delay: '1.2s' }
+          ],
+          bubble: { text: 'import anthropic', targetX: 28, targetY: 45, size: 64 },
+          label: { text: '/claude-api activé automatiquement !', x: 72, y: 76 },
+          text: "/claude-api se déclenche seul quand votre code importe le SDK Anthropic. Il inclut les meilleures pratiques API dès le départ."
+        },
+        {
+          // Q7 : /simplify (agit) vs /review (conseille seulement)
+          duration: 7000,
+          cast: [
+            { e: '🕵️',   x: 25, y: 50, size: 64, anim: 'idle',   duration: '3s',   delay: '0s' },
+            { e: '💬',    x: 25, y: 20, size: 44, anim: 'pop-in', duration: '0.4s', delay: '0.8s' },
+            { e: '🔧',    x: 75, y: 50, size: 64, anim: 'bounce', duration: '1.3s', delay: '0s' },
+            { e: '✅',    x: 75, y: 20, size: 44, anim: 'pop-in', duration: '0.4s', delay: '0.8s' }
           ],
           bubble: null,
           label: null,
-          text: "Chaque skill = un agent spécialisé. Vous êtes maintenant dans le top 1%."
+          text: "/review = consultant qui conseille sans toucher au code. /simplify = agent qui CORRIGE directement la qualité et l'efficacité."
+        },
+        {
+          // Q8 : /review (général) vs /security-review (audit sécurité)
+          duration: 7000,
+          cast: [
+            { e: '📋',    x: 25, y: 45, size: 64, anim: 'idle',   duration: '3s',   delay: '0s' },
+            { e: '🔍',    x: 75, y: 40, size: 64, anim: 'float',  duration: '2s',   delay: '0s' },
+            { e: '🛡️',   x: 75, y: 68, size: 48, anim: 'pop-in', duration: '0.4s', delay: '0.8s' },
+            { e: '🐛',    x: 50, y: 72, size: 32, anim: 'pop-in', duration: '0.3s', delay: '1.4s' },
+            { e: '❌',    x: 62, y: 68, size: 28, anim: 'pop-in', duration: '0.3s', delay: '2.0s' }
+          ],
+          bubble: null,
+          label: { text: '/review général  ↔  /security-review = audit OWASP', x: 50, y: 82 },
+          text: "/review = revue générale. /security-review = audit ciblé : SQL injection, XSS, OWASP. À utiliser avant de merger du code sensible."
         }
       ]
     },
