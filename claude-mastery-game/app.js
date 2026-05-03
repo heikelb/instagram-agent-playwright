@@ -443,6 +443,7 @@ function nextStoryScene() {
 function skipStory() {
   if (story.timer) clearTimeout(story.timer);
   if (story.typeTimer) clearInterval(story.typeTimer);
+  closeAskPanel();
   const moduleId = story.moduleId;
   story.moduleId = null;
   story.mod = null;
@@ -452,9 +453,80 @@ function skipStory() {
 function exitStory() {
   if (story.timer) clearTimeout(story.timer);
   if (story.typeTimer) clearInterval(story.typeTimer);
+  closeAskPanel();
   story.moduleId = null;
   story.mod = null;
   showScreen('modules');
+}
+
+// ── ASK PANEL (mini assistant Q&A) ────────────────────────────────────────
+function toggleAskPanel() {
+  const panel = document.getElementById('ask-panel');
+  const btn   = document.getElementById('btn-ask');
+  const isHidden = panel.classList.contains('hidden');
+  if (isHidden) {
+    panel.classList.remove('hidden');
+    btn.classList.add('active');
+    document.getElementById('ask-input').focus();
+  } else {
+    closeAskPanel();
+  }
+}
+
+function closeAskPanel() {
+  const panel = document.getElementById('ask-panel');
+  const btn   = document.getElementById('btn-ask');
+  if (panel) panel.classList.add('hidden');
+  if (btn)   btn.classList.remove('active');
+}
+
+async function sendAskQuestion() {
+  const input   = document.getElementById('ask-input');
+  const sendBtn = document.getElementById('ask-send-btn');
+  const question = input.value.trim();
+  if (!question || sendBtn.disabled) return;
+
+  input.value = '';
+  sendBtn.disabled = true;
+
+  const messages = document.getElementById('ask-messages');
+  const hint = messages.querySelector('.ask-hint');
+  if (hint) hint.remove();
+
+  const userEl = document.createElement('div');
+  userEl.className = 'ask-msg-user';
+  userEl.textContent = question;
+  messages.appendChild(userEl);
+
+  const loadingEl = document.createElement('div');
+  loadingEl.className = 'ask-msg-loading';
+  loadingEl.textContent = '●●●';
+  messages.appendChild(loadingEl);
+  messages.scrollTop = messages.scrollHeight;
+
+  try {
+    const res  = await fetch('/claude-mastery/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question })
+    });
+    const data = await res.json();
+    loadingEl.remove();
+    const botEl = document.createElement('div');
+    botEl.className = 'ask-msg-bot';
+    botEl.textContent = data.answer || data.error || 'Erreur de réponse.';
+    messages.appendChild(botEl);
+  } catch (_) {
+    loadingEl.remove();
+    const errEl = document.createElement('div');
+    errEl.className = 'ask-msg-bot';
+    errEl.textContent = 'Impossible de joindre l\'assistant. Vérifie ta connexion.';
+    messages.appendChild(errEl);
+  } finally {
+    sendBtn.disabled = false;
+    messages.scrollTop = messages.scrollHeight;
+    input.focus();
+  }
 }
 
 // ── QUIZ LAUNCH (after lessons) ──────────────────────────────────────────

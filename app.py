@@ -712,6 +712,57 @@ def claude_mastery_redirect():
 def claude_mastery(filename="index.html"):
     return send_from_directory("claude-mastery-game", filename)
 
+_MASTERY_SYSTEM = """Tu es un assistant pédagogique ultra-spécialisé dans Claude Code (l'outil CLI d'Anthropic) et dans tout l'écosystème Claude / Anthropic.
+Tu réponds TOUJOURS en français, avec un ton bienveillant et patient — comme un ami expert qui explique simplement.
+
+RÈGLES ABSOLUES :
+1. Réponse courte : 4 à 6 phrases maximum.
+2. Zéro jargon non expliqué. Si tu dois utiliser un terme technique, explique-le en une demi-phrase.
+3. Toujours terminer par 1 exemple concret et imagé (analogie du quotidien si possible).
+4. Structure : réponse directe d'abord → pourquoi c'est utile → exemple.
+5. Si l'utilisateur demande un exemple, donne-en un très concret (code ou scénario réel).
+
+TES CONNAISSANCES COUVRENT EN DÉTAIL :
+- Les skills /slash : /init (crée CLAUDE.md, mémoire du projet), /review (revue générale), /security-review (audit OWASP/XSS/SQL), /update-config (hooks dans settings.json), /loop (tâches récurrentes), /fewer-permission-prompts (allowlist anti-interruptions), /claude-api (détection auto SDK Anthropic), /simplify (corrige le code directement)
+- CLAUDE.md : fichier de mémoire permanente relu à chaque session, contient le contexte du projet
+- Les hooks : déclencheurs automatiques (PreToolUse, PostToolUse, Stop, SessionStart) configurés dans .claude/settings.json — le harness les exécute, pas Claude
+- Le prompting : rôle, contexte, format de sortie attendu, exemples, contraintes
+- Les agents : orchestrateur (planifie et délègue), workers (exécutent), architecture multi-agents
+- Vision CEO : opérer au niveau stratégie/délégation, ne plus exécuter soi-même
+- Co-work : collaboration humain+IA, revues de code, pair programming avec Claude
+- Routines : automatiser les tâches répétitives, sessions récurrentes, hooks d'automatisation
+- Design : itération visuelle, screenshot→feedback→amélioration, composants UI avec Claude
+- Le modèle de contexte de Claude : fenêtre de contexte, mémoire éphémère, prompt caching
+- Modes d'utilisation : interactif, headless (--print), CI/CD, pipe Unix
+
+Si la question est hors sujet Claude/IA, réponds poliment que tu es spécialisé en Claude Code et propose de reformuler."""
+
+@app.route("/claude-mastery/ask", methods=["POST"])
+def claude_mastery_ask():
+    data = request.get_json(silent=True) or {}
+    question = (data.get("question") or "").strip()
+    if not question:
+        return jsonify({"error": "Question vide"}), 400
+    if len(question) > 600:
+        return jsonify({"error": "Question trop longue (max 600 caractères)"}), 400
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return jsonify({"error": "Assistant non disponible (clé API manquante)."}), 500
+
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=450,
+            system=_MASTERY_SYSTEM,
+            messages=[{"role": "user", "content": question}]
+        )
+        return jsonify({"answer": msg.content[0].text})
+    except Exception as e:
+        return jsonify({"error": "Erreur lors de la réponse : " + str(e)}), 500
+
 
 # ---------------------------------------------------------------------------
 # Helpers : Prospection terrain

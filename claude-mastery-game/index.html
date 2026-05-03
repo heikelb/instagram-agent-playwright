@@ -137,12 +137,33 @@
       </div>
       <div class="story-nav">
         <div class="story-dots" id="story-dots"></div>
-        <button class="btn-primary story-next-btn" id="story-next-btn" onclick="nextStoryScene()">
-          Scène suivante →
-        </button>
+        <div class="story-nav-btns">
+          <button class="btn-ask" id="btn-ask" onclick="toggleAskPanel()">💬 Question ?</button>
+          <button class="btn-primary story-next-btn" id="story-next-btn" onclick="nextStoryScene()">
+            Scène suivante →
+          </button>
+        </div>
       </div>
     </div>
 
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       OVERLAY: ASK PANEL (assistant Q&A)
+  ══════════════════════════════════════════ -->
+  <div class="ask-panel hidden" id="ask-panel">
+    <div class="ask-panel-header">
+      <span>🧠 Assistant Claude</span>
+      <button onclick="toggleAskPanel()" aria-label="Fermer">✕</button>
+    </div>
+    <div class="ask-messages" id="ask-messages">
+      <div class="ask-hint">Pose une question sur ce que tu viens de voir…<br><span class="ask-hint-ex">Ex : « À quoi sert CLAUDE.md ? » · « Donne-moi un exemple de hook »</span></div>
+    </div>
+    <div class="ask-input-row">
+      <input type="text" id="ask-input" placeholder="Tape ta question…" autocomplete="off"
+        onkeydown="if(event.key==='Enter') sendAskQuestion()">
+      <button id="ask-send-btn" onclick="sendAskQuestion()">→</button>
+    </div>
   </div>
 
   <!-- ══════════════════════════════════════════
