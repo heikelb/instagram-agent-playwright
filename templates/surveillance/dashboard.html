@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Détecteur de Surveillance</title>
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --surface: #111827;
+      --surface2: #1f2937;
+      --border: #374151;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --critical: #ef4444;
+      --high: #f97316;
+      --medium: #eab308;
+      --low: #22c55e;
+      --accent: #3b82f6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    header h1 { font-size: 1.25rem; font-weight: 700; }
+    header span { color: var(--muted); font-size: 0.875rem; }
+    .shield { font-size: 1.5rem; }
+
+    main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+    /* Scan button */
+    #scan-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.75rem 2rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-bottom: 2rem;
+    }
+    #scan-btn:hover { background: #2563eb; }
+    #scan-btn:disabled { background: var(--border); cursor: not-allowed; }
+    #scan-btn .spinner {
+      display: none;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Risk banner */
+    #risk-banner {
+      display: none;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      border: 1px solid var(--border);
+    }
+    #risk-banner.critical { background: rgba(239,68,68,0.15); border-color: var(--critical); }
+    #risk-banner.high     { background: rgba(249,115,22,0.15); border-color: var(--high); }
+    #risk-banner.medium   { background: rgba(234,179,8,0.15);  border-color: var(--medium); }
+    #risk-banner.low      { background: rgba(34,197,94,0.15);  border-color: var(--low); }
+
+    .risk-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem; }
+    .risk-title.critical { color: var(--critical); }
+    .risk-title.high     { color: var(--high); }
+    .risk-title.medium   { color: var(--medium); }
+    .risk-title.low      { color: var(--low); }
+
+    .risk-meta { color: var(--muted); font-size: 0.875rem; }
+    .counters { display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap; }
+    .counter-pill {
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .counter-pill.critical { background: var(--critical); color: white; }
+    .counter-pill.high     { background: var(--high); color: white; }
+    .counter-pill.medium   { background: var(--medium); color: #111; }
+    .counter-pill.low      { background: var(--low); color: #111; }
+
+    /* Sections */
+    .section { margin-bottom: 2rem; }
+    .section-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* Finding cards */
+    #findings-container { display: flex; flex-direction: column; gap: 1rem; }
+    .finding-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .finding-card.critical { border-left: 4px solid var(--critical); }
+    .finding-card.high     { border-left: 4px solid var(--high); }
+    .finding-card.medium   { border-left: 4px solid var(--medium); }
+    .finding-card.low      { border-left: 4px solid var(--low); }
+
+    .finding-header {
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    .finding-header:hover { background: var(--surface2); }
+    .finding-badge {
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .finding-badge.critical { background: var(--critical); color: white; }
+    .finding-badge.high     { background: var(--high); color: white; }
+    .finding-badge.medium   { background: var(--medium); color: #111; }
+    .finding-badge.low      { background: var(--low); color: #111; }
+
+    .finding-info { flex: 1; }
+    .finding-category { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.25rem; }
+    .finding-title { font-weight: 600; font-size: 0.95rem; }
+    .finding-toggle { color: var(--muted); font-size: 1.2rem; transition: transform 0.2s; }
+    .finding-toggle.open { transform: rotate(90deg); }
+
+    .finding-body {
+      display: none;
+      padding: 1rem 1.25rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface2);
+    }
+    .finding-body.visible { display: block; }
+    .finding-desc { color: var(--muted); font-size: 0.875rem; margin-bottom: 0.75rem; line-height: 1.5; }
+    .evidence-list {
+      list-style: none;
+      margin-bottom: 0.75rem;
+    }
+    .evidence-list li {
+      font-family: 'Courier New', monospace;
+      font-size: 0.78rem;
+      background: var(--bg);
+      padding: 0.3rem 0.5rem;
+      border-radius: 4px;
+      margin-bottom: 0.3rem;
+      color: #fbbf24;
+      word-break: break-all;
+    }
+    .recommendation {
+      font-size: 0.82rem;
+      color: #86efac;
+      background: rgba(34,197,94,0.08);
+      border-left: 3px solid var(--low);
+      padding: 0.5rem 0.75rem;
+      border-radius: 0 4px 4px 0;
+      line-height: 1.5;
+    }
+    .recommendation::before { content: "✓ Recommandation: "; font-weight: 700; }
+
+    /* Connections table */
+    #connections-container {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    th {
+      text-align: left;
+      padding: 0.6rem 0.75rem;
+      background: var(--surface);
+      color: var(--muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      font-family: 'Courier New', monospace;
+      color: var(--text);
+    }
+    tr.suspicious td { background: rgba(239,68,68,0.08); color: #fca5a5; }
+    tr:hover td { background: var(--surface2); }
+    .status-pill {
+      padding: 0.1rem 0.4rem;
+      border-radius: 3px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .status-pill.ESTABLISHED { background: rgba(34,197,94,0.2); color: var(--low); }
+    .status-pill.LISTEN      { background: rgba(249,115,22,0.2); color: var(--high); }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      color: var(--muted);
+      padding: 3rem;
+    }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 0.75rem; }
+    .empty-state p { font-size: 0.95rem; }
+
+    /* No findings */
+    .no-findings {
+      background: rgba(34,197,94,0.1);
+      border: 1px solid var(--low);
+      border-radius: 10px;
+      padding: 1.5rem;
+      text-align: center;
+      color: var(--low);
+      font-weight: 600;
+    }
+
+    .scan-meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <span class="shield">🛡️</span>
+  <div>
+    <h1>Détecteur de Surveillance</h1>
+    <span>Analyse de sécurité — détection d'écoute et d'accès non autorisé</span>
+  </div>
+</header>
+
+<main>
+  <button id="scan-btn" onclick="runScan()">
+    <div class="spinner" id="spinner"></div>
+    <span id="btn-label">🔍 Lancer le scan</span>
+  </button>
+
+  <div id="risk-banner"></div>
+  <div id="scan-meta" class="scan-meta"></div>
+
+  <div id="findings-section" style="display:none">
+    <div class="section">
+      <div class="section-title">Alertes de sécurité</div>
+      <div id="findings-container"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Connexions réseau actives</div>
+      <div id="connections-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Local</th>
+              <th>Distant</th>
+              <th>État</th>
+              <th>PID</th>
+              <th>Processus</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody id="conn-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="initial-state" class="empty-state">
+    <div class="icon">🔒</div>
+    <p>Cliquez sur <strong>Lancer le scan</strong> pour analyser votre système<br>
+       à la recherche de signes de surveillance ou d'écoute.</p>
+  </div>
+</main>
+
+<script>
+const RISK_LABELS = {
+  critical: "RISQUE CRITIQUE — Surveillance probable détectée",
+  high:     "RISQUE ÉLEVÉ — Activité suspecte détectée",
+  medium:   "RISQUE MODÉRÉ — Points à vérifier",
+  low:      "RISQUE FAIBLE — Système apparemment sain"
+};
+
+async function runScan() {
+  const btn = document.getElementById("scan-btn");
+  const spinner = document.getElementById("spinner");
+  const label = document.getElementById("btn-label");
+
+  btn.disabled = true;
+  spinner.style.display = "block";
+  label.textContent = "Analyse en cours…";
+
+  document.getElementById("initial-state").style.display = "none";
+  document.getElementById("risk-banner").style.display = "none";
+  document.getElementById("findings-section").style.display = "none";
+
+  try {
+    const resp = await fetch("/surveillance/scan", { method: "POST" });
+    const data = await resp.json();
+    renderResults(data);
+  } catch (e) {
+    alert("Erreur lors du scan: " + e.message);
+  } finally {
+    btn.disabled = false;
+    spinner.style.display = "none";
+    label.textContent = "🔍 Relancer le scan";
+  }
+}
+
+function renderResults(data) {
+  // Risk banner
+  const banner = document.getElementById("risk-banner");
+  banner.className = `${data.overall_risk}`;
+  banner.style.display = "block";
+
+  const rc = data.risk_counts;
+  banner.innerHTML = `
+    <div class="risk-title ${data.overall_risk}">${RISK_LABELS[data.overall_risk]}</div>
+    <div class="risk-meta">
+      Hôte: <strong>${data.hostname}</strong> &nbsp;|&nbsp;
+      OS: <strong>${data.os}</strong> &nbsp;|&nbsp;
+      Scan: ${new Date(data.scan_time).toLocaleString('fr-FR')}
+    </div>
+    <div class="counters">
+      ${rc.critical ? `<span class="counter-pill critical">⛔ ${rc.critical} critique${rc.critical>1?'s':''}</span>` : ''}
+      ${rc.high     ? `<span class="counter-pill high">🔴 ${rc.high} élevé${rc.high>1?'s':''}</span>` : ''}
+      ${rc.medium   ? `<span class="counter-pill medium">🟡 ${rc.medium} modéré${rc.medium>1?'s':''}</span>` : ''}
+      ${rc.low      ? `<span class="counter-pill low">🟢 ${rc.low} faible${rc.low>1?'s':''}</span>` : ''}
+      ${data.total_findings === 0 ? '<span class="counter-pill low">✓ Aucun problème détecté</span>' : ''}
+    </div>
+  `;
+
+  document.getElementById("scan-meta").textContent =
+    data.psutil_available ? "" : "⚠️ Module psutil non installé — analyse réseau/processus limitée.";
+
+  // Findings
+  const container = document.getElementById("findings-container");
+  container.innerHTML = "";
+
+  if (data.findings.length === 0) {
+    container.innerHTML = '<div class="no-findings">✅ Aucun signe de surveillance détecté sur ce système.</div>';
+  } else {
+    // Trier par risque
+    const order = { critical: 0, high: 1, medium: 2, low: 3 };
+    data.findings.sort((a, b) => order[a.risk] - order[b.risk]);
+    data.findings.forEach((f, i) => container.appendChild(buildFindingCard(f, i)));
+  }
+
+  // Connexions
+  const tbody = document.getElementById("conn-tbody");
+  tbody.innerHTML = "";
+  if (data.connections.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:1.5rem">
+      Aucune connexion active (psutil requis)
+    </td></tr>`;
+  } else {
+    data.connections.forEach(c => {
+      const tr = document.createElement("tr");
+      if (c.suspicious) tr.classList.add("suspicious");
+      tr.innerHTML = `
+        <td>${c.local}</td>
+        <td>${c.remote}</td>
+        <td><span class="status-pill ${c.status}">${c.status}</span></td>
+        <td>${c.pid}</td>
+        <td>${c.process}</td>
+        <td style="color:var(--high)">${c.note || (c.suspicious ? "⚠️ Suspect" : "")}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  document.getElementById("findings-section").style.display = "block";
+}
+
+function buildFindingCard(f, idx) {
+  const card = document.createElement("div");
+  card.className = `finding-card ${f.risk}`;
+
+  const evidenceHtml = f.evidence.length
+    ? `<ul class="evidence-list">${f.evidence.map(e => `<li>${escHtml(e)}</li>`).join("")}</ul>`
+    : "";
+
+  const recHtml = f.recommendation
+    ? `<div class="recommendation">${escHtml(f.recommendation)}</div>`
+    : "";
+
+  card.innerHTML = `
+    <div class="finding-header" onclick="toggleCard(this)">
+      <span class="finding-badge ${f.risk}">${f.risk.toUpperCase()}</span>
+      <div class="finding-info">
+        <div class="finding-category">${escHtml(f.category)}</div>
+        <div class="finding-title">${escHtml(f.title)}</div>
+      </div>
+      <span class="finding-toggle">›</span>
+    </div>
+    <div class="finding-body">
+      <p class="finding-desc">${escHtml(f.description)}</p>
+      ${evidenceHtml}
+      ${recHtml}
+    </div>
+  `;
+  return card;
+}
+
+function toggleCard(header) {
+  const body = header.nextElementSibling;
+  const toggle = header.querySelector(".finding-toggle");
+  body.classList.toggle("visible");
+  toggle.classList.toggle("open");
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+</script>
+</body>
+</html>

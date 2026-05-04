@@ -10,6 +10,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin, current_user
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
+from surveillance import surveillance_bp
 
 load_dotenv()
 
@@ -1091,6 +1092,8 @@ def creer_scheduler():
     scheduler.start()
     return scheduler
 
+
+app.register_blueprint(surveillance_bp)
 
 # Créer les tables au démarrage (gunicorn + flask run)
 with app.app_context():
