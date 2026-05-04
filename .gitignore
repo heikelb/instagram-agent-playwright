@@ -5,3 +5,4 @@ __pycache__/
 *.pyo
 *.pyd
 apercu.html
+surveillance/investigation.db
