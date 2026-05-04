@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Coach Elite Fibre</title>
+  <meta name="theme-color" content="#0a0a0a">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: #0a0a0a;
+      color: #f0f0f0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 15px;
+      -webkit-font-smoothing: antialiased;
+      overscroll-behavior: none;
+    }
+
+    /* ── APP SHELL ─────────────────────────────────────── */
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      max-width: 680px;
+      margin: 0 auto;
+      overflow: hidden;
+    }
+
+    /* ── HEADER ────────────────────────────────────────── */
+    .header {
+      background: #0f0f0f;
+      border-bottom: 1px solid rgba(255,121,0,.25);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .header-back {
+      color: #ff7900;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: rgba(255,121,0,.08);
+      border: 1px solid rgba(255,121,0,.2);
+      transition: background .15s;
+    }
+    .header-back:hover { background: rgba(255,121,0,.15); }
+    .header-title {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: .3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .flame { animation: flicker 2s ease-in-out infinite; }
+    @keyframes flicker {
+      0%,100% { opacity:1; } 50% { opacity:.7; }
+    }
+    .tts-btn {
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      border: 1px solid #333;
+      background: #1a1a1a;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .2s;
+    }
+    .tts-btn.on { background: rgba(255,121,0,.2); border-color: rgba(255,121,0,.5); }
+
+    /* ── TAB NAV ───────────────────────────────────────── */
+    .tab-nav {
+      background: #0f0f0f;
+      border-bottom: 1px solid #1e1e1e;
+      display: flex;
+      flex-shrink: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .tab-nav::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      flex: 1;
+      min-width: 82px;
+      padding: 11px 6px 10px;
+      border: none;
+      background: transparent;
+      color: #6b7280;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all .2s;
+      white-space: nowrap;
+      letter-spacing: .2px;
+    }
+    .tab-btn.active { color: #ff7900; border-bottom-color: #ff7900; }
+
+    /* ── TAB CONTENT ───────────────────────────────────── */
+    .tab-content { display: none; flex: 1; overflow: hidden; }
+    .tab-content.active { display: flex; flex-direction: column; }
+    .scroll-tab { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px; }
+
+    /* ── STATS TAB ─────────────────────────────────────── */
+    .welcome-banner {
+      background: linear-gradient(135deg, #1c0800 0%, #2d1200 100%);
+      border: 1px solid rgba(255,121,0,.3);
+      border-radius: 16px;
+      padding: 20px 16px;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    .welcome-banner h2 { font-size: 21px; font-weight: 800; margin-bottom: 4px; }
+    .welcome-banner p { color: #9ca3af; font-size: 13px; }
+    .no-data-msg {
+      color: #6b7280;
+      font-size: 13px;
+      text-align: center;
+      padding: 8px;
+      margin-bottom: 16px;
+      font-style: italic;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .kpi-card {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 14px;
+      padding: 14px 12px;
+    }
+    .kpi-icon { font-size: 18px; margin-bottom: 6px; }
+    .kpi-name {
+      font-size: 10px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      margin-bottom: 3px;
+    }
+    .kpi-value { font-size: 30px; font-weight: 900; line-height: 1; margin-bottom: 3px; }
+    .kpi-target { font-size: 10px; color: #555; margin-bottom: 8px; }
+    .kpi-bar-track { height: 3px; background: #2a2a2a; border-radius: 2px; overflow: hidden; }
+    .kpi-bar-fill { height: 100%; border-radius: 2px; transition: width 1.2s cubic-bezier(.4,0,.2,1); }
+
+    .info-row { display: flex; gap: 10px; margin-bottom: 14px; }
+    .info-card {
+      flex: 1;
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 12px;
+      padding: 12px 8px;
+      text-align: center;
+    }
+    .info-card .v { font-size: 22px; font-weight: 800; color: #ff7900; }
+    .info-card .l { font-size: 10px; color: #6b7280; margin-top: 2px; }
+
+    .cta { width: 100%; border: none; border-radius: 12px; padding: 15px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all .15s; margin-bottom: 10px; }
+    .cta-primary { background: #ff7900; color: #fff; }
+    .cta-primary:hover { background: #e86c00; }
+    .cta-primary:active { transform: scale(.98); }
+    .cta-outline { background: #141414; color: #ff7900; border: 1px solid rgba(255,121,0,.3); }
+    .cta-outline:hover { background: #1e1e1e; }
+
+    /* ── CHAT TABS ─────────────────────────────────────── */
+    .chat-tab { display: flex; flex-direction: column; overflow: hidden; }
+    .quick-bar {
+      display: flex;
+      gap: 8px;
+      padding: 10px 14px 8px;
+      overflow-x: auto;
+      flex-shrink: 0;
+      scrollbar-width: none;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    .quick-bar::-webkit-scrollbar { display: none; }
+    .chip {
+      background: #181818;
+      border: 1px solid rgba(255,121,0,.18);
+      color: #ff7900;
+      border-radius: 20px;
+      padding: 6px 13px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: background .15s;
+      flex-shrink: 0;
+    }
+    .chip:hover { background: rgba(255,121,0,.12); }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scrollbar-width: thin;
+      scrollbar-color: #2a2a2a transparent;
+    }
+    .chat-messages::-webkit-scrollbar { width: 4px; }
+    .chat-messages::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+
+    .message { display: flex; gap: 8px; align-items: flex-start; }
+    .message.user { flex-direction: row-reverse; }
+    .message.sys { justify-content: center; }
+    .msg-av {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+      background: #1e1e1e;
+    }
+    .message.user .msg-av { background: rgba(255,121,0,.15); border: 1px solid rgba(255,121,0,.3); }
+    .msg-bbl {
+      max-width: 78%;
+      padding: 10px 13px;
+      border-radius: 14px;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .message.assistant .msg-bbl {
+      background: #181818;
+      border: 1px solid #272727;
+      border-bottom-left-radius: 4px;
+    }
+    .message.user .msg-bbl {
+      background: rgba(255,121,0,.12);
+      border: 1px solid rgba(255,121,0,.25);
+      border-bottom-right-radius: 4px;
+    }
+    .message.sys .msg-bbl {
+      background: rgba(255,121,0,.06);
+      border: 1px dashed rgba(255,121,0,.25);
+      border-radius: 10px;
+      color: #9ca3af;
+      font-size: 13px;
+      max-width: 90%;
+      text-align: center;
+    }
+    .message.thinking .msg-bbl { background: #181818; border: 1px solid #272727; }
+    .dot-pulse { display: inline-flex; gap: 4px; }
+    .dot-pulse span {
+      width: 6px; height: 6px;
+      background: #555;
+      border-radius: 50%;
+      animation: pulse-d .9s ease-in-out infinite;
+    }
+    .dot-pulse span:nth-child(2) { animation-delay: .15s; }
+    .dot-pulse span:nth-child(3) { animation-delay: .3s; }
+    @keyframes pulse-d { 0%,100% { opacity:.3; transform:scale(.8); } 50% { opacity:1; transform:scale(1); } }
+
+    .chat-bottom {
+      flex-shrink: 0;
+      background: #0f0f0f;
+      border-top: 1px solid #1e1e1e;
+      padding: 10px 14px;
+      padding-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+    .chat-input-row { display: flex; gap: 8px; align-items: flex-end; }
+    .chat-input-wrap { flex: 1; }
+    textarea.chat-input {
+      width: 100%;
+      background: #181818;
+      border: 1px solid #333;
+      border-radius: 12px;
+      color: #f0f0f0;
+      font-size: 14px;
+      font-family: inherit;
+      padding: 11px 14px;
+      resize: none;
+      height: 44px;
+      max-height: 120px;
+      line-height: 1.4;
+      transition: border-color .2s;
+    }
+    textarea.chat-input:focus { outline: none; border-color: rgba(255,121,0,.45); }
+    textarea.chat-input::placeholder { color: #444; }
+    .mic-btn, .send-btn {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      transition: all .15s;
+    }
+    .mic-btn { background: #1e1e1e; border: 1px solid #333; }
+    .mic-btn:hover { background: #2a2a2a; }
+    .mic-btn.rec {
+      background: rgba(239,68,68,.15);
+      border-color: #ef4444;
+      animation: pulse-mic 1.2s ease infinite;
+    }
+    @keyframes pulse-mic {
+      0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.35); }
+      50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+    }
+    .send-btn { background: #ff7900; color: #fff; }
+    .send-btn:hover { background: #e86c00; }
+    .send-btn:active { transform: scale(.95); }
+
+    /* ── ROLEPLAY TAB ──────────────────────────────────── */
+    .section-h { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+    .section-sub { font-size: 13px; color: #6b7280; margin-bottom: 14px; }
+    .scenarios-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+    .scenario-card {
+      background: #141414;
+      border: 1px solid #252525;
+      border-radius: 13px;
+      padding: 13px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: all .18s;
+    }
+    .scenario-card:hover { border-color: rgba(255,121,0,.35); background: #1a1a1a; }
+    .scenario-card.selected { border-color: #ff7900; background: rgba(255,121,0,.07); }
+    .sc-emoji { font-size: 30px; flex-shrink: 0; }
+    .sc-info { flex: 1; min-width: 0; }
+    .sc-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+    .sc-desc { font-size: 12px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sc-badge {
+      font-size: 11px; font-weight: 700;
+      padding: 3px 9px; border-radius: 20px; flex-shrink: 0;
+    }
+    .facile { background: rgba(34,197,94,.12); color: #22c55e; }
+    .moyen  { background: rgba(255,121,0,.12); color: #ff7900; }
+    .difficile { background: rgba(239,68,68,.12); color: #ef4444; }
+
+    .roleplay-chat-wrap {
+      display: none;
+      border: 1px solid #222;
+      border-radius: 14px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .roleplay-chat-wrap.show { display: block; }
+    .roleplay-messages {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 120px;
+      max-height: 38vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      background: #0d0d0d;
+      scrollbar-width: thin;
+      scrollbar-color: #2a2a2a transparent;
+    }
+    .roleplay-input-bar {
+      background: #111;
+      border-top: 1px solid #1e1e1e;
+      padding: 10px 12px;
+      padding-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+
+    /* ── PARETO TAB ────────────────────────────────────── */
+    .pareto-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+    }
+    .pareto-table th {
+      text-align: left;
+      font-size: 10px;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      padding: 6px 10px;
+      border-bottom: 1px solid #1e1e1e;
+    }
+    .pareto-table td {
+      padding: 11px 10px;
+      border-bottom: 1px solid #141414;
+      font-size: 14px;
+    }
+    .pareto-table tr:last-child td { border-bottom: none; }
+    .p-metric { font-weight: 700; color: #ccc; }
+    .p-val { font-size: 20px; font-weight: 900; }
+    .p-bench { color: #555; font-size: 13px; }
+    .p-gap {
+      font-size: 12px; font-weight: 700;
+      padding: 3px 9px; border-radius: 20px;
+    }
+    .g-good { background: rgba(34,197,94,.12); color: #22c55e; }
+    .g-ok   { background: rgba(255,121,0,.12); color: #ff7900; }
+    .g-bad  { background: rgba(239,68,68,.12); color: #ef4444; }
+
+    .pareto-result {
+      background: #141414;
+      border: 1px solid #252525;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 14px;
+      line-height: 1.65;
+      min-height: 80px;
+      margin-top: 12px;
+    }
+    .pareto-result.idle { display: none; }
+    .pareto-result.loading {
+      color: #555; text-align: center; padding: 32px;
+      font-style: italic;
+    }
+    .pareto-result strong { color: #ff7900; }
+    .pareto-result code {
+      background: #1e1e1e;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ══ HEADER ═════════════════════════════════════════ -->
+  <header class="header">
+    <a href="/" class="header-back">← Dashboard</a>
+    <div class="header-title">
+      <span class="flame">🔥</span> Coach Elite Fibre
+    </div>
+    <button class="tts-btn" id="tts-btn" onclick="toggleTTS()" title="Activer la voix du coach">🔇</button>
+  </header>
+
+  <!-- ══ TAB NAV ════════════════════════════════════════ -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="stats"    onclick="switchTab('stats')">🏠 Stats</button>
+    <button class="tab-btn"        data-tab="coach"    onclick="switchTab('coach')">🎯 Coach</button>
+    <button class="tab-btn"        data-tab="roleplay" onclick="switchTab('roleplay')">🎭 Roleplay</button>
+    <button class="tab-btn"        data-tab="pareto"   onclick="switchTab('pareto')">📊 Pareto</button>
+  </nav>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- TAB: STATS                                        -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div id="tab-stats" class="tab-content active">
+    <div class="scroll-tab">
+
+      <div class="welcome-banner">
+        <h2>Bonjour Heikel 👋</h2>
+        {% if stats.total_portes > 0 %}
+        <p>{{ stats.total_portes }} portes analysées sur {{ stats.nb_sessions }} session{{ 's' if stats.nb_sessions > 1 else '' }}</p>
+        {% else %}
+        <p>Lance ta première session terrain pour voir tes stats</p>
+        {% endif %}
+      </div>
+
+      {% if stats.total_portes == 0 %}
+      <p class="no-data-msg">Aucune donnée terrain encore — crée une session dans Terrain pour commencer.</p>
+      {% endif %}
+
+      <div class="kpi-grid">
+        <!-- Ouverture -->
+        <div class="kpi-card">
+          <div class="kpi-icon">📭</div>
+          <div class="kpi-name">Ouverture</div>
+          <div class="kpi-value" style="color:{{ stats.color_ouverture }}">{{ stats.taux_ouverture }}%</div>
+          <div class="kpi-target">Objectif: 70%</div>
+          <div class="kpi-bar-track">
+            <div class="kpi-bar-fill" style="width:{{ stats.prog_ouverture }}%;background:{{ stats.color_ouverture }}"></div>
+          </div>
+        </div>
+        <!-- Causé -->
+        <div class="kpi-card">
+          <div class="kpi-icon">💬</div>
+          <div class="kpi-name">Causé</div>
+          <div class="kpi-value" style="color:{{ stats.color_cause }}">{{ stats.taux_cause }}%</div>
+          <div class="kpi-target">Objectif: 50%</div>
+          <div class="kpi-bar-track">
+            <div class="kpi-bar-fill" style="width:{{ stats.prog_cause }}%;background:{{ stats.color_cause }}"></div>
+          </div>
+        </div>
+        <!-- Entré -->
+        <div class="kpi-card">
+          <div class="kpi-icon">🏠</div>
+          <div class="kpi-name">Entré</div>
+          <div class="kpi-value" style="color:{{ stats.color_entree }}">{{ stats.taux_entree }}%</div>
+          <div class="kpi-target">Objectif: 30%</div>
+          <div class="kpi-bar-track">
+            <div class="kpi-bar-fill" style="width:{{ stats.prog_entree }}%;background:{{ stats.color_entree }}"></div>
+          </div>
+        </div>
+        <!-- Signature -->
+        <div class="kpi-card">
+          <div class="kpi-icon">✅</div>
+          <div class="kpi-name">Signature</div>
+          <div class="kpi-value" style="color:{{ stats.color_signature }}">{{ stats.taux_signature }}%</div>
+          <div class="kpi-target">Objectif: 15%</div>
+          <div class="kpi-bar-track">
+            <div class="kpi-bar-fill" style="width:{{ stats.prog_signature }}%;background:{{ stats.color_signature }}"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-row">
+        <div class="info-card"><div class="v">{{ stats.total_ventes }}</div><div class="l">Ventes</div></div>
+        <div class="info-card"><div class="v">{{ stats.total_installes }}</div><div class="l">Installées</div></div>
+        <div class="info-card"><div class="v">{{ stats.nb_sessions }}</div><div class="l">Sessions</div></div>
+      </div>
+
+      <button class="cta cta-primary" onclick="switchTab('coach')">🎯 Parler au Coach IA</button>
+      <button class="cta cta-outline" onclick="switchTab('roleplay')">🎭 Simuler un terrain</button>
+      <button class="cta cta-outline" onclick="switchTab('pareto')">📊 Analyse Pareto</button>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- TAB: COACH IA                                     -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div id="tab-coach" class="tab-content chat-tab">
+
+    <!-- Quick prompts -->
+    <div class="quick-bar">
+      <button class="chip" onclick="quickPrompt('Donne-moi un script d\'accroche porte-à-porte fibre Orange de 15 secondes max, percutant.')">📝 Script accroche</button>
+      <button class="chip" onclick="quickPrompt('Mon prospect dit : j\'ai déjà un opérateur. Quelle réponse exacte je lui donne ?')">🛡️ J'ai déjà un opérateur</button>
+      <button class="chip" onclick="quickPrompt('Quelle technique pour entrer dans le domicile du prospect ?')">🔑 Entrer chez lui</button>
+      <button class="chip" onclick="quickPrompt('Mon prospect dit : je vais réfléchir. Comment je close là maintenant ?')">⚡ Closer vite</button>
+      <button class="chip" onclick="quickPrompt('Donne-moi les 5 arguments les plus forts pour vendre la Livebox Max.')">💪 Args Livebox Max</button>
+      <button class="chip" onclick="quickPrompt('Mon prospect dit : c\'est trop cher. Quelle réponse concrète ?')">💰 Trop cher</button>
+    </div>
+
+    <!-- Messages -->
+    <div class="chat-messages" id="coach-messages"></div>
+
+    <!-- Input -->
+    <div class="chat-bottom">
+      <div class="chat-input-row">
+        <button class="mic-btn" id="coach-mic" onclick="toggleVoice('coach-input','coach-mic')">🎙️</button>
+        <div class="chat-input-wrap">
+          <textarea class="chat-input" id="coach-input" placeholder="Pose ta question au coach..." rows="1"></textarea>
+        </div>
+        <button class="send-btn" onclick="sendCoachMsg()">▶</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- TAB: ROLEPLAY                                     -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div id="tab-roleplay" class="tab-content">
+    <div class="scroll-tab">
+
+      <div class="section-h">🎭 Simulation Terrain</div>
+      <div class="section-sub">Choisis un prospect et entraîne-toi comme si tu étais sur le terrain</div>
+
+      <div class="scenarios-list">
+        {% for s in scenarios %}
+        <div class="scenario-card" id="sc-{{ s.id }}" onclick="selectScenario('{{ s.id }}')">
+          <div class="sc-emoji">{{ s.emoji }}</div>
+          <div class="sc-info">
+            <div class="sc-name">{{ s.name }}</div>
+            <div class="sc-desc">{{ s.desc }}</div>
+          </div>
+          <span class="sc-badge {{ s.difficulty | lower }}">{{ s.difficulty }}</span>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Roleplay chat -->
+      <div class="roleplay-chat-wrap" id="rp-chat-wrap">
+        <div class="roleplay-messages" id="rp-messages"></div>
+        <div class="roleplay-input-bar">
+          <div class="chat-input-row">
+            <button class="mic-btn" id="rp-mic" onclick="toggleVoice('rp-input','rp-mic')">🎙️</button>
+            <div class="chat-input-wrap">
+              <textarea class="chat-input" id="rp-input" placeholder="Tu es à la porte, parle..." rows="1"></textarea>
+            </div>
+            <button class="send-btn" onclick="sendRpMsg()">▶</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- TAB: PARETO                                       -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div id="tab-pareto" class="tab-content">
+    <div class="scroll-tab">
+
+      <div class="section-h">📊 Analyse Pareto</div>
+      <div class="section-sub">Tes 20% d'actions qui génèrent 80% des résultats</div>
+
+      <table class="pareto-table">
+        <thead>
+          <tr>
+            <th>Métrique</th>
+            <th>Toi</th>
+            <th>Top Perf.</th>
+            <th>Écart</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="p-metric">📭 Ouverture</td>
+            <td class="p-val" style="color:{{ stats.color_ouverture }}">{{ stats.taux_ouverture }}%</td>
+            <td class="p-bench">70%</td>
+            <td>
+              {% if stats.prog_ouverture >= 80 %}<span class="p-gap g-good">✓ Top</span>
+              {% elif stats.prog_ouverture >= 50 %}<span class="p-gap g-ok">-{{ 70 - stats.taux_ouverture }}pts</span>
+              {% else %}<span class="p-gap g-bad">-{{ 70 - stats.taux_ouverture }}pts</span>{% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td class="p-metric">💬 Causé</td>
+            <td class="p-val" style="color:{{ stats.color_cause }}">{{ stats.taux_cause }}%</td>
+            <td class="p-bench">50%</td>
+            <td>
+              {% if stats.prog_cause >= 80 %}<span class="p-gap g-good">✓ Top</span>
+              {% elif stats.prog_cause >= 50 %}<span class="p-gap g-ok">-{{ 50 - stats.taux_cause }}pts</span>
+              {% else %}<span class="p-gap g-bad">-{{ 50 - stats.taux_cause }}pts</span>{% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td class="p-metric">🏠 Entré</td>
+            <td class="p-val" style="color:{{ stats.color_entree }}">{{ stats.taux_entree }}%</td>
+            <td class="p-bench">30%</td>
+            <td>
+              {% if stats.prog_entree >= 80 %}<span class="p-gap g-good">✓ Top</span>
+              {% elif stats.prog_entree >= 50 %}<span class="p-gap g-ok">-{{ 30 - stats.taux_entree }}pts</span>
+              {% else %}<span class="p-gap g-bad">-{{ 30 - stats.taux_entree }}pts</span>{% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td class="p-metric">✅ Signature</td>
+            <td class="p-val" style="color:{{ stats.color_signature }}">{{ stats.taux_signature }}%</td>
+            <td class="p-bench">15%</td>
+            <td>
+              {% if stats.prog_signature >= 80 %}<span class="p-gap g-good">✓ Top</span>
+              {% elif stats.prog_signature >= 50 %}<span class="p-gap g-ok">-{{ 15 - stats.taux_signature }}pts</span>
+              {% else %}<span class="p-gap g-bad">-{{ 15 - stats.taux_signature }}pts</span>{% endif %}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <button class="cta cta-primary" id="pareto-btn" onclick="launchPareto()">
+        🔍 Analyser mes points faibles avec l'IA
+      </button>
+
+      <div class="pareto-result idle" id="pareto-result"></div>
+
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+const STATS    = {{ stats | tojson }};
+const SCENARIOS = {{ scenarios | tojson }};
+
+// ─── STATE ──────────────────────────────────────────────
+let coachHistory = [];
+let rpHistory    = [];
+let currentSc    = null;
+let ttsOn        = false;
+let recognition  = null;
+let streaming    = false;
+let msgIdx       = 0;
+
+// ─── TABS ────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelector(`[data-tab="${name}"]`).classList.add('active');
+}
+
+// ─── TTS ─────────────────────────────────────────────────
+function toggleTTS() {
+  ttsOn = !ttsOn;
+  const btn = document.getElementById('tts-btn');
+  btn.textContent = ttsOn ? '🔊' : '🔇';
+  btn.classList.toggle('on', ttsOn);
+  if (!ttsOn) window.speechSynthesis?.cancel();
+}
+function speak(text) {
+  if (!ttsOn || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g, ''));
+  u.lang = 'fr-FR'; u.rate = 1.05;
+  const voices = window.speechSynthesis.getVoices();
+  const fr = voices.find(v => v.lang.startsWith('fr'));
+  if (fr) u.voice = fr;
+  window.speechSynthesis.speak(u);
+}
+
+// ─── VOICE INPUT ─────────────────────────────────────────
+function initVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return;
+  recognition = new SR();
+  recognition.lang = 'fr-FR';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+}
+function toggleVoice(inputId, btnId) {
+  const btn = document.getElementById(btnId);
+  if (!recognition) { alert('Reconnaissance vocale non dispo — utilise Chrome.'); return; }
+  if (btn.classList.contains('rec')) { recognition.stop(); return; }
+  btn.classList.add('rec'); btn.textContent = '🔴';
+  recognition.onresult = e => { document.getElementById(inputId).value = e.results[0][0].transcript; autoResize(document.getElementById(inputId)); };
+  recognition.onend = recognition.onerror = () => { btn.classList.remove('rec'); btn.textContent = '🎙️'; };
+  recognition.start();
+}
+
+// ─── DOM HELPERS ─────────────────────────────────────────
+function mkMsg(containerId, role, html) {
+  const id = 'msg-' + (++msgIdx);
+  const box = document.getElementById(containerId);
+  const d = document.createElement('div');
+  d.id = id; d.className = 'message ' + role;
+  if (role === 'sys') {
+    d.innerHTML = `<div class="msg-bbl">${html}</div>`;
+  } else {
+    const av = role === 'user' ? '👤' : '🤖';
+    d.innerHTML = `<div class="msg-av">${av}</div><div class="msg-bbl">${html}</div>`;
+  }
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+  return id;
+}
+function setMsg(id, html) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.querySelector('.msg-bbl').innerHTML = html;
+  const box = el.closest('.chat-messages, .roleplay-messages');
+  if (box) box.scrollTop = box.scrollHeight;
+}
+function fmt(text) {
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/`(.*?)`/g,'<code>$1</code>')
+    .replace(/\n/g,'<br>');
+}
+function autoResize(el) {
+  el.style.height = '44px';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// ─── STREAMING CHAT ──────────────────────────────────────
+async function chat(userText, history, mode, msgBox, inputId) {
+  userText = userText.trim();
+  if (!userText || streaming) return;
+  document.getElementById(inputId).value = '';
+  autoResize(document.getElementById(inputId));
+
+  history.push({ role: 'user', content: userText });
+  mkMsg(msgBox, 'user', fmt(userText));
+
+  const thinkId = mkMsg(msgBox, 'thinking', '<div class="dot-pulse"><span></span><span></span><span></span></div>');
+  streaming = true;
+
+  const body = { messages: history, mode };
+  if (mode === 'roleplay' && currentSc) body.scenario_id = currentSc.id;
+
+  try {
+    const resp = await fetch('/coach-fibre/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    document.getElementById(thinkId)?.remove();
+
+    const replyId = mkMsg(msgBox, 'assistant', '');
+    const reader  = resp.body.getReader();
+    const dec     = new TextDecoder();
+    let full = '', buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n'); buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6).trim();
+        if (raw === '[DONE]') continue;
+        try {
+          const p = JSON.parse(raw);
+          if (p.text)  { full += p.text; setMsg(replyId, fmt(full)); }
+          if (p.error) { setMsg(replyId, '⚠️ ' + fmt(p.error)); }
+        } catch {}
+      }
+    }
+    history.push({ role: 'assistant', content: full });
+    if (ttsOn && full) speak(full);
+
+  } catch (e) {
+    document.getElementById(thinkId)?.remove();
+    mkMsg(msgBox, 'assistant', '⚠️ Erreur réseau : ' + e.message);
+  } finally {
+    streaming = false;
+  }
+}
+
+// ─── COACH ───────────────────────────────────────────────
+function sendCoachMsg() {
+  chat(document.getElementById('coach-input').value, coachHistory, 'coach', 'coach-messages', 'coach-input');
+}
+function quickPrompt(text) {
+  document.getElementById('coach-input').value = text;
+  sendCoachMsg();
+}
+
+// ─── ROLEPLAY ────────────────────────────────────────────
+function selectScenario(id) {
+  currentSc = SCENARIOS.find(s => s.id === id);
+  if (!currentSc) return;
+  rpHistory = [];
+  document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('sc-' + id).classList.add('selected');
+  const wrap = document.getElementById('rp-chat-wrap');
+  wrap.classList.add('show');
+  document.getElementById('rp-messages').innerHTML = '';
+  mkMsg('rp-messages', 'sys', `<strong>${currentSc.name}</strong> — ${currentSc.desc}<br><br>Frappe à la porte et commence !`);
+  document.getElementById('rp-input').focus();
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function sendRpMsg() {
+  if (!currentSc) { alert("Choisis d'abord un scénario !"); return; }
+  chat(document.getElementById('rp-input').value, rpHistory, 'roleplay', 'rp-messages', 'rp-input');
+}
+
+// ─── PARETO ──────────────────────────────────────────────
+async function launchPareto() {
+  const res = document.getElementById('pareto-result');
+  const btn = document.getElementById('pareto-btn');
+  res.className = 'pareto-result loading';
+  res.textContent = '🔍 Analyse Claude en cours...';
+  btn.disabled = true;
+  btn.textContent = '⏳ Analyse...';
+
+  try {
+    const resp = await fetch('/coach-fibre/api/pareto', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stats: STATS }),
+    });
+    res.className = 'pareto-result'; res.innerHTML = '';
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let full = '', buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n'); buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6).trim();
+        if (raw === '[DONE]') continue;
+        try {
+          const p = JSON.parse(raw);
+          if (p.text) { full += p.text; res.innerHTML = fmt(full); }
+        } catch {}
+      }
+    }
+    if (ttsOn && full) speak(full);
+  } catch (e) {
+    res.className = 'pareto-result';
+    res.innerHTML = '⚠️ Erreur : ' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🔄 Relancer l\'analyse';
+  }
+}
+
+// ─── KEYBOARD ────────────────────────────────────────────
+document.getElementById('coach-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendCoachMsg(); }
+});
+document.getElementById('rp-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendRpMsg(); }
+});
+['coach-input','rp-input'].forEach(id => {
+  document.getElementById(id).addEventListener('input', function() { autoResize(this); });
+});
+
+// ─── INIT ────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initVoice();
+  // Load voices async (Chrome requires user interaction or delay)
+  if (window.speechSynthesis) {
+    window.speechSynthesis.onvoiceschanged = () => {};
+    window.speechSynthesis.getVoices();
+  }
+  // Welcome message
+  setTimeout(() => {
+    const w = (
+      'Bonjour Heikel ! 💪\n\n' +
+      'Je suis ton Coach Elite fibre Orange. Je connais tes stats terrain ' +
+      'et je suis là pour te faire progresser.\n\n' +
+      'Utilise les boutons rapides ci-dessus ou pose-moi ta question directement. ' +
+      'Tu veux bosser sur quoi aujourd\'hui ?'
+    );
+    mkMsg('coach-messages', 'assistant', fmt(w));
+  }, 200);
+});
+</script>
+</body>
+</html>

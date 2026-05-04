@@ -1074,6 +1074,275 @@ def effacer_adresses():
 
 
 # ---------------------------------------------------------------------------
+# Coach Fibre Elite
+# ---------------------------------------------------------------------------
+
+COACH_SYSTEM_PROMPT = (
+    "Tu es Coach Elite, coach de vente porte-à-porte spécialisé fibre Orange. "
+    "Tu entraînes Heikel à devenir top performer en vente PAP.\n\n"
+    "OFFRES ORANGE:\n"
+    "- Livebox Fibre (~35€/mois, entrée de gamme)\n"
+    "- Livebox Up (~45€/mois, débit supérieur)\n"
+    "- Livebox Max (~55€/mois, TV incluse, haut de gamme)\n"
+    "- Série Spécial Lite Fibre (promo sans engagement)\n\n"
+    "PIPELINE TERRAIN: Porte frappée → Ouverte → Causé → Entré → Signé\n\n"
+    "BENCHMARKS TOP PERFORMER:\n"
+    "- Taux ouverture: >70% | Taux causé: >50% | Taux entré: >30% | Taux signature: >15%\n\n"
+    "OBJECTIONS COURANTES:\n"
+    "- 'J'ai déjà un opérateur' → comparaison, avantages concrets Orange\n"
+    "- 'Je vais réfléchir' → urgence, ancrage, offre limitée\n"
+    "- 'C'est trop cher' → valeur perçue, prix mensuel vs quotidien\n"
+    "- 'Je ne suis pas propriétaire' → sans engagement, démarches légères\n"
+    "- 'Pas intéressé' → reformulation, besoin sous-jacent\n\n"
+    "TECHNIQUES CLÉ:\n"
+    "- Script accroche: 15 secondes max, sourire, prénom, bénéfice direct\n"
+    "- Entrée domicile: 'Vous permettez, j'ai quelque chose à vous montrer...'\n"
+    "- Closing: alternative positive, urgence réelle, engagement partiel\n\n"
+    "En mode COACH: réponses courtes (max 150 mots), directes, phrases concrètes prêtes à dire.\n"
+    "En mode ROLEPLAY: tu incarnes VRAIMENT le prospect. Tu ne sors JAMAIS du personnage."
+)
+
+ROLEPLAY_SCENARIOS = [
+    {
+        "id": "marie",
+        "name": "Marie, 58 ans",
+        "desc": "Retraitée méfiante — internet Bouygues très lent",
+        "emoji": "👩‍🦳",
+        "difficulty": "Moyen",
+        "prompt": (
+            "Tu es Marie, 58 ans, retraitée. Tu es méfiante des démarcheurs "
+            "mais ton internet Bouygues est très lent depuis 6 mois, ça t'énerve. "
+            "Tu ne dis pas non d'emblée mais tu résistes. "
+            "Tu poses des questions sur la durée d'engagement et les frais cachés."
+        ),
+    },
+    {
+        "id": "mohammed",
+        "name": "Mohammed, 35 ans",
+        "desc": "Locataire — contrat Orange renouvelable bientôt",
+        "emoji": "👨",
+        "difficulty": "Facile",
+        "prompt": (
+            "Tu es Mohammed, 35 ans, locataire. Tu as déjà la fibre Orange "
+            "mais ton contrat se renouvelle dans 2 mois. Tu es ouvert à négocier "
+            "mais tu veux le meilleur prix. Tu compares avec ce que tu paies maintenant."
+        ),
+    },
+    {
+        "id": "christine",
+        "name": "Christine, 45 ans",
+        "desc": "Très pressée — mari qui décide tout",
+        "emoji": "👩",
+        "difficulty": "Difficile",
+        "prompt": (
+            "Tu es Christine, 45 ans. Tu es très pressée, tu n'as vraiment pas le temps. "
+            "Ton mari gère toutes les décisions télécom à la maison. "
+            "Tu cherches à te débarrasser poliment mais rapidement du commercial."
+        ),
+    },
+    {
+        "id": "robert",
+        "name": "Robert, 70 ans",
+        "desc": "Retraité seul — gros téléspectateur, peu à l'aise tech",
+        "emoji": "👴",
+        "difficulty": "Moyen",
+        "prompt": (
+            "Tu es Robert, 70 ans, retraité seul. Tu regardes beaucoup la TV. "
+            "Tu n'es pas à l'aise avec la technologie. "
+            "Si on parle des chaînes TV et que c'est expliqué simplement, tu peux être convaincu. "
+            "Tu as peur des démarches administratives et des techniciens."
+        ),
+    },
+    {
+        "id": "fatima",
+        "name": "Fatima, 30 ans",
+        "desc": "Propriétaire satisfaite de SFR",
+        "emoji": "👩‍💼",
+        "difficulty": "Difficile",
+        "prompt": (
+            "Tu es Fatima, 30 ans, propriétaire. Tu es satisfaite de ta box SFR, "
+            "tu n'as pas de problèmes particuliers. Tu es curieuse du prix "
+            "mais tu n'as pas vraiment de raison de changer. "
+            "Tu vas comparer point par point avec ton offre SFR actuelle."
+        ),
+    },
+]
+
+
+def _kpi_info(value, target):
+    prog = min(round(value / target * 100), 100) if target else 0
+    color = "#22c55e" if prog >= 80 else "#ff7900" if prog >= 50 else "#ef4444"
+    return prog, color
+
+
+@app.route("/coach-fibre")
+@login_required
+def coach_fibre():
+    sessions = SessionProspection.query.all()
+    total_portes = sum(s.total for s in sessions)
+    total_ouvertes = sum(s.nb_ouvertes for s in sessions)
+    total_causes = sum(s.nb_causes for s in sessions)
+    total_entrees = sum(s.nb_entrees for s in sessions)
+    total_signes = sum(s.nb_signes for s in sessions)
+
+    def pct(n):
+        return round(n / total_portes * 100) if total_portes else 0
+
+    taux_ouverture = pct(total_ouvertes)
+    taux_cause = pct(total_causes)
+    taux_entree = pct(total_entrees)
+    taux_signature = pct(total_signes)
+
+    prog_o, color_o = _kpi_info(taux_ouverture, 70)
+    prog_c, color_c = _kpi_info(taux_cause, 50)
+    prog_e, color_e = _kpi_info(taux_entree, 30)
+    prog_s, color_s = _kpi_info(taux_signature, 15)
+
+    stats = {
+        "total_portes": total_portes,
+        "total_ouvertes": total_ouvertes,
+        "total_causes": total_causes,
+        "total_entrees": total_entrees,
+        "total_signes": total_signes,
+        "taux_ouverture": taux_ouverture,
+        "taux_cause": taux_cause,
+        "taux_entree": taux_entree,
+        "taux_signature": taux_signature,
+        "prog_ouverture": prog_o,
+        "prog_cause": prog_c,
+        "prog_entree": prog_e,
+        "prog_signature": prog_s,
+        "color_ouverture": color_o,
+        "color_cause": color_c,
+        "color_entree": color_e,
+        "color_signature": color_s,
+        "total_ventes": Vente.query.count(),
+        "total_installes": Vente.query.filter_by(statut="installe").count(),
+        "nb_sessions": len(sessions),
+    }
+    return render_template("coach_fibre.html", stats=stats, scenarios=ROLEPLAY_SCENARIOS)
+
+
+@app.route("/coach-fibre/api/chat", methods=["POST"])
+@login_required
+def coach_chat():
+    import json as _j
+
+    data = request.get_json()
+    messages = data.get("messages", [])
+    mode = data.get("mode", "coach")
+    scenario_id = data.get("scenario_id")
+
+    if not messages:
+        return jsonify({"error": "Aucun message"}), 400
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return jsonify({"error": "ANTHROPIC_API_KEY non configuré"}), 500
+
+    system = COACH_SYSTEM_PROMPT
+    if mode == "roleplay" and scenario_id:
+        scenario = next((s for s in ROLEPLAY_SCENARIOS if s["id"] == scenario_id), None)
+        if scenario:
+            system = (
+                f"{COACH_SYSTEM_PROMPT}\n\n"
+                f"MODE ROLEPLAY — Tu joues: {scenario['name']}\n"
+                f"{scenario['prompt']}\n\n"
+                "RÈGLES ABSOLUES: Tu ES ce prospect. Ne sors JAMAIS du personnage. "
+                "Première réponse: accueille naturellement selon ton personnage. "
+                "Sois réaliste, pose des questions, résiste naturellement."
+            )
+
+    try:
+        import anthropic as _ant
+
+        client = _ant.Anthropic(api_key=api_key)
+
+        def generate():
+            try:
+                with client.messages.stream(
+                    model="claude-sonnet-4-6",
+                    max_tokens=512,
+                    system=system,
+                    messages=messages,
+                ) as stream:
+                    for text in stream.text_stream:
+                        yield f"data: {_j.dumps({'text': text})}\n\n"
+                yield "data: [DONE]\n\n"
+            except Exception as exc:
+                yield f"data: {_j.dumps({'error': str(exc)})}\n\n"
+
+        return Response(
+            generate(),
+            mimetype="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/coach-fibre/api/pareto", methods=["POST"])
+@login_required
+def coach_pareto():
+    import json as _j
+
+    data = request.get_json()
+    stats = data.get("stats", {})
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return jsonify({"error": "ANTHROPIC_API_KEY non configuré"}), 500
+
+    prompt = (
+        f"Voici les stats terrain de Heikel, commercial fibre Orange PAP:\n\n"
+        f"- Portes frappées: {stats.get('total_portes', 0)}\n"
+        f"- Portes ouvertes: {stats.get('total_ouvertes', 0)} "
+        f"({stats.get('taux_ouverture', 0)}% | benchmark: >70%)\n"
+        f"- Causé: {stats.get('total_causes', 0)} "
+        f"({stats.get('taux_cause', 0)}% | benchmark: >50%)\n"
+        f"- Entré: {stats.get('total_entrees', 0)} "
+        f"({stats.get('taux_entree', 0)}% | benchmark: >30%)\n"
+        f"- Signé: {stats.get('total_signes', 0)} "
+        f"({stats.get('taux_signature', 0)}% | benchmark: >15%)\n"
+        f"- Sessions terrain: {stats.get('nb_sessions', 0)}\n"
+        f"- Ventes totales: {stats.get('total_ventes', 0)}\n\n"
+        "Fais une analyse Pareto précise:\n"
+        "1. Identifie les 20% d'actions qui vont générer 80% des résultats\n"
+        "2. Classe les axes d'amélioration par impact décroissant\n"
+        "3. Pour chaque axe: UNE action concrète à mettre en place dès demain matin\n"
+        "4. Termine par UN objectif chiffré pour la semaine prochaine\n\n"
+        "Format: structuré, chiffré, actionnable. Maximum 300 mots."
+    )
+
+    try:
+        import anthropic as _ant
+
+        client = _ant.Anthropic(api_key=api_key)
+
+        def generate():
+            try:
+                with client.messages.stream(
+                    model="claude-sonnet-4-6",
+                    max_tokens=1024,
+                    system=COACH_SYSTEM_PROMPT,
+                    messages=[{"role": "user", "content": prompt}],
+                ) as stream:
+                    for text in stream.text_stream:
+                        yield f"data: {_j.dumps({'text': text})}\n\n"
+                yield "data: [DONE]\n\n"
+            except Exception as exc:
+                yield f"data: {_j.dumps({'error': str(exc)})}\n\n"
+
+        return Response(
+            generate(),
+            mimetype="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+# ---------------------------------------------------------------------------
 # Démarrage
 # ---------------------------------------------------------------------------
 
