@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Enquête — Identification du harceleur</title>
+  <style>
+    :root {
+      --bg:#0a0e1a; --surface:#111827; --surface2:#1f2937; --border:#374151;
+      --text:#f9fafb; --muted:#9ca3af;
+      --red:#ef4444; --orange:#f97316; --yellow:#eab308; --green:#22c55e;
+      --blue:#3b82f6; --purple:#a855f7;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;}
+
+    header{background:var(--surface);border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;gap:1rem;}
+    header h1{font-size:1.2rem;font-weight:700;}
+    .nav{margin-left:auto;display:flex;gap:0.5rem;flex-wrap:wrap;}
+    .nav a,.nav button{color:var(--muted);text-decoration:none;font-size:0.82rem;padding:0.3rem 0.75rem;
+      border-radius:6px;border:1px solid var(--border);background:transparent;cursor:pointer;}
+    .nav a:hover,.nav button:hover{background:var(--surface2);color:var(--text);}
+    .nav .active{background:var(--blue);color:white;border-color:var(--blue);}
+
+    main{max-width:1200px;margin:0 auto;padding:1.5rem 2rem;display:grid;grid-template-columns:280px 1fr;gap:1.5rem;}
+
+    /* Sidebar */
+    .sidebar{display:flex;flex-direction:column;gap:1rem;}
+    .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem;text-align:center;}
+    .stat-number{font-size:2rem;font-weight:800;color:var(--blue);}
+    .stat-label{color:var(--muted);font-size:0.8rem;margin-top:0.2rem;}
+    .stat-card.red .stat-number{color:var(--red);}
+    .stat-card.green .stat-number{color:var(--green);}
+    .stat-card.purple .stat-number{color:var(--purple);}
+
+    /* Tabs */
+    .tabs{display:flex;gap:0.25rem;margin-bottom:1rem;flex-wrap:wrap;}
+    .tab{padding:0.5rem 1rem;border-radius:6px;cursor:pointer;font-size:0.85rem;font-weight:600;
+      background:var(--surface);border:1px solid var(--border);color:var(--muted);}
+    .tab.active{background:var(--blue);border-color:var(--blue);color:white;}
+
+    .tab-content{display:none;}
+    .tab-content.active{display:block;}
+
+    /* Cards */
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem;margin-bottom:1rem;}
+    .card h3{font-size:0.95rem;font-weight:700;margin-bottom:0.75rem;}
+
+    /* Forms */
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;}
+    .form-group{display:flex;flex-direction:column;gap:0.3rem;}
+    .form-group.full{grid-column:1/-1;}
+    label{font-size:0.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.04em;}
+    input,textarea,select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;
+      padding:0.5rem 0.75rem;color:var(--text);font-size:0.875rem;font-family:inherit;width:100%;}
+    input:focus,textarea:focus,select:focus{outline:none;border-color:var(--blue);}
+    textarea{resize:vertical;min-height:80px;}
+
+    .btn{padding:0.5rem 1.25rem;border-radius:8px;font-size:0.875rem;font-weight:600;cursor:pointer;border:none;transition:background 0.2s;}
+    .btn-primary{background:var(--blue);color:white;}
+    .btn-primary:hover{background:#2563eb;}
+    .btn-success{background:var(--green);color:#111;}
+    .btn-danger{background:transparent;color:var(--red);border:1px solid var(--red);padding:0.25rem 0.6rem;font-size:0.75rem;}
+    .btn-danger:hover{background:rgba(239,68,68,0.1);}
+    .btn-osint{background:var(--purple);color:white;font-size:0.8rem;padding:0.3rem 0.75rem;}
+    .btn-osint:hover{background:#9333ea;}
+
+    /* Incident list */
+    .incident-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+      padding:0.75rem 1rem;margin-bottom:0.5rem;display:flex;gap:1rem;align-items:flex-start;}
+    .inc-time{color:var(--muted);font-size:0.78rem;min-width:140px;font-family:monospace;}
+    .inc-info{flex:1;}
+    .inc-platform{font-size:0.75rem;padding:0.15rem 0.4rem;border-radius:3px;
+      background:rgba(59,130,246,0.2);color:var(--blue);font-weight:700;margin-right:0.4rem;}
+    .inc-account{font-family:monospace;font-size:0.82rem;color:var(--yellow);}
+    .inc-location{color:var(--muted);font-size:0.8rem;margin-top:0.2rem;}
+    .inc-msg{color:var(--muted);font-size:0.8rem;margin-top:0.2rem;font-style:italic;}
+    .masked-badge{background:rgba(239,68,68,0.15);color:var(--red);font-size:0.7rem;
+      padding:0.1rem 0.4rem;border-radius:3px;font-weight:700;}
+
+    /* Account list */
+    .account-item{display:flex;align-items:center;gap:0.75rem;padding:0.6rem;
+      background:var(--surface2);border-radius:6px;margin-bottom:0.4rem;}
+    .acc-platform{font-size:0.72rem;padding:0.15rem 0.4rem;border-radius:3px;
+      background:var(--surface);border:1px solid var(--border);color:var(--muted);}
+    .acc-username{font-family:monospace;font-weight:700;flex:1;color:var(--yellow);}
+    .acc-url{color:var(--blue);font-size:0.75rem;text-decoration:none;}
+    .acc-url:hover{text-decoration:underline;}
+    .osint-badge{font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:3px;}
+    .osint-badge.done{background:rgba(34,197,94,0.15);color:var(--green);}
+    .osint-badge.pending{background:rgba(168,85,247,0.15);color:var(--purple);}
+
+    /* Pattern analysis */
+    .pattern-section{margin-bottom:1.25rem;}
+    .pattern-section h4{font-size:0.85rem;font-weight:700;color:var(--muted);
+      text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.5rem;}
+    .pattern-item{background:var(--surface2);border-radius:6px;padding:0.6rem 0.75rem;
+      margin-bottom:0.4rem;font-size:0.85rem;}
+    .pattern-label{font-weight:700;color:var(--yellow);margin-right:0.5rem;}
+    .pattern-interp{color:var(--muted);}
+    .score-bar{height:6px;border-radius:3px;background:var(--surface2);margin-top:0.3rem;overflow:hidden;}
+    .score-fill{height:100%;border-radius:3px;background:var(--red);}
+
+    /* Suspects */
+    .suspect-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+      padding:1rem;margin-bottom:0.75rem;}
+    .suspect-header{display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;}
+    .suspect-name{font-weight:700;font-size:0.95rem;}
+    .suspect-score{margin-left:auto;font-weight:800;font-size:1.1rem;}
+    .suspect-score.high{color:var(--red);}
+    .suspect-score.medium{color:var(--orange);}
+    .suspect-score.low{color:var(--green);}
+    .suspect-reasons{list-style:none;}
+    .suspect-reasons li{font-size:0.82rem;color:var(--muted);padding:0.2rem 0;
+      display:flex;gap:0.4rem;align-items:flex-start;}
+    .suspect-reasons li::before{content:"▸";color:var(--yellow);flex-shrink:0;}
+
+    /* OSINT results */
+    .osint-result{background:var(--surface2);border-radius:6px;padding:0.6rem 0.75rem;
+      margin-bottom:0.4rem;display:flex;align-items:center;gap:0.75rem;}
+    .osint-found{color:var(--red);font-weight:700;font-size:0.8rem;}
+    .osint-notfound{color:var(--muted);font-size:0.8rem;}
+    .osint-info{font-size:0.78rem;color:var(--yellow);font-family:monospace;}
+
+    .dork-link{display:block;font-size:0.8rem;color:var(--blue);text-decoration:none;
+      padding:0.3rem 0;border-bottom:1px solid var(--border);}
+    .dork-link:hover{color:white;}
+    .dork-label{color:var(--muted);margin-right:0.4rem;}
+
+    /* Timeline */
+    .timeline{position:relative;padding-left:1.5rem;}
+    .timeline::before{content:'';position:absolute;left:0.35rem;top:0;bottom:0;width:2px;background:var(--border);}
+    .tl-item{position:relative;margin-bottom:1rem;}
+    .tl-dot{position:absolute;left:-1.5rem;top:0.3rem;width:12px;height:12px;
+      border-radius:50%;background:var(--blue);border:2px solid var(--bg);}
+    .tl-dot.red{background:var(--red);}
+    .tl-time{font-size:0.75rem;color:var(--muted);font-family:monospace;}
+    .tl-content{font-size:0.85rem;}
+
+    /* Alert boxes */
+    .alert-red{background:rgba(239,68,68,0.1);border:1px solid var(--red);border-radius:8px;
+      padding:0.75rem 1rem;font-size:0.875rem;color:#fca5a5;margin-bottom:1rem;}
+    .alert-green{background:rgba(34,197,94,0.1);border:1px solid var(--green);border-radius:8px;
+      padding:0.75rem 1rem;font-size:0.875rem;color:#86efac;margin-bottom:1rem;}
+    .alert-yellow{background:rgba(234,179,8,0.1);border:1px solid var(--yellow);border-radius:8px;
+      padding:0.75rem 1rem;font-size:0.875rem;color:#fde68a;margin-bottom:1rem;}
+
+    /* People tags input */
+    .tags-input{display:flex;flex-wrap:wrap;gap:0.3rem;background:var(--surface2);
+      border:1px solid var(--border);border-radius:6px;padding:0.4rem;min-height:42px;}
+    .tag{background:var(--blue);color:white;border-radius:4px;padding:0.15rem 0.4rem;
+      font-size:0.8rem;display:flex;align-items:center;gap:0.3rem;}
+    .tag-del{cursor:pointer;opacity:0.7;}
+    .tag-del:hover{opacity:1;}
+    .tags-input input{background:transparent;border:none;outline:none;flex:1;min-width:120px;color:var(--text);}
+
+    @media(max-width:768px){
+      main{grid-template-columns:1fr;}
+      .form-grid{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span>🔎</span>
+  <div>
+    <h1>Enquête — Identification du harceleur</h1>
+    <span style="color:var(--muted);font-size:0.82rem">Analyse OSINT · Corrélation · Rapport police</span>
+  </div>
+  <div class="nav">
+    <a href="/surveillance">Détection système</a>
+    <a href="/surveillance/iphone">iPhone</a>
+    <button onclick="exportReport()" class="active">📄 Rapport police</button>
+  </div>
+</header>
+
+<main>
+  <!-- Sidebar stats -->
+  <div class="sidebar">
+    <div class="stat-card red">
+      <div class="stat-number" id="stat-incidents">0</div>
+      <div class="stat-label">Incidents enregistrés</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" id="stat-accounts">0</div>
+      <div class="stat-label">Comptes Snapchat collectés</div>
+    </div>
+    <div class="stat-card purple">
+      <div class="stat-number" id="stat-suspects">0</div>
+      <div class="stat-label">Suspects suivis</div>
+    </div>
+
+    <div class="card" style="margin-top:0.5rem">
+      <h3>🎯 Conclusion</h3>
+      <div id="sidebar-conclusion" style="font-size:0.82rem;color:var(--muted);line-height:1.5">
+        Ajoutez des incidents pour générer une analyse.
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>⚖️ Infractions applicables</h3>
+      <div style="font-size:0.78rem;color:var(--muted);line-height:1.7">
+        <strong style="color:var(--text)">Art. 222-33-2-2 CP</strong><br>
+        Harcèlement numérique<br>2 ans / 30 000€<br><br>
+        <strong style="color:var(--text)">Art. 222-16 CP</strong><br>
+        Appels malveillants réitérés<br>1 an / 15 000€<br><br>
+        <strong style="color:var(--text)">Portail signalement</strong><br>
+        <a href="#" style="color:var(--blue)" onclick="return false">cybermalveillance.gouv.fr</a><br>
+        <a href="#" style="color:var(--blue)" onclick="return false">thesee.interieur.gouv.fr</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div>
+    <div class="tabs">
+      <div class="tab active" onclick="showTab('incidents')">📋 Incidents</div>
+      <div class="tab" onclick="showTab('accounts')">👤 Comptes Snapchat</div>
+      <div class="tab" onclick="showTab('analysis')">🔬 Analyse patterns</div>
+      <div class="tab" onclick="showTab('suspects')">🎯 Suspects</div>
+      <div class="tab" onclick="showTab('osint')">🌐 OSINT</div>
+    </div>
+
+    <!-- ===== TAB: INCIDENTS ===== -->
+    <div id="tab-incidents" class="tab-content active">
+      <div class="card">
+        <h3>Enregistrer un incident</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Date et heure de l'incident *</label>
+            <input type="datetime-local" id="inc-date"/>
+          </div>
+          <div class="form-group">
+            <label>Plateforme *</label>
+            <select id="inc-platform">
+              <option value="snapchat">Snapchat</option>
+              <option value="appel">Appel téléphonique</option>
+              <option value="sms">SMS</option>
+              <option value="instagram">Instagram</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="autre">Autre</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Username utilisé (si connu)</label>
+            <input type="text" id="inc-account" placeholder="ex: snap_guy123"/>
+          </div>
+          <div class="form-group">
+            <label>Lieu de la victime au moment de l'incident</label>
+            <input type="text" id="inc-location" placeholder="ex: domicile, travail, chez un ami..."/>
+          </div>
+          <div class="form-group full">
+            <label>Qui était présent / qui savait où était votre frère ?</label>
+            <div class="tags-input" id="people-tags" onclick="document.getElementById('people-input').focus()">
+              <input type="text" id="people-input" placeholder="Taper un prénom puis Entrée"/>
+            </div>
+            <input type="hidden" id="inc-people" value="[]"/>
+          </div>
+          <div class="form-group full">
+            <label>Contenu du message (résumé)</label>
+            <textarea id="inc-content" placeholder="Résumé de ce qui a été dit/écrit..."></textarea>
+          </div>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+              <input type="checkbox" id="inc-masked" style="width:auto"/>
+              Numéro masqué / inconnu
+            </label>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:0.75rem" onclick="addIncident()">
+          + Ajouter l'incident
+        </button>
+      </div>
+
+      <div id="incidents-list"></div>
+    </div>
+
+    <!-- ===== TAB: COMPTES ===== -->
+    <div id="tab-accounts" class="tab-content">
+      <div class="card">
+        <h3>Ajouter un compte manuellement</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Plateforme</label>
+            <select id="acc-platform">
+              <option value="snapchat">Snapchat</option>
+              <option value="instagram">Instagram</option>
+              <option value="tiktok">TikTok</option>
+              <option value="twitter">X (Twitter)</option>
+              <option value="facebook">Facebook</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Username *</label>
+            <input type="text" id="acc-username" placeholder="sans le @"/>
+          </div>
+          <div class="form-group full">
+            <label>Notes</label>
+            <input type="text" id="acc-notes" placeholder="Ex: utilisé le 03/05, très agressif"/>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:0.75rem" onclick="addAccount()">
+          + Ajouter le compte
+        </button>
+      </div>
+
+      <div class="card">
+        <h3>Comptes collectés</h3>
+        <div id="accounts-list"></div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: ANALYSE ===== -->
+    <div id="tab-analysis" class="tab-content">
+      <button class="btn btn-primary" onclick="runAnalysis()" style="margin-bottom:1rem">
+        🔬 Lancer l'analyse
+      </button>
+      <div id="analysis-output">
+        <div class="alert-yellow">Cliquez sur "Lancer l'analyse" après avoir ajouté des incidents et des comptes.</div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: SUSPECTS ===== -->
+    <div id="tab-suspects" class="tab-content">
+      <div class="card">
+        <h3>Ajouter un suspect</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Nom / Prénom *</label>
+            <input type="text" id="sus-name" placeholder="Prénom Nom"/>
+          </div>
+          <div class="form-group">
+            <label>Relation avec la victime</label>
+            <input type="text" id="sus-relation" placeholder="ex: ex-ami, collègue, voisin..."/>
+          </div>
+          <div class="form-group">
+            <label>Numéro de téléphone (si connu)</label>
+            <input type="text" id="sus-phone" placeholder="06 XX XX XX XX"/>
+          </div>
+          <div class="form-group full">
+            <label>Notes / Raisons de suspicion</label>
+            <textarea id="sus-notes" placeholder="Pourquoi cette personne est-elle suspecte ?"></textarea>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:0.75rem" onclick="addSuspect()">
+          + Ajouter le suspect
+        </button>
+      </div>
+
+      <div id="suspects-list"></div>
+    </div>
+
+    <!-- ===== TAB: OSINT ===== -->
+    <div id="tab-osint" class="tab-content">
+      <div class="card">
+        <h3>Recherche OSINT — Sources publiques uniquement</h3>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:0.75rem">
+          Recherche la présence d'un username sur les principales plateformes.
+          Toutes les recherches portent uniquement sur des informations publiques.
+        </p>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Username à rechercher</label>
+            <input type="text" id="osint-username" placeholder="ex: snap_guy123"/>
+          </div>
+          <div class="form-group" style="justify-content:flex-end">
+            <label>&nbsp;</label>
+            <button class="btn btn-primary" onclick="runOsint()">🌐 Lancer la recherche</button>
+          </div>
+        </div>
+        <p style="font-size:0.75rem;color:var(--muted);margin-top:0.5rem">
+          Ou sélectionnez un compte collecté :
+        </p>
+        <div id="osint-account-buttons" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.4rem"></div>
+      </div>
+
+      <div id="osint-output"></div>
+
+      <div class="card">
+        <h3>🔍 Recherches manuelles Google (Dorks)</h3>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:0.75rem">
+          Cliquez pour ouvrir chaque recherche dans Google. Saisissez d'abord un username ci-dessus.
+        </p>
+        <div id="google-dorks"></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let incidents = [], accounts = [], suspects = [];
+let peopleTags = [];
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Set default datetime to now
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('inc-date').value = now.toISOString().slice(0,16);
+
+  // People tags input
+  document.getElementById('people-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const val = e.target.value.trim();
+      if (val) { addPersonTag(val); e.target.value = ''; }
+    }
+  });
+
+  loadAll();
+});
+
+async function loadAll() {
+  await Promise.all([loadIncidents(), loadAccounts(), loadSuspects()]);
+  updateStats();
+  updateOsintButtons();
+}
+
+// ─── People Tags ─────────────────────────────────────────────────────────────
+function addPersonTag(name) {
+  if (!peopleTags.includes(name)) {
+    peopleTags.push(name);
+    renderTags();
+  }
+}
+function removeTag(name) {
+  peopleTags = peopleTags.filter(t => t !== name);
+  renderTags();
+}
+function renderTags() {
+  const container = document.getElementById('people-tags');
+  const input = document.getElementById('people-input');
+  container.innerHTML = '';
+  peopleTags.forEach(t => {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.innerHTML = `${esc(t)} <span class="tag-del" onclick="removeTag('${esc(t)}')">×</span>`;
+    container.appendChild(tag);
+  });
+  container.appendChild(input);
+  document.getElementById('inc-people').value = JSON.stringify(peopleTags);
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ─── Incidents ───────────────────────────────────────────────────────────────
+async function addIncident() {
+  const date = document.getElementById('inc-date').value;
+  const platform = document.getElementById('inc-platform').value;
+  if (!date || !platform) { alert('Date et plateforme obligatoires.'); return; }
+
+  const body = {
+    incident_at: date,
+    platform,
+    account_used: document.getElementById('inc-account').value.trim(),
+    message_content: document.getElementById('inc-content').value.trim(),
+    victim_location: document.getElementById('inc-location').value.trim(),
+    people_present: peopleTags,
+    call_masked: document.getElementById('inc-masked').checked,
+  };
+
+  const resp = await fetch('/surveillance/investigation/incident', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+  });
+  if (resp.ok) {
+    // Reset form
+    document.getElementById('inc-account').value = '';
+    document.getElementById('inc-content').value = '';
+    document.getElementById('inc-location').value = '';
+    document.getElementById('inc-masked').checked = false;
+    peopleTags = [];
+    renderTags();
+    await loadAll();
+  }
+}
+
+async function loadIncidents() {
+  const resp = await fetch('/surveillance/investigation/incidents');
+  incidents = await resp.json();
+  renderIncidents();
+}
+
+function renderIncidents() {
+  const el = document.getElementById('incidents-list');
+  if (!incidents.length) {
+    el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:2rem">Aucun incident enregistré.</div>';
+    return;
+  }
+  el.innerHTML = incidents.map(inc => `
+    <div class="incident-item">
+      <div class="inc-time">${inc.incident_at.replace('T',' ')}</div>
+      <div class="inc-info">
+        <div>
+          <span class="inc-platform">${inc.platform.toUpperCase()}</span>
+          ${inc.call_masked ? '<span class="masked-badge">NUMÉRO MASQUÉ</span>' : ''}
+          ${inc.account_used ? `<span class="inc-account">@${inc.account_used}</span>` : ''}
+        </div>
+        ${inc.victim_location ? `<div class="inc-location">📍 ${esc(inc.victim_location)}</div>` : ''}
+        ${inc.people_present && inc.people_present.length ? `<div class="inc-location">👥 ${inc.people_present.map(esc).join(', ')}</div>` : ''}
+        ${inc.message_content ? `<div class="inc-msg">"${esc(inc.message_content)}"</div>` : ''}
+      </div>
+      <button class="btn btn-danger" onclick="deleteIncident(${inc.id})">Supprimer</button>
+    </div>
+  `).join('');
+}
+
+async function deleteIncident(id) {
+  if (!confirm('Supprimer cet incident ?')) return;
+  await fetch(`/surveillance/investigation/incident/${id}`, {method:'DELETE'});
+  await loadAll();
+}
+
+// ─── Accounts ─────────────────────────────────────────────────────────────────
+async function addAccount() {
+  const username = document.getElementById('acc-username').value.trim().replace('@','');
+  const platform = document.getElementById('acc-platform').value;
+  if (!username) { alert('Username obligatoire.'); return; }
+
+  await fetch('/surveillance/investigation/account', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ platform, username, notes: document.getElementById('acc-notes').value })
+  });
+  document.getElementById('acc-username').value = '';
+  document.getElementById('acc-notes').value = '';
+  await loadAll();
+}
+
+async function loadAccounts() {
+  const resp = await fetch('/surveillance/investigation/accounts');
+  accounts = await resp.json();
+  renderAccounts();
+}
+
+function renderAccounts() {
+  const el = document.getElementById('accounts-list');
+  if (!accounts.length) {
+    el.innerHTML = '<p style="color:var(--muted)">Aucun compte enregistré.</p>';
+    return;
+  }
+  el.innerHTML = accounts.map(acc => `
+    <div class="account-item">
+      <span class="acc-platform">${acc.platform}</span>
+      <span class="acc-username">@${acc.username}</span>
+      ${acc.url ? `<a href="${acc.url}" target="_blank" rel="noopener" class="acc-url">Voir profil ↗</a>` : ''}
+      <span class="osint-badge ${acc.osint_done ? 'done' : 'pending'}">${acc.osint_done ? '✓ OSINT fait' : 'OSINT en attente'}</span>
+      <button class="btn btn-osint" onclick="runOsintFor('${esc(acc.username)}')">🌐 OSINT</button>
+    </div>
+  `).join('');
+}
+
+function updateOsintButtons() {
+  const el = document.getElementById('osint-account-buttons');
+  el.innerHTML = accounts.map(a =>
+    `<button class="btn" style="font-size:0.78rem;padding:0.3rem 0.6rem"
+       onclick="runOsintFor('${esc(a.username)}')">@${esc(a.username)}</button>`
+  ).join('');
+}
+
+// ─── Suspects ─────────────────────────────────────────────────────────────────
+async function addSuspect() {
+  const name = document.getElementById('sus-name').value.trim();
+  if (!name) { alert('Nom obligatoire.'); return; }
+  await fetch('/surveillance/investigation/suspect', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      name,
+      relation: document.getElementById('sus-relation').value,
+      phone: document.getElementById('sus-phone').value,
+      notes: document.getElementById('sus-notes').value,
+    })
+  });
+  document.getElementById('sus-name').value = '';
+  document.getElementById('sus-relation').value = '';
+  document.getElementById('sus-phone').value = '';
+  document.getElementById('sus-notes').value = '';
+  await loadAll();
+}
+
+async function loadSuspects() {
+  const resp = await fetch('/surveillance/investigation/suspects');
+  suspects = await resp.json();
+  renderSuspects();
+}
+
+function renderSuspects() {
+  const el = document.getElementById('suspects-list');
+  if (!suspects.length) {
+    el.innerHTML = '<div style="color:var(--muted);padding:1rem">Aucun suspect ajouté.</div>';
+    return;
+  }
+  el.innerHTML = suspects.map(s => `
+    <div class="suspect-card">
+      <div class="suspect-header">
+        <div>
+          <div class="suspect-name">👤 ${esc(s.name)}</div>
+          ${s.relation ? `<div style="font-size:0.78rem;color:var(--muted)">${esc(s.relation)}</div>` : ''}
+        </div>
+        ${s.suspicion_score ? `<div class="suspect-score ${s.suspicion_score>=60?'high':s.suspicion_score>=30?'medium':'low'}">${s.suspicion_score}/100</div>` : ''}
+      </div>
+      ${s.phone ? `<div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.4rem">📞 ${esc(s.phone)}</div>` : ''}
+      ${s.notes ? `<div style="font-size:0.82rem;color:var(--muted);font-style:italic">${esc(s.notes)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// ─── Analysis ─────────────────────────────────────────────────────────────────
+async function runAnalysis() {
+  const el = document.getElementById('analysis-output');
+  el.innerHTML = '<div style="color:var(--muted)">Analyse en cours…</div>';
+  const resp = await fetch('/surveillance/investigation/analyze');
+  const data = await resp.json();
+  renderAnalysis(data);
+  // Update sidebar
+  document.getElementById('sidebar-conclusion').textContent = data.summary?.conclusion || '';
+  // Update suspect scores
+  if (data.suspect_scores) renderScoredSuspects(data.suspect_scores);
+}
+
+function renderAnalysis(data) {
+  const el = document.getElementById('analysis-output');
+  let html = '';
+
+  // Summary
+  const s = data.summary || {};
+  const level = (data.suspect_scores || [])[0]?.computed_score >= 60 ? 'red' :
+                (data.suspect_scores || [])[0]?.computed_score >= 30 ? 'yellow' : 'green';
+  html += `<div class="alert-${level}">${esc(s.conclusion || 'Données insuffisantes.')}</div>`;
+
+  // Username patterns
+  const up = data.username_patterns || {};
+  if (up.usernames?.length) {
+    html += `<div class="card"><h3>🔤 Analyse des usernames Snapchat</h3>`;
+    html += `<div style="font-size:0.82rem;color:var(--muted);margin-bottom:0.75rem">${up.total_accounts} compte(s) analysé(s)</div>`;
+    html += `<div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.75rem">`;
+    up.usernames.forEach(u => html += `<span style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:0.2rem 0.5rem;font-family:monospace;font-size:0.82rem;color:var(--yellow)">@${esc(u)}</span>`);
+    html += '</div>';
+    if (up.patterns?.length) {
+      html += '<div class="pattern-section"><h4>Patterns détectés</h4>';
+      up.patterns.forEach(p => {
+        html += `<div class="pattern-item"><span class="pattern-label">${esc(p.type)}: "${esc(p.value)}"</span><span class="pattern-interp">— ${esc(p.interpretation)}</span></div>`;
+      });
+      html += '</div>';
+    }
+    if (up.common_digits?.length) {
+      html += '<div class="pattern-section"><h4>Séquences numériques récurrentes</h4>';
+      up.common_digits.forEach(d => {
+        html += `<div class="pattern-item"><span class="pattern-label">${esc(d.digits)}</span><span class="pattern-interp">présent ${d.count}x — ${esc(d.meaning)}</span></div>`;
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  // Time patterns
+  const tp = data.time_patterns || {};
+  if (tp.peak_hour) {
+    html += `<div class="card"><h3>🕐 Patterns temporels</h3>`;
+    html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:0.75rem">`;
+    html += `<div style="text-align:center"><div style="font-size:1.5rem;font-weight:800;color:var(--blue)">${esc(tp.peak_hour)}</div><div style="color:var(--muted);font-size:0.78rem">Heure de pic</div></div>`;
+    if (tp.peak_day) html += `<div style="text-align:center"><div style="font-size:1.5rem;font-weight:800;color:var(--purple)">${esc(tp.peak_day)}</div><div style="color:var(--muted);font-size:0.78rem">Jour le plus fréquent</div></div>`;
+    html += '</div>';
+    if (tp.interpretations?.length) {
+      tp.interpretations.forEach(i => html += `<div class="alert-yellow">${esc(i)}</div>`);
+    }
+    html += '</div>';
+  }
+
+  // Location leak
+  const ll = data.location_leak || {};
+  if (ll.explanation) {
+    html += `<div class="card"><h3>📡 Source de la fuite de localisation</h3>`;
+    html += `<div class="alert-red">${esc(ll.explanation)}</div>`;
+    if (ll.person_frequency && Object.keys(ll.person_frequency).length) {
+      html += `<table style="width:100%;font-size:0.82rem;border-collapse:collapse">
+        <tr><th style="text-align:left;padding:0.4rem;color:var(--muted)">Personne</th>
+            <th style="text-align:left;padding:0.4rem;color:var(--muted)">Incidents</th>
+            <th style="text-align:left;padding:0.4rem;color:var(--muted)">Présence</th></tr>`;
+      Object.entries(ll.person_frequency).forEach(([person, d]) => {
+        const pct = d.percentage;
+        const color = pct >= 70 ? 'var(--red)' : pct >= 40 ? 'var(--orange)' : 'var(--muted)';
+        html += `<tr style="border-top:1px solid var(--border)">
+          <td style="padding:0.4rem;font-weight:600">${esc(person)}</td>
+          <td style="padding:0.4rem;color:var(--muted)">${d.count} / ${ll.total_incidents}</td>
+          <td style="padding:0.4rem"><span style="color:${color};font-weight:700">${pct}%</span>
+            <div style="height:4px;background:var(--border);border-radius:2px;margin-top:2px">
+              <div style="height:4px;width:${pct}%;background:${color};border-radius:2px"></div>
+            </div>
+          </td>
+        </tr>`;
+      });
+      html += '</table>';
+    }
+    html += '</div>';
+  }
+
+  // Frequency
+  const freq = data.frequency || {};
+  if (freq.total > 1) {
+    html += `<div class="card"><h3>📈 Fréquence des incidents</h3>`;
+    const color = freq.trend === 'escalating' ? 'var(--red)' : freq.trend === 'decreasing' ? 'var(--green)' : 'var(--yellow)';
+    html += `<div style="display:flex;gap:1.5rem;flex-wrap:wrap">
+      <div><div style="font-size:1.2rem;font-weight:800;color:${color}">${esc(freq.trend_label || '')}</div>
+           <div style="color:var(--muted);font-size:0.78rem">Tendance</div></div>
+      <div><div style="font-size:1.2rem;font-weight:800">${freq.rate_per_day}/j</div>
+           <div style="color:var(--muted);font-size:0.78rem">Fréquence moyenne</div></div>
+      <div><div style="font-size:1.2rem;font-weight:800">${freq.span_days} jours</div>
+           <div style="color:var(--muted);font-size:0.78rem">Durée du harcèlement</div></div>
+    </div></div>`;
+  }
+
+  el.innerHTML = html || '<div class="alert-yellow">Ajoutez au moins 3 incidents pour obtenir une analyse significative.</div>';
+}
+
+function renderScoredSuspects(scored) {
+  const el = document.getElementById('suspects-list');
+  if (!scored.length) return;
+  el.innerHTML = scored.map(s => {
+    const score = s.computed_score || 0;
+    const scoreClass = score >= 60 ? 'high' : score >= 30 ? 'medium' : 'low';
+    return `<div class="suspect-card">
+      <div class="suspect-header">
+        <div>
+          <div class="suspect-name">👤 ${esc(s.name)}</div>
+          ${s.relation ? `<div style="font-size:0.78rem;color:var(--muted)">${esc(s.relation)}</div>` : ''}
+        </div>
+        <div class="suspect-score ${scoreClass}">${score}/100</div>
+      </div>
+      ${s.phone ? `<div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.4rem">📞 ${esc(s.phone)}</div>` : ''}
+      ${s.reasons?.length ? `<ul class="suspect-reasons">${s.reasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul>` : ''}
+      ${s.notes ? `<div style="font-size:0.82rem;color:var(--muted);font-style:italic;margin-top:0.4rem">${esc(s.notes)}</div>` : ''}
+      <div class="score-bar"><div class="score-fill" style="width:${score}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+// ─── OSINT ───────────────────────────────────────────────────────────────────
+function runOsintFor(username) {
+  document.getElementById('osint-username').value = username;
+  showTab('osint');
+  document.querySelectorAll('.tab')[4].classList.add('active');
+  document.querySelectorAll('.tab').forEach((t,i) => { if(i!==4) t.classList.remove('active'); });
+  runOsint();
+}
+
+async function runOsint() {
+  const username = document.getElementById('osint-username').value.trim().replace('@','');
+  if (!username) { alert('Entrez un username.'); return; }
+
+  const el = document.getElementById('osint-output');
+  el.innerHTML = `<div class="card"><div style="color:var(--muted)">Recherche OSINT pour @${esc(username)} en cours… (peut prendre 30 secondes)</div></div>`;
+
+  try {
+    const resp = await fetch('/surveillance/investigation/osint', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ username })
+    });
+    const data = await resp.json();
+    renderOsint(data, el);
+
+    // Google dorks
+    if (data.google_dorks) {
+      const dEl = document.getElementById('google-dorks');
+      dEl.innerHTML = Object.entries(data.google_dorks).map(([label, url]) =>
+        `<a href="${url}" target="_blank" rel="noopener" class="dork-link">
+          <span class="dork-label">${esc(label)}</span> → ${esc(url.slice(0,80))}…
+        </a>`
+      ).join('');
+    }
+  } catch (e) {
+    el.innerHTML = `<div class="alert-red">Erreur: ${e.message}</div>`;
+  }
+}
+
+function renderOsint(data, el) {
+  const found = data.found_on || [];
+  let html = `<div class="card">
+    <h3>OSINT — @${esc(data.username)}</h3>
+    ${found.length
+      ? `<div class="alert-red">⚠️ Compte trouvé sur: <strong>${found.join(', ')}</strong></div>`
+      : '<div class="alert-green">✓ Aucun compte public trouvé sur les plateformes vérifiées.</div>'
+    }
+  `;
+
+  html += (data.results || []).map(r => `
+    <div class="osint-result">
+      <div style="min-width:100px;font-weight:600;font-size:0.82rem">${esc(r.platform)}</div>
+      ${r.exists
+        ? `<span class="osint-found">✓ TROUVÉ</span>
+           <a href="${r.url}" target="_blank" rel="noopener" style="color:var(--blue);font-size:0.78rem">Voir le profil ↗</a>
+           ${r.public_info?.display_name ? `<span class="osint-info">Nom: "${esc(r.public_info.display_name)}"</span>` : ''}`
+        : `<span class="osint-notfound">— Non trouvé</span>`
+      }
+      ${r.error ? `<span style="color:var(--orange);font-size:0.75rem">Erreur: ${esc(r.error)}</span>` : ''}
+    </div>
+  `).join('');
+
+  if (data.identity_clues?.length) {
+    html += `<div style="margin-top:0.75rem"><strong style="font-size:0.85rem">Indices d'identité extraits :</strong>`;
+    html += `<ul style="list-style:none;margin-top:0.4rem">`;
+    data.identity_clues.forEach(c => {
+      html += `<li style="font-size:0.82rem;padding:0.2rem 0;color:var(--muted)">
+        <strong style="color:var(--yellow)">${esc(c.type)}: "${esc(c.value)}"</strong> — ${esc(c.interpretation)}
+      </li>`;
+    });
+    html += '</ul></div>';
+  }
+
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
+function updateStats() {
+  document.getElementById('stat-incidents').textContent = incidents.length;
+  document.getElementById('stat-accounts').textContent = accounts.length;
+  document.getElementById('stat-suspects').textContent = suspects.length;
+}
+
+// ─── Export ───────────────────────────────────────────────────────────────────
+async function exportReport() {
+  const resp = await fetch('/surveillance/investigation/report');
+  const html = await resp.text();
+  const blob = new Blob([html], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `rapport_harcelement_${new Date().toISOString().slice(0,10)}.html`;
+  a.click();
+}
+
+// ─── Utils ───────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
