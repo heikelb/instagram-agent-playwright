@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analyse iPhone — Détection de pistage</title>
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --surface: #111827;
+      --surface2: #1f2937;
+      --border: #374151;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --critical: #ef4444;
+      --high: #f97316;
+      --medium: #eab308;
+      --low: #22c55e;
+      --accent: #3b82f6;
+      --ios: #007aff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    header h1 { font-size: 1.2rem; font-weight: 700; }
+    header span { color: var(--muted); font-size: 0.85rem; }
+    .nav-links { margin-left: auto; display: flex; gap: 1rem; }
+    .nav-links a {
+      color: var(--muted); text-decoration: none; font-size: 0.85rem;
+      padding: 0.3rem 0.75rem; border-radius: 6px; border: 1px solid var(--border);
+    }
+    .nav-links a:hover { background: var(--surface2); color: var(--text); }
+
+    main { max-width: 1000px; margin: 0 auto; padding: 2rem; }
+
+    h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 1.25rem; }
+
+    /* Alert banner */
+    .alert-banner {
+      background: rgba(239,68,68,0.12);
+      border: 1px solid var(--critical);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2rem;
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+    .alert-icon { font-size: 1.5rem; flex-shrink: 0; }
+    .alert-text strong { color: var(--critical); }
+    .alert-text p { color: var(--muted); font-size: 0.875rem; margin-top: 0.3rem; line-height: 1.5; }
+
+    /* Section headers */
+    .section { margin-bottom: 2.5rem; }
+    .section-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* Checklist */
+    .checklist { display: flex; flex-direction: column; gap: 0.75rem; }
+    .check-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .check-card.done { border-color: var(--low); opacity: 0.7; }
+    .check-card.critical { border-left: 4px solid var(--critical); }
+    .check-card.high     { border-left: 4px solid var(--high); }
+    .check-card.medium   { border-left: 4px solid var(--medium); }
+
+    .check-header {
+      padding: 0.9rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      cursor: pointer;
+    }
+    .check-header:hover { background: var(--surface2); }
+
+    .check-box {
+      width: 22px; height: 22px;
+      border: 2px solid var(--border);
+      border-radius: 6px;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+    .check-card.done .check-box {
+      background: var(--low); border-color: var(--low); color: #111;
+    }
+
+    .check-meta { flex: 1; }
+    .check-category {
+      font-size: 0.7rem; color: var(--muted); margin-bottom: 0.2rem;
+    }
+    .check-title { font-weight: 600; font-size: 0.92rem; }
+
+    .risk-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .risk-dot.critical { background: var(--critical); }
+    .risk-dot.high     { background: var(--high); }
+    .risk-dot.medium   { background: var(--medium); }
+
+    .check-body {
+      display: none;
+      padding: 1rem 1.25rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface2);
+    }
+    .check-body.visible { display: block; }
+
+    .steps-list {
+      list-style: none;
+      margin-bottom: 0.9rem;
+      counter-reset: step;
+    }
+    .steps-list li {
+      counter-increment: step;
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      color: var(--text);
+    }
+    .steps-list li::before {
+      content: counter(step);
+      min-width: 22px; height: 22px;
+      background: var(--accent);
+      color: white;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.7rem; font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .danger-sign {
+      font-size: 0.8rem;
+      background: rgba(239,68,68,0.1);
+      border-left: 3px solid var(--critical);
+      padding: 0.5rem 0.75rem;
+      border-radius: 0 4px 4px 0;
+      color: #fca5a5;
+      margin-bottom: 0.75rem;
+    }
+    .danger-sign::before { content: "🚨 Signe d'alerte: "; font-weight: 700; }
+
+    .mark-done-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 0.4rem 1rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .mark-done-btn:hover { border-color: var(--low); color: var(--low); }
+
+    /* Progress bar */
+    .progress-bar-wrap {
+      background: var(--surface2);
+      border-radius: 999px;
+      height: 8px;
+      margin-bottom: 0.5rem;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--low);
+      border-radius: 999px;
+      transition: width 0.4s;
+      width: 0%;
+    }
+    .progress-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 1.25rem; }
+
+    /* Backup section */
+    .backup-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .backup-title { font-weight: 600; margin-bottom: 0.4rem; }
+    .backup-meta { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.75rem; line-height: 1.7; }
+    .backup-meta span { font-family: monospace; color: var(--text); }
+    .encrypted-warn {
+      font-size: 0.78rem; color: var(--high);
+      background: rgba(249,115,22,0.1);
+      padding: 0.3rem 0.6rem;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+      display: inline-block;
+    }
+    .analyze-btn {
+      background: var(--ios);
+      color: white;
+      border: none;
+      padding: 0.5rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .analyze-btn:hover { background: #0062cc; }
+    .analyze-btn:disabled { background: var(--border); cursor: not-allowed; }
+
+    /* How to backup */
+    .how-to {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+    }
+    .how-to h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.75rem; }
+    .how-to ol { padding-left: 1.25rem; font-size: 0.875rem; color: var(--muted); line-height: 1.9; }
+    .how-to strong { color: var(--text); }
+
+    /* Analysis results */
+    #analysis-results {
+      margin-top: 1.5rem;
+      display: none;
+    }
+    .result-finding {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 0.75rem;
+      border-left: 4px solid var(--border);
+    }
+    .result-finding.critical { border-left-color: var(--critical); }
+    .result-finding.high { border-left-color: var(--high); }
+    .result-finding.medium { border-left-color: var(--medium); }
+    .result-finding.low { border-left-color: var(--low); }
+
+    .result-title { font-weight: 600; font-size: 0.92rem; margin-bottom: 0.4rem; }
+    .result-desc { font-size: 0.82rem; color: var(--muted); margin-bottom: 0.5rem; line-height: 1.5; }
+    .result-evidence { list-style: none; }
+    .result-evidence li {
+      font-family: monospace; font-size: 0.78rem;
+      background: var(--bg); padding: 0.25rem 0.5rem;
+      border-radius: 3px; margin-bottom: 0.25rem;
+      color: #fbbf24; word-break: break-all;
+    }
+    .result-rec {
+      font-size: 0.8rem; color: #86efac;
+      background: rgba(34,197,94,0.08);
+      border-left: 3px solid var(--low);
+      padding: 0.4rem 0.6rem;
+      border-radius: 0 4px 4px 0;
+      margin-top: 0.5rem;
+      line-height: 1.5;
+    }
+
+    /* Evidence kit */
+    .evidence-kit {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+    }
+    .evidence-kit h3 { font-size: 0.95rem; margin-bottom: 0.75rem; }
+    .evidence-item {
+      display: flex; gap: 0.75rem; align-items: flex-start;
+      padding: 0.6rem 0; border-bottom: 1px solid var(--border); font-size: 0.875rem;
+    }
+    .evidence-item:last-child { border-bottom: none; }
+    .evidence-icon { font-size: 1.1rem; flex-shrink: 0; }
+    .evidence-text { color: var(--muted); line-height: 1.5; }
+    .evidence-text strong { color: var(--text); display: block; }
+  </style>
+</head>
+<body>
+<header>
+  <span>📱</span>
+  <div>
+    <h1>Analyse iPhone — Détection de pistage</h1>
+    <span>iPhone 17 Pro · iOS · Vérification de sécurité complète</span>
+  </div>
+  <div class="nav-links">
+    <a href="/surveillance">← Dashboard système</a>
+  </div>
+</header>
+
+<main>
+
+  <div class="alert-banner">
+    <div class="alert-icon">🚨</div>
+    <div class="alert-text">
+      <strong>Harcèlement détecté — Procédure d'urgence</strong>
+      <p>
+        Quelqu'un connaît la position de votre frère en temps réel. Les 5 causes les plus probables
+        sur iPhone sont listées dans la checklist ci-dessous. Commencez par l'étape 1 immédiatement.
+        <strong>Ne prévenez pas encore le harceleur que vous enquêtez.</strong>
+      </p>
+    </div>
+  </div>
+
+  <!-- Checklist -->
+  <div class="section">
+    <div class="section-title">Checklist de sécurité — à faire sur l'iPhone maintenant</div>
+
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-fill"></div>
+    </div>
+    <div class="progress-label" id="progress-label">0 / {{ checklist|length }} vérifications effectuées</div>
+
+    <div class="checklist" id="checklist">
+      {% for item in checklist %}
+      <div class="check-card {{ item.risk }}" id="card-{{ item.id }}" data-id="{{ item.id }}">
+        <div class="check-header" onclick="toggleCheck('{{ item.id }}')">
+          <div class="check-box" id="box-{{ item.id }}" onclick="event.stopPropagation(); markDone('{{ item.id }}')">
+          </div>
+          <div class="check-meta">
+            <div class="check-category">{{ item.category }}</div>
+            <div class="check-title">{{ item.title }}</div>
+          </div>
+          <div class="risk-dot {{ item.risk }}"></div>
+        </div>
+        <div class="check-body" id="body-{{ item.id }}">
+          <div class="danger-sign">{{ item.danger_sign }}</div>
+          <ul class="steps-list">
+            {% for step in item.steps %}
+            <li>{{ step|safe }}</li>
+            {% endfor %}
+          </ul>
+          <button class="mark-done-btn" onclick="markDone('{{ item.id }}')">
+            ✓ Marquer comme vérifié
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Analyse de sauvegarde -->
+  <div class="section">
+    <div class="section-title">Analyse automatique — Sauvegarde iPhone</div>
+
+    {% if backups %}
+      {% for backup in backups %}
+      <div class="backup-card">
+        <div class="backup-title">📱 {{ backup.get('device_name', 'iPhone') }}</div>
+        <div class="backup-meta">
+          Modèle: <span>{{ backup.get('product_name', '?') }}</span> ·
+          iOS: <span>{{ backup.get('ios_version', '?') }}</span> ·
+          Téléphone: <span>{{ backup.get('phone_number', '?') }}</span><br>
+          Dernière sauvegarde: <span>{{ backup.get('last_backup', '?') }}</span>
+        </div>
+        {% if backup.get('encrypted') %}
+        <div class="encrypted-warn">⚠️ Sauvegarde chiffrée — désactivez le chiffrement dans Finder/iTunes pour l'analyser</div>
+        {% endif %}
+        <button class="analyze-btn" onclick="analyzeBackup('{{ backup.path }}', this)"
+          {{ 'disabled' if backup.get('encrypted') else '' }}>
+          🔍 Analyser cette sauvegarde
+        </button>
+        <div id="results-{{ loop.index }}" class="analysis-results"></div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="how-to">
+        <h3>📦 Aucune sauvegarde iPhone trouvée sur cet ordinateur</h3>
+        <p style="color:var(--muted);font-size:0.875rem;margin-bottom:0.75rem">
+          Pour analyser automatiquement l'iPhone, faites une sauvegarde locale non chiffrée :
+        </p>
+        <ol>
+          <li>Connectez l'iPhone à cet ordinateur avec un câble USB</li>
+          <li>Ouvrez <strong>Finder</strong> (Mac) ou <strong>iTunes</strong> (Windows)</li>
+          <li>Cliquez sur l'iPhone dans la barre latérale</li>
+          <li>Choisissez <strong>"Sauvegarder maintenant"</strong></li>
+          <li>⚠️ Assurez-vous que <strong>"Chiffrer la sauvegarde locale"</strong> est <strong>désactivé</strong></li>
+          <li>Une fois terminé, rechargez cette page — la sauvegarde apparaîtra ici</li>
+        </ol>
+        <p style="color:var(--muted);font-size:0.8rem;margin-top:0.75rem">
+          La sauvegarde reste sur votre ordinateur et n'est pas envoyée en ligne.
+        </p>
+      </div>
+    {% endif %}
+
+    <div id="analysis-results"></div>
+  </div>
+
+  <!-- Kit de preuves pour la police -->
+  <div class="section">
+    <div class="section-title">Kit de preuves — Pour le dépôt de plainte</div>
+    <div class="evidence-kit">
+      <h3>Ce que vous devez collecter avant d'aller à la police</h3>
+      <div class="evidence-item">
+        <div class="evidence-icon">📸</div>
+        <div class="evidence-text">
+          <strong>Captures d'écran de chaque message reçu</strong>
+          Incluant : la date, l'heure, le numéro ou pseudo de l'expéditeur.
+          Ne supprimez rien — les originaux comptent plus que les copies.
+        </div>
+      </div>
+      <div class="evidence-item">
+        <div class="evidence-icon">📋</div>
+        <div class="evidence-text">
+          <strong>Journal chronologique des incidents</strong>
+          Pour chaque incident : date, heure, lieu où était votre frère, contenu du message.
+          Ce journal prouve le caractère répété du harcèlement (aggravant légal).
+        </div>
+      </div>
+      <div class="evidence-item">
+        <div class="evidence-icon">📞</div>
+        <div class="evidence-text">
+          <strong>Numéro de téléphone ou compte utilisé par le harceleur</strong>
+          Sur demande judiciaire, l'opérateur identifie le titulaire du numéro.
+          Instagram/WhatsApp/Snapchat transmettent l'identité réelle à la justice.
+        </div>
+      </div>
+      <div class="evidence-item">
+        <div class="evidence-icon">🌐</div>
+        <div class="evidence-text">
+          <strong>Adresses IP si messages via web ou email</strong>
+          Chaque email contient l'IP de l'expéditeur dans ses en-têtes.
+          Afficher → Afficher la source → chercher "Received: from".
+        </div>
+      </div>
+      <div class="evidence-item">
+        <div class="evidence-icon">⚖️</div>
+        <div class="evidence-text">
+          <strong>Infractions applicables en France</strong>
+          Art. 222-33-2-2 Code pénal : harcèlement via voie numérique (2 ans / 30 000€).
+          Art. 226-1 : atteinte à la vie privée par moyen de surveillance.
+          Portail signalement : <strong>cybermalveillance.gouv.fr</strong>
+        </div>
+      </div>
+      <div class="evidence-item">
+        <div class="evidence-icon">🏛️</div>
+        <div class="evidence-text">
+          <strong>Où déposer plainte</strong>
+          Gendarmerie ou commissariat de police. Demandez à parler à un référent cybercriminalité.
+          Vous pouvez aussi déposer plainte en ligne sur <strong>thesee.interieur.gouv.fr</strong>
+          pour les infractions numériques.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const TOTAL = {{ checklist|length }};
+const done = new Set(JSON.parse(localStorage.getItem('iphone_checks') || '[]'));
+
+function init() {
+  done.forEach(id => applyDone(id));
+  updateProgress();
+}
+
+function applyDone(id) {
+  const card = document.getElementById('card-' + id);
+  const box = document.getElementById('box-' + id);
+  if (card) { card.classList.add('done'); }
+  if (box) { box.textContent = '✓'; }
+}
+
+function markDone(id) {
+  if (done.has(id)) {
+    done.delete(id);
+    const card = document.getElementById('card-' + id);
+    const box = document.getElementById('box-' + id);
+    if (card) card.classList.remove('done');
+    if (box) box.textContent = '';
+  } else {
+    done.add(id);
+    applyDone(id);
+  }
+  localStorage.setItem('iphone_checks', JSON.stringify([...done]));
+  updateProgress();
+}
+
+function updateProgress() {
+  const pct = Math.round((done.size / TOTAL) * 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent =
+    `${done.size} / ${TOTAL} vérifications effectuées (${pct}%)`;
+}
+
+function toggleCheck(id) {
+  const body = document.getElementById('body-' + id);
+  body.classList.toggle('visible');
+}
+
+async function analyzeBackup(backupPath, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Analyse en cours…';
+
+  const container = document.getElementById('analysis-results');
+
+  try {
+    const resp = await fetch('/surveillance/iphone/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ backup_path: backupPath })
+    });
+    const data = await resp.json();
+
+    if (data.error) {
+      container.innerHTML = `<p style="color:var(--critical);margin-top:1rem">Erreur: ${data.error}</p>`;
+      return;
+    }
+
+    container.style.display = 'block';
+    container.innerHTML = renderAnalysisResults(data);
+  } catch (e) {
+    container.innerHTML = `<p style="color:var(--critical);margin-top:1rem">Erreur: ${e.message}</p>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 Analyser cette sauvegarde';
+  }
+}
+
+function renderAnalysisResults(data) {
+  const RISK_LABELS = {
+    critical: '⛔ CRITIQUE', high: '🔴 ÉLEVÉ', medium: '🟡 MODÉRÉ', low: '🟢 FAIBLE'
+  };
+
+  let html = `<div style="margin-top:1.25rem">`;
+  html += `<div style="font-weight:700;margin-bottom:0.75rem">
+    Résultat: ${RISK_LABELS[data.overall_risk] || data.overall_risk} —
+    ${data.total_findings} alerte(s) trouvée(s)
+  </div>`;
+
+  if (data.total_findings === 0) {
+    html += `<div style="background:rgba(34,197,94,0.1);border:1px solid #22c55e;border-radius:8px;
+      padding:1rem;color:#22c55e;font-weight:600">
+      ✅ Aucune app de surveillance ni profil suspect détecté dans cette sauvegarde.
+    </div>`;
+  }
+
+  (data.findings || []).forEach(f => {
+    html += `<div class="result-finding ${f.risk}">
+      <div class="result-title">${esc(f.title)}</div>
+      <div class="result-desc">${esc(f.description)}</div>
+      ${f.evidence.length ? `<ul class="result-evidence">${f.evidence.map(e => `<li>${esc(e)}</li>`).join('')}</ul>` : ''}
+      ${f.recommendation ? `<div class="result-rec">${esc(f.recommendation)}</div>` : ''}
+    </div>`;
+  });
+
+  html += `</div>`;
+  return html;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Ouvrir automatiquement la première carte
+document.addEventListener('DOMContentLoaded', () => {
+  init();
+  const firstBody = document.querySelector('.check-body');
+  if (firstBody) firstBody.classList.add('visible');
+});
+</script>
+</body>
+</html>
