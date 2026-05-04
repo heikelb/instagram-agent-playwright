@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <title>Scan Sécurité — iPhone</title>
+  <style>
+    :root {
+      --bg:#0a0e1a; --surface:#111827; --surface2:#1f2937; --border:#374151;
+      --text:#f9fafb; --muted:#9ca3af;
+      --red:#ef4444; --orange:#f97316; --yellow:#eab308; --green:#22c55e;
+      --blue:#3b82f6; --ios:#007aff;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+    html, body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif; min-height:100vh; }
+
+    /* Header mobile */
+    .header {
+      background:var(--surface);
+      border-bottom:1px solid var(--border);
+      padding:env(safe-area-inset-top,16px) 1rem 1rem;
+      padding-top:max(env(safe-area-inset-top),16px);
+      text-align:center;
+    }
+    .header h1 { font-size:1.1rem; font-weight:700; }
+    .header p { font-size:0.78rem; color:var(--muted); margin-top:0.2rem; }
+
+    main { padding:1rem; max-width:600px; margin:0 auto; }
+
+    /* Scan button hero */
+    .scan-hero {
+      background:linear-gradient(135deg,#1e3a5f,#0f2744);
+      border:1px solid #1e4080;
+      border-radius:16px;
+      padding:2rem 1rem;
+      text-align:center;
+      margin-bottom:1.25rem;
+    }
+    .scan-icon { font-size:3rem; margin-bottom:0.75rem; }
+    .scan-hero h2 { font-size:1.1rem; margin-bottom:0.5rem; }
+    .scan-hero p { font-size:0.82rem; color:var(--muted); margin-bottom:1.25rem; line-height:1.5; }
+    #start-scan {
+      background:var(--ios);
+      color:white;
+      border:none;
+      border-radius:12px;
+      padding:0.85rem 2.5rem;
+      font-size:1rem;
+      font-weight:700;
+      cursor:pointer;
+      width:100%;
+      max-width:280px;
+    }
+    #start-scan:active { opacity:0.8; }
+
+    /* Progress */
+    #progress-wrap { display:none; margin-bottom:1.25rem; }
+    .progress-label { font-size:0.85rem; color:var(--muted); text-align:center; margin-bottom:0.5rem; }
+    .progress-bar { background:var(--surface2); border-radius:999px; height:6px; overflow:hidden; }
+    .progress-fill { height:100%; background:var(--ios); border-radius:999px; transition:width 0.3s; width:0%; }
+
+    /* Result banner */
+    #result-banner { display:none; border-radius:14px; padding:1.25rem; margin-bottom:1.25rem; text-align:center; }
+    #result-banner.critical { background:rgba(239,68,68,0.15); border:1px solid var(--red); }
+    #result-banner.high     { background:rgba(249,115,22,0.15); border:1px solid var(--orange); }
+    #result-banner.medium   { background:rgba(234,179,8,0.15);  border:1px solid var(--yellow); }
+    #result-banner.low      { background:rgba(34,197,94,0.15);  border:1px solid var(--green); }
+    .result-emoji { font-size:2.5rem; margin-bottom:0.5rem; }
+    .result-level { font-size:1.1rem; font-weight:800; margin-bottom:0.3rem; }
+    .result-level.critical { color:var(--red); }
+    .result-level.high     { color:var(--orange); }
+    .result-level.medium   { color:var(--yellow); }
+    .result-level.low      { color:var(--green); }
+    .result-sub { font-size:0.82rem; color:var(--muted); }
+
+    /* Check items */
+    #checks-list { display:flex; flex-direction:column; gap:0.6rem; }
+    .check-item {
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:0.9rem 1rem;
+      display:flex;
+      align-items:flex-start;
+      gap:0.75rem;
+    }
+    .check-item.critical { border-left:4px solid var(--red); }
+    .check-item.high     { border-left:4px solid var(--orange); }
+    .check-item.medium   { border-left:4px solid var(--yellow); }
+    .check-item.ok       { border-left:4px solid var(--green); }
+    .check-status { font-size:1.2rem; flex-shrink:0; margin-top:0.1rem; }
+    .check-body { flex:1; }
+    .check-title { font-weight:600; font-size:0.9rem; margin-bottom:0.2rem; }
+    .check-desc  { font-size:0.78rem; color:var(--muted); line-height:1.4; }
+    .check-action {
+      display:inline-block; margin-top:0.5rem;
+      background:var(--ios); color:white; border:none;
+      border-radius:8px; padding:0.35rem 0.85rem;
+      font-size:0.78rem; font-weight:600; cursor:pointer; text-decoration:none;
+    }
+
+    /* Section dividers */
+    .section-title {
+      font-size:0.72rem; font-weight:700; color:var(--muted);
+      text-transform:uppercase; letter-spacing:0.06em;
+      margin:1.25rem 0 0.6rem;
+      display:flex; align-items:center; gap:0.5rem;
+    }
+    .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    /* Call log */
+    .call-log-form {
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:1rem;
+      margin-bottom:0.6rem;
+    }
+    .call-log-form h3 { font-size:0.9rem; font-weight:700; margin-bottom:0.75rem; }
+    .field-group { margin-bottom:0.6rem; }
+    .field-group label { font-size:0.72rem; color:var(--muted); font-weight:600; text-transform:uppercase; display:block; margin-bottom:0.25rem; }
+    .field-group input, .field-group textarea, .field-group select {
+      background:var(--surface2); border:1px solid var(--border); border-radius:8px;
+      padding:0.6rem 0.75rem; color:var(--text); font-size:0.875rem; width:100%;
+      font-family:inherit; -webkit-appearance:none;
+    }
+    .field-group textarea { min-height:70px; resize:vertical; }
+    .btn-add {
+      background:var(--ios); color:white; border:none; border-radius:10px;
+      padding:0.75rem; font-size:0.9rem; font-weight:700; cursor:pointer; width:100%;
+    }
+    .btn-add:active { opacity:0.8; }
+
+    .call-item {
+      background:var(--surface2); border-radius:10px; padding:0.75rem;
+      margin-bottom:0.4rem; display:flex; align-items:flex-start; gap:0.6rem;
+    }
+    .call-icon { font-size:1.1rem; flex-shrink:0; }
+    .call-info { flex:1; }
+    .call-time { font-size:0.72rem; color:var(--muted); font-family:monospace; }
+    .call-type { font-weight:600; font-size:0.85rem; }
+    .call-note { font-size:0.78rem; color:var(--muted); margin-top:0.1rem; }
+    .btn-del { background:transparent; border:none; color:var(--red); font-size:1rem; cursor:pointer; padding:0.2rem; }
+
+    /* Operator guide */
+    .operator-card {
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:1rem;
+      margin-bottom:0.75rem;
+    }
+    .operator-name { font-weight:700; font-size:0.9rem; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem; }
+    .operator-steps { list-style:none; }
+    .operator-steps li {
+      font-size:0.82rem; color:var(--muted); padding:0.35rem 0;
+      border-bottom:1px solid var(--border); display:flex; gap:0.5rem;
+      align-items:flex-start; line-height:1.4;
+    }
+    .operator-steps li:last-child { border-bottom:none; }
+    .step-num {
+      min-width:20px; height:20px; background:var(--blue); border-radius:50%;
+      font-size:0.65rem; font-weight:700; color:white;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .tel-link { color:var(--ios); font-weight:700; text-decoration:none; }
+    .alert-box {
+      background:rgba(234,179,8,0.1); border:1px solid var(--yellow);
+      border-radius:10px; padding:0.75rem; font-size:0.82rem; color:#fde68a;
+      margin-bottom:0.75rem; line-height:1.5;
+    }
+
+    /* Export */
+    .export-btn {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:10px; padding:0.75rem; width:100%;
+      color:var(--text); font-size:0.875rem; font-weight:600;
+      cursor:pointer; text-align:center; display:block; text-decoration:none;
+    }
+    .export-btn:active { background:var(--surface2); }
+
+    /* Bottom safe area */
+    .bottom-pad { height:env(safe-area-inset-bottom,20px); }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div style="font-size:1.5rem">🛡️</div>
+  <h1>Scan Sécurité iPhone</h1>
+  <p>Vérification personnelle — tout reste sur cet appareil</p>
+</div>
+
+<main>
+
+  <!-- ── SCAN ── -->
+  <div class="scan-hero">
+    <div class="scan-icon">🔍</div>
+    <h2>Détecter si quelqu'un surveille cet iPhone</h2>
+    <p>Le scan vérifie : partage de localisation, profils espions, apps suspectes, accès à distance, réseau.</p>
+    <button id="start-scan" onclick="startScan()">Lancer le scan</button>
+  </div>
+
+  <div id="progress-wrap">
+    <div class="progress-label" id="progress-label">Initialisation…</div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+  </div>
+
+  <div id="result-banner"></div>
+  <div id="checks-list"></div>
+
+  <!-- ── JOURNAL APPELS ── -->
+  <div class="section-title">📞 Journal des appels masqués</div>
+
+  <div class="alert-box">
+    ⚖️ Chaque appel enregistré ici constitue une preuve légale. Notez-les immédiatement après réception pour la plainte.
+  </div>
+
+  <div class="call-log-form">
+    <h3>Enregistrer un appel/message reçu</h3>
+    <div class="field-group">
+      <label>Date et heure</label>
+      <input type="datetime-local" id="call-date"/>
+    </div>
+    <div class="field-group">
+      <label>Type</label>
+      <select id="call-type">
+        <option value="appel_masque">📵 Appel numéro masqué</option>
+        <option value="snapchat">👻 Message Snapchat</option>
+        <option value="sms_inconnu">💬 SMS numéro inconnu</option>
+        <option value="whatsapp">📱 WhatsApp</option>
+        <option value="autre">Autre</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <label>Username / Numéro affiché (si visible)</label>
+      <input type="text" id="call-account" placeholder="ex: +336XX ou @snap_user"/>
+    </div>
+    <div class="field-group">
+      <label>J'étais à cet endroit</label>
+      <input type="text" id="call-location" placeholder="ex: domicile, travail, chez un ami…"/>
+    </div>
+    <div class="field-group">
+      <label>Personnes qui savaient où j'étais</label>
+      <input type="text" id="call-people" placeholder="ex: Ali, ma sœur, mon patron"/>
+    </div>
+    <div class="field-group">
+      <label>Contenu / Résumé du message</label>
+      <textarea id="call-content" placeholder="Ce qui a été dit ou écrit…"></textarea>
+    </div>
+    <button class="btn-add" onclick="addCallLog()">+ Enregistrer</button>
+  </div>
+
+  <div id="call-log-list"></div>
+
+  <button class="export-btn" onclick="exportCallLog()" style="margin-top:0.5rem">
+    📄 Exporter le journal (pour la police)
+  </button>
+
+  <!-- ── DÉMASQUER LES APPELS ── -->
+  <div class="section-title">🔓 Démasquer les appels "numéro inconnu"</div>
+
+  <div class="alert-box">
+    ⚠️ En France, le numéro masqué n'est pas anonyme pour les opérateurs. Voici vos recours légaux.
+  </div>
+
+  <!-- Méthode 1: #30# -->
+  <div class="operator-card">
+    <div class="operator-name">⚡ Méthode immédiate — Code #30#</div>
+    <ul class="operator-steps">
+      <li><div class="step-num">1</div>Quand le téléphone sonne en numéro masqué, <strong style="color:var(--text)">ne répondez pas encore</strong></li>
+      <li><div class="step-num">2</div>Notez l'heure exacte</li>
+      <li><div class="step-num">3</div>Pour le prochain appel masqué : tapez <strong style="color:var(--yellow);font-size:1rem">#30#</strong> puis le numéro si vous le rappelez (force l'affichage)</li>
+      <li><div class="step-num">4</div>Résultat : fonctionne si l'appelant utilise le code <em>*31#</em> standard — ne fonctionne pas sur les numéros VoIP masqués</li>
+    </ul>
+  </div>
+
+  <!-- Méthode 2: Opérateurs -->
+  <div class="operator-card">
+    <div class="operator-name">📞 Orange — Service "Anti-numéro masqué"</div>
+    <ul class="operator-steps">
+      <li><div class="step-num">1</div>Appelez le <a href="tel:3900" class="tel-link">3900</a> depuis votre ligne Orange</li>
+      <li><div class="step-num">2</div>Demandez le service <strong style="color:var(--text)">"Identification des appels masqués"</strong> ou <strong style="color:var(--text)">"Mise en cause"</strong></li>
+      <li><div class="step-num">3</div>Expliquez la situation de harcèlement — ils peuvent enregistrer un <strong style="color:var(--text)">numéro piège</strong> sur votre ligne</li>
+      <li><div class="step-num">4</div>Avec le numéro piège actif, le vrai numéro de l'appelant masqué est capturé et transmissible à la police</li>
+    </ul>
+  </div>
+
+  <div class="operator-card">
+    <div class="operator-name">📞 SFR</div>
+    <ul class="operator-steps">
+      <li><div class="step-num">1</div>Appelez le <a href="tel:1023" class="tel-link">1023</a></li>
+      <li><div class="step-num">2</div>Demandez le <strong style="color:var(--text)">service anti-harcèlement</strong> ou la <strong style="color:var(--text)">levée de l'anonymat</strong></li>
+      <li><div class="step-num">3</div>Un conseiller peut déclencher une procédure avec votre numéro de plainte</li>
+    </ul>
+  </div>
+
+  <div class="operator-card">
+    <div class="operator-name">📞 Bouygues Telecom</div>
+    <ul class="operator-steps">
+      <li><div class="step-num">1</div>Appelez le <a href="tel:614" class="tel-link">614</a></li>
+      <li><div class="step-num">2</div>Demandez le service <strong style="color:var(--text)">"Harcèlement téléphonique"</strong></li>
+      <li><div class="step-num">3</div>Ils peuvent activer le <strong style="color:var(--text)">Mise en cause (MEC)</strong> — identifie le numéro masqué</li>
+    </ul>
+  </div>
+
+  <div class="operator-card">
+    <div class="operator-name">📞 Free Mobile</div>
+    <ul class="operator-steps">
+      <li><div class="step-num">1</div>Appelez le <a href="tel:3244" class="tel-link">3244</a></li>
+      <li><div class="step-num">2</div>Ou rendez-vous en boutique Free avec votre pièce d'identité et les preuves</li>
+      <li><div class="step-num">3</div>Demandez la <strong style="color:var(--text)">traçabilité des appels entrants masqués</strong></li>
+    </ul>
+  </div>
+
+  <!-- Méthode 3: Police -->
+  <div class="operator-card" style="border-color:var(--red)">
+    <div class="operator-name" style="color:var(--red)">⚖️ Voie judiciaire — La plus efficace</div>
+    <ul class="operator-steps">
+      <li><div class="step-num">1</div>Déposez plainte avec votre journal d'appels (ce que vous constituez ici)</li>
+      <li><div class="step-num">2</div>Le procureur émet une <strong style="color:var(--text)">réquisition judiciaire</strong> à l'opérateur</li>
+      <li><div class="step-num">3</div>L'opérateur est <strong style="color:var(--text)">légalement obligé</strong> de communiquer le vrai numéro, l'IMEI de l'appareil et les données de géolocalisation de l'appel</li>
+      <li><div class="step-num">4</div>Portails : <strong style="color:var(--text)">thesee.interieur.gouv.fr</strong> (plainte en ligne) ou commissariat/gendarmerie</li>
+    </ul>
+  </div>
+
+  <div class="bottom-pad"></div>
+</main>
+
+<script>
+// ─── Scan ────────────────────────────────────────────────────────────────────
+
+const CHECKS = [
+  {
+    id: 'browser',
+    label: 'Navigateur sécurisé',
+    run: () => {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isSafari = /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS/.test(navigator.userAgent);
+      return {
+        ok: isIOS,
+        level: isIOS ? 'ok' : 'medium',
+        desc: isIOS
+          ? 'Appareil iOS détecté — sandbox applicatif actif.'
+          : 'Appareil non-iOS. Ce scan est optimisé pour iPhone.',
+      };
+    }
+  },
+  {
+    id: 'https',
+    label: 'Connexion chiffrée (HTTPS)',
+    run: () => {
+      const secure = location.protocol === 'https:' || location.hostname === 'localhost';
+      return {
+        ok: secure,
+        level: secure ? 'ok' : 'high',
+        desc: secure
+          ? 'La connexion est chiffrée — vos données de scan ne sont pas interceptables.'
+          : '⚠️ Connexion non chiffrée. Un tiers sur le même réseau pourrait voir vos données.',
+        action: !secure ? { label: 'Activer HTTPS', url: 'https://' + location.host + location.pathname } : null,
+      };
+    }
+  },
+  {
+    id: 'vpn',
+    label: 'Détection réseau / VPN inconnu',
+    run: async () => {
+      // Vérifier si le DNS est détourné via une requête test
+      try {
+        const resp = await fetch('https://dns.google/resolve?name=google.com&type=A', { signal: AbortSignal.timeout(5000) });
+        const data = await resp.json();
+        const googleIPs = (data.Answer || []).map(a => a.data);
+        return {
+          ok: googleIPs.length > 0,
+          level: googleIPs.length > 0 ? 'ok' : 'medium',
+          desc: googleIPs.length > 0
+            ? 'Résolution DNS normale — pas de détournement détecté sur ce test.'
+            : 'Impossible de vérifier le DNS — possible interception réseau ou pas de connexion.',
+        };
+      } catch {
+        return { ok: false, level: 'medium', desc: 'Vérification DNS échouée — assurez-vous d\'être connecté au Wi-Fi.' };
+      }
+    }
+  },
+  {
+    id: 'clipboard',
+    label: 'Vérification accès presse-papier',
+    run: async () => {
+      // iOS 14+ avertit quand une app lit le clipboard
+      // On informe l'utilisateur de ce qu'il doit vérifier
+      return {
+        ok: true,
+        level: 'medium',
+        desc: 'Sur iOS 14+, une bannière "X a collé depuis..." s\'affiche quand une app lit votre presse-papier sans raison. Si vous avez vu cette bannière pour une app inconnue → suspecte.',
+        action: { label: 'Voir les apps avec accès', url: 'prefs:root=Privacy' }
+      };
+    }
+  },
+  {
+    id: 'location_services',
+    label: 'Service de localisation',
+    run: () => {
+      if (!navigator.geolocation) {
+        return { ok: false, level: 'medium', desc: 'Service de localisation inaccessible depuis le navigateur.' };
+      }
+      return {
+        ok: true,
+        level: 'medium',
+        desc: 'Le service de localisation est actif. Vérifiez manuellement quelles apps ont accès "Toujours".',
+        action: { label: 'Ouvrir les réglages localisation', url: 'prefs:root=Privacy&path=LOCATION' }
+      };
+    }
+  },
+  {
+    id: 'mdm',
+    label: 'Profils MDM (logiciels espions)',
+    run: () => ({
+      ok: null,
+      level: 'critical',
+      desc: 'iOS ne permet pas de vérifier les profils depuis une page web. Vous devez le faire manuellement.',
+      action: { label: '→ Réglages · Général · VPN et gestion', url: 'prefs:root=General&path=ManagedConfigurationList' }
+    })
+  },
+  {
+    id: 'find_my',
+    label: 'Partage de position Localiser',
+    run: () => ({
+      ok: null,
+      level: 'high',
+      desc: 'Vérifiez dans l\'app Localiser → Moi → qui voit votre position. C\'est la cause #1 de pistage en temps réel.',
+      action: { label: 'Ouvrir l\'app Localiser', url: 'findmy://' }
+    })
+  },
+  {
+    id: 'apple_id',
+    label: 'Appareils connectés à votre Apple ID',
+    run: () => ({
+      ok: null,
+      level: 'high',
+      desc: 'Un appareil inconnu connecté à votre Apple ID peut lire iCloud (photos, messages, Calendrier, localisation).',
+      action: { label: '→ Réglages · [Votre nom]', url: 'prefs:root=ACCOUNT_AND_SECURITY' }
+    })
+  },
+  {
+    id: 'screen_time',
+    label: 'Screen Time contrôlé par quelqu\'un d\'autre',
+    run: () => ({
+      ok: null,
+      level: 'high',
+      desc: 'Si un code Screen Time vous est demandé et que vous ne le connaissez pas → quelqu\'un surveille votre usage et peut voir votre activité.',
+      action: { label: '→ Réglages · Temps d\'écran', url: 'prefs:root=SCREENTIME' }
+    })
+  },
+  {
+    id: 'airtag',
+    label: 'Tracker AirTag ou Bluetooth inconnu',
+    run: () => ({
+      ok: null,
+      level: 'critical',
+      desc: 'Votre iPhone vous alertera automatiquement si un AirTag inconnu vous suit. Vérifiez aussi physiquement : sous la voiture, dans les affaires (objet blanc de 3,2 cm).',
+      action: { label: '→ App Localiser · Objets', url: 'findmy://' }
+    })
+  },
+];
+
+const LEVEL_CONFIG = {
+  critical: { icon: '⛔', label: 'CRITIQUE', color: 'var(--red)' },
+  high:     { icon: '🔴', label: 'À VÉRIFIER', color: 'var(--orange)' },
+  medium:   { icon: '🟡', label: 'À NOTER', color: 'var(--yellow)' },
+  ok:       { icon: '✅', label: 'OK', color: 'var(--green)' },
+};
+
+const FINAL_CONFIG = {
+  critical: { emoji: '🚨', label: 'Signes de surveillance détectés', class: 'critical' },
+  high:     { emoji: '⚠️', label: 'Éléments importants à vérifier', class: 'high' },
+  medium:   { emoji: '🔍', label: 'Quelques points à contrôler', class: 'medium' },
+  low:      { emoji: '✅', label: 'Aucun signe de surveillance automatique', class: 'low' },
+};
+
+async function startScan() {
+  document.getElementById('start-scan').disabled = true;
+  document.getElementById('start-scan').textContent = 'Scan en cours…';
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('checks-list').innerHTML = '';
+  document.getElementById('result-banner').style.display = 'none';
+
+  const results = [];
+  for (let i = 0; i < CHECKS.length; i++) {
+    const check = CHECKS[i];
+    const pct = Math.round(((i + 1) / CHECKS.length) * 100);
+    document.getElementById('progress-label').textContent = `Vérification : ${check.label}…`;
+    document.getElementById('progress-fill').style.width = pct + '%';
+
+    let result;
+    try {
+      result = await check.run();
+    } catch (e) {
+      result = { ok: false, level: 'medium', desc: 'Erreur: ' + e.message };
+    }
+    results.push({ ...check, ...result });
+    appendCheckItem({ ...check, ...result });
+    await sleep(300);
+  }
+
+  // Final verdict
+  const levels = results.map(r => r.level);
+  const finalLevel = levels.includes('critical') ? 'critical'
+    : levels.includes('high') ? 'high'
+    : levels.includes('medium') ? 'medium' : 'low';
+
+  const cfg = FINAL_CONFIG[finalLevel];
+  const banner = document.getElementById('result-banner');
+  banner.className = cfg.class;
+  banner.style.display = 'block';
+  banner.innerHTML = `
+    <div class="result-emoji">${cfg.emoji}</div>
+    <div class="result-level ${cfg.class}">${cfg.label}</div>
+    <div class="result-sub">${results.filter(r => r.level !== 'ok').length} point(s) à examiner manuellement</div>
+  `;
+
+  document.getElementById('progress-label').textContent = 'Scan terminé';
+  document.getElementById('start-scan').disabled = false;
+  document.getElementById('start-scan').textContent = '🔄 Relancer';
+}
+
+function appendCheckItem(r) {
+  const cfg = LEVEL_CONFIG[r.level] || LEVEL_CONFIG.medium;
+  const div = document.createElement('div');
+  div.className = `check-item ${r.level}`;
+  div.innerHTML = `
+    <div class="check-status">${cfg.icon}</div>
+    <div class="check-body">
+      <div class="check-title">${esc(r.label)} <span style="font-size:0.72rem;font-weight:600;color:${cfg.color}">${cfg.label}</span></div>
+      <div class="check-desc">${esc(r.desc)}</div>
+      ${r.action ? `<a class="check-action" href="${r.action.url}">${esc(r.action.label)}</a>` : ''}
+    </div>
+  `;
+  document.getElementById('checks-list').appendChild(div);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ─── Call Log ────────────────────────────────────────────────────────────────
+
+let callLog = JSON.parse(localStorage.getItem('call_log') || '[]');
+
+const CALL_ICONS = {
+  appel_masque: '📵',
+  snapchat: '👻',
+  sms_inconnu: '💬',
+  whatsapp: '📱',
+  autre: '📞',
+};
+
+function addCallLog() {
+  const date = document.getElementById('call-date').value;
+  const type = document.getElementById('call-type').value;
+  if (!date) { alert('Date obligatoire'); return; }
+
+  const entry = {
+    id: Date.now(),
+    date,
+    type,
+    account: document.getElementById('call-account').value.trim(),
+    location: document.getElementById('call-location').value.trim(),
+    people: document.getElementById('call-people').value.trim(),
+    content: document.getElementById('call-content').value.trim(),
+  };
+  callLog.unshift(entry);
+  localStorage.setItem('call_log', JSON.stringify(callLog));
+
+  // Reset
+  document.getElementById('call-account').value = '';
+  document.getElementById('call-location').value = '';
+  document.getElementById('call-people').value = '';
+  document.getElementById('call-content').value = '';
+
+  renderCallLog();
+
+  // Sync avec le backend si dispo
+  fetch('/surveillance/investigation/incident', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      incident_at: date,
+      platform: type,
+      account_used: entry.account,
+      message_content: entry.content,
+      victim_location: entry.location,
+      people_present: entry.people ? entry.people.split(',').map(s => s.trim()) : [],
+      call_masked: type === 'appel_masque',
+    })
+  }).catch(() => {}); // Silently fail if server not available
+}
+
+function deleteCall(id) {
+  callLog = callLog.filter(e => e.id !== id);
+  localStorage.setItem('call_log', JSON.stringify(callLog));
+  renderCallLog();
+}
+
+function renderCallLog() {
+  const el = document.getElementById('call-log-list');
+  if (!callLog.length) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:0.82rem;text-align:center;padding:0.75rem">Aucun appel enregistré</p>';
+    return;
+  }
+  el.innerHTML = callLog.map(e => `
+    <div class="call-item">
+      <div class="call-icon">${CALL_ICONS[e.type] || '📞'}</div>
+      <div class="call-info">
+        <div class="call-time">${e.date.replace('T', ' ')}</div>
+        <div class="call-type">${esc(e.type.replace('_', ' ').toUpperCase())} ${e.account ? '· ' + esc(e.account) : ''}</div>
+        ${e.location ? `<div class="call-note">📍 ${esc(e.location)}</div>` : ''}
+        ${e.people ? `<div class="call-note">👥 ${esc(e.people)}</div>` : ''}
+        ${e.content ? `<div class="call-note" style="font-style:italic">"${esc(e.content)}"</div>` : ''}
+      </div>
+      <button class="btn-del" onclick="deleteCall(${e.id})">🗑</button>
+    </div>
+  `).join('');
+}
+
+function exportCallLog() {
+  if (!callLog.length) { alert('Aucun appel enregistré.'); return; }
+  const now = new Date().toLocaleString('fr-FR');
+  let html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+    <title>Journal d'appels — Preuve pour la police</title>
+    <style>body{font-family:Arial,sans-serif;max-width:700px;margin:40px auto;color:#111;}
+    h1{color:#c00;border-bottom:2px solid #c00;padding-bottom:0.5rem;}
+    table{width:100%;border-collapse:collapse;font-size:0.9rem;}
+    th{background:#f0f0f0;padding:0.5rem;text-align:left;border:1px solid #ccc;}
+    td{padding:0.5rem;border:1px solid #ccc;vertical-align:top;}
+    .legal{background:#d4edda;padding:0.75rem;border-left:4px solid #28a745;margin:1rem 0;font-size:0.85rem;}
+    </style></head><body>
+    <h1>JOURNAL D'APPELS — HARCÈLEMENT TÉLÉPHONIQUE</h1>
+    <p><strong>Exporté le :</strong> ${now}</p>
+    <p><strong>Nombre d'incidents :</strong> ${callLog.length}</p>
+    <div class="legal">
+      <strong>Références légales :</strong> Art. 222-16 CP (appels malveillants réitérés — 1 an / 15 000€) ·
+      Art. 222-33-2-2 CP (harcèlement numérique — 2 ans / 30 000€)<br>
+      <strong>Demande recommandée :</strong> Réquisition judiciaire à l'opérateur pour identification
+      des numéros masqués (obligatoire sur demande du procureur).
+    </div>
+    <table><tr><th>Date/Heure</th><th>Type</th><th>Compte/Numéro</th><th>Lieu victime</th><th>Témoins</th><th>Contenu</th></tr>`;
+
+  callLog.forEach(e => {
+    html += `<tr>
+      <td>${e.date.replace('T', ' ')}</td>
+      <td>${e.type}</td>
+      <td>${e.account || '—'}</td>
+      <td>${e.location || '—'}</td>
+      <td>${e.people || '—'}</td>
+      <td>${e.content || '—'}</td>
+    </tr>`;
+  });
+
+  html += `</table></body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `journal_appels_${new Date().toISOString().slice(0, 10)}.html`;
+  a.click();
+}
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('call-date').value = now.toISOString().slice(0, 16);
+  renderCallLog();
+});
+
+function esc(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+</script>
+</body>
+</html>

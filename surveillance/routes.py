@@ -143,3 +143,8 @@ def run_osint():
 def police_report():
     html = generate_police_report()
     return Response(html, mimetype="text/html")
+
+
+@surveillance_bp.route("/mobile")
+def mobile_scan():
+    return render_template("surveillance/mobile_scan.html")
