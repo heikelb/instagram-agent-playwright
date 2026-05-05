@@ -29,6 +29,14 @@
       </div>
     </div>
   </div>
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm stat-card orange h-100">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1"><i class="bi bi-geo-alt me-1"></i>Villes</div>
+        <div class="fs-2 fw-bold">{{ nb_villes }}</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Liste des rues -->
@@ -37,14 +45,32 @@
   <h6 class="fw-bold mb-3">
     <i class="bi bi-lightning-charge me-1 text-warning"></i>Lancer une session par rue
   </h6>
-  <div class="row g-2">
-    {% for rue, nb in rues %}
-    <div class="col-12 col-md-6">
+
+  <!-- Filtre par ville -->
+  <div class="mb-3">
+    <div class="input-group">
+      <span class="input-group-text"><i class="bi bi-search"></i></span>
+      <input type="text" id="filtre-ville" class="form-control"
+             placeholder="Filtrer par ville…" oninput="filtrerVilles()">
+      <button class="btn btn-outline-secondary" type="button"
+              onclick="document.getElementById('filtre-ville').value='';filtrerVilles()">
+        <i class="bi bi-x"></i>
+      </button>
+    </div>
+    <div class="form-text" id="filtre-count"></div>
+  </div>
+
+  <div class="row g-2" id="rues-list">
+    {% for rue, ville, nb in rues %}
+    <div class="col-12 col-md-6 rue-card" data-ville="{{ (ville or '') | lower }}">
       <div class="card shadow-sm h-100" style="border-left: 3px solid #ff7900;">
         <div class="card-body py-2 px-3 d-flex align-items-center gap-3">
           <div class="flex-grow-1 min-width-0">
             <div class="fw-semibold text-truncate">{{ rue }}</div>
-            <div class="text-muted small">{{ nb }} numéro{{ 's' if nb > 1 }}</div>
+            <div class="text-muted small">
+              {% if ville %}<i class="bi bi-geo-alt me-1"></i>{{ ville }} · {% endif %}
+              {{ nb }} numéro{{ 's' if nb > 1 }}
+            </div>
           </div>
           <form action="{{ url_for('nouvelle_session') }}" method="POST" class="flex-shrink-0">
             <input type="hidden" name="nom" value="{{ rue }}">
@@ -135,6 +161,26 @@ function syncAndDiag() {
   dt.items.add(f.files[0]);
   document.getElementById('fichier3').files = dt.files;
   document.getElementById('form-structure').submit();
+}
+
+function filtrerVilles() {
+  const raw = document.getElementById('filtre-ville').value;
+  // Normaliser : minuscules + supprimer accents
+  const q = raw.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  const cards = document.querySelectorAll('.rue-card');
+  let visible = 0;
+  cards.forEach(c => {
+    const v = c.dataset.ville.normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const match = !q || v.includes(q);
+    c.style.display = match ? '' : 'none';
+    if (match) visible++;
+  });
+  const count = document.getElementById('filtre-count');
+  if (q) {
+    count.textContent = visible + ' rue' + (visible > 1 ? 's' : '') + ' trouvée' + (visible > 1 ? 's' : '') + ' pour "' + raw + '"';
+  } else {
+    count.textContent = '';
+  }
 }
 </script>
 {% endblock %}

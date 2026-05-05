@@ -221,6 +221,7 @@ class AdresseImportee(db.Model):
     rue = db.Column(db.String(200), nullable=False, index=True)
     numero = db.Column(db.String(20), nullable=False)
     complement = db.Column(db.String(100), nullable=True)
+    ville = db.Column(db.String(100), nullable=True, index=True)
     imported_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     @property
@@ -914,6 +915,7 @@ def importer_fichier():
             sample = data_rows[:50]
             scores_rue = [0] * n_cols
             scores_num = [0] * n_cols
+            scores_ville = [0] * n_cols
 
             # Diversité par colonne (valeurs uniques non-nulles non-zéro)
             col_unique_vals = [set() for _ in range(n_cols)]
@@ -938,6 +940,11 @@ def importer_fichier():
                     elif re.match(r'^\d+$', v) and len(v) <= 4:
                         scores_num[j] += 2
 
+                    # Score ville : alphabétique, sans préfixe de voie, 2-35 chars
+                    if re.match(r'^[A-Za-zÀ-ÿ\s\-\']+$', v) and 2 <= len(v) <= 35 and "/" not in v:
+                        if not any(vl.startswith(p) for p in PREFIXES_RUE):
+                            scores_ville[j] += 2
+
                     # Diversité
                     if v == "0":
                         col_zero_count[j] += 1
@@ -960,7 +967,7 @@ def importer_fichier():
                     scores_num[j] += n_unique * 2
 
             # Priorité 1 : colonnes nommées dans l'en-tête
-            col_rue = col_num = None
+            col_rue = col_num = col_ville = None
             if has_header and header_row:
                 for j, c in enumerate(header_row):
                     cl = c.lower()
@@ -968,6 +975,8 @@ def importer_fichier():
                         col_rue = j
                     if col_num is None and any(w in cl for w in ("num", "n°", "porte", "numéro", "numero")):
                         col_num = j
+                    if col_ville is None and any(w in cl for w in ("ville", "commune", "localit", "city", "cp ville")):
+                        col_ville = j
 
             # Priorité 2 : colonnes détectées par contenu
             if col_rue is None:
@@ -975,6 +984,12 @@ def importer_fichier():
             if col_num is None:
                 candidates = [j for j in range(n_cols) if j != col_rue]
                 col_num = max(candidates, key=lambda j: scores_num[j]) if candidates else (1 if col_rue == 0 else 0)
+            if col_ville is None:
+                candidates_v = [j for j in range(n_cols) if j not in (col_rue, col_num)]
+                if candidates_v:
+                    best_v = max(candidates_v, key=lambda j: scores_ville[j])
+                    if scores_ville[best_v] >= 4:
+                        col_ville = best_v
 
             # ── Importer ────────────────────────────────────────────────────
             nb_ok = nb_skip = 0
@@ -992,14 +1007,18 @@ def importer_fichier():
                     nb_skip += 1
                     continue
 
-                db.session.add(AdresseImportee(rue=rue_val, numero=num_val))
+                ville_val = cells[col_ville] if col_ville is not None and col_ville < len(cells) else None
+                ville_val = ville_val or None
+
+                db.session.add(AdresseImportee(rue=rue_val, numero=num_val, ville=ville_val))
                 nb_ok += 1
 
             db.session.commit()
+            col_info = f"col {col_rue+1}=Rue, col {col_num+1}=Numéro"
+            if col_ville is not None:
+                col_info += f", col {col_ville+1}=Ville"
             flash(
-                f"{nb_ok} adresses importées "
-                f"(colonnes détectées : col {col_rue+1}=Rue, col {col_num+1}=Numéro). "
-                f"{nb_skip} lignes ignorées.",
+                f"{nb_ok} adresses importées ({col_info}). {nb_skip} lignes ignorées.",
                 "success"
             )
             return redirect(url_for("importer_fichier"))
@@ -1011,12 +1030,23 @@ def importer_fichier():
     nb_adresses = AdresseImportee.query.count()
     from sqlalchemy import func as sa_func
     rues = (
-        db.session.query(AdresseImportee.rue, sa_func.count(AdresseImportee.id).label("nb"))
-        .group_by(AdresseImportee.rue)
-        .order_by(AdresseImportee.rue)
+        db.session.query(
+            AdresseImportee.rue,
+            AdresseImportee.ville,
+            sa_func.count(AdresseImportee.id).label("nb")
+        )
+        .group_by(AdresseImportee.rue, AdresseImportee.ville)
+        .order_by(AdresseImportee.ville, AdresseImportee.rue)
         .all()
     )
-    return render_template("import.html", nb_adresses=nb_adresses, nb_rues=len(rues), rues=rues)
+    villes = sorted(set(r.ville for r in rues if r.ville))
+    return render_template(
+        "import.html",
+        nb_adresses=nb_adresses,
+        nb_rues=len(rues),
+        nb_villes=len(villes),
+        rues=rues,
+    )
 
 
 @app.route("/import/structure", methods=["POST"])
@@ -1102,6 +1132,11 @@ with app.app_context():
     if "adresse_id" not in _cols:
         with db.engine.connect() as _conn:
             _conn.execute(text("ALTER TABLE portes ADD COLUMN adresse_id INTEGER"))
+            _conn.commit()
+    _cols_ai = [c["name"] for c in _insp.get_columns("adresses_importees")]
+    if "ville" not in _cols_ai:
+        with db.engine.connect() as _conn:
+            _conn.execute(text("ALTER TABLE adresses_importees ADD COLUMN ville VARCHAR(100)"))
             _conn.commit()
 
 scheduler = creer_scheduler()
