@@ -893,8 +893,9 @@ def importer_fichier():
 
             # ── Détecter en-tête ────────────────────────────────────────────
             HEADER_KW = {"rue", "adresse", "voie", "libelle", "libellé", "street",
-                         "num", "n°", "no", "porte", "numero", "numéro", "code",
-                         "nom de voie", "type voie", "type de voie", "libellé voie"}
+                         "num", "n°", "no", "porte", "portes", "numero", "numéro", "code",
+                         "nom de voie", "type voie", "type de voie", "libellé voie",
+                         "nom", "ville", "profil", "dep", "immeuble", "fermeture"}
             first_low = all_rows[0][0].lower().strip() if all_rows[0] else ""
             has_header = first_low in HEADER_KW
 
@@ -966,17 +967,32 @@ def importer_fichier():
                 if n_unique >= 3:
                     scores_num[j] += n_unique * 2
 
-            # Priorité 1 : colonnes nommées dans l'en-tête
+            # Priorité 1 : colonnes nommées dans l'en-tête (3 passes par spécificité)
             col_rue = col_num = col_ville = None
             if has_header and header_row:
+                # Pass 1 — termes très spécifiques
                 for j, c in enumerate(header_row):
                     cl = c.lower()
-                    if col_rue is None and any(w in cl for w in ("rue", "voie", "libelle", "libellé", "adresse", "nom")):
-                        col_rue = j
-                    if col_num is None and any(w in cl for w in ("num", "n°", "porte", "numéro", "numero")):
-                        col_num = j
-                    if col_ville is None and any(w in cl for w in ("ville", "commune", "localit", "city", "cp ville")):
+                    if col_ville is None and any(w in cl for w in ("ville", "commune", "localit", "city")):
                         col_ville = j
+                    # "adresse" seul (pas "adresse mail" etc.)
+                    if col_rue is None and "adresse" in cl and "mail" not in cl and "email" not in cl:
+                        col_rue = j
+                    # "numéro rue" / "numero rue" / "n° rue" → très spécifique
+                    if col_num is None and re.search(r'num[eé]ro\s*rue|n°\s*rue|num\s*rue', cl):
+                        col_num = j
+                # Pass 2 — termes génériques
+                for j, c in enumerate(header_row):
+                    cl = c.lower()
+                    if col_rue is None and any(w in cl for w in ("rue", "voie", "libelle", "libellé")):
+                        col_rue = j
+                    if col_num is None and any(w in cl for w in ("num", "n°", "numéro", "numero")):
+                        col_num = j
+                # Pass 3 — fallback
+                for j, c in enumerate(header_row):
+                    cl = c.lower()
+                    if col_rue is None and "nom" in cl:
+                        col_rue = j
 
             # Priorité 2 : colonnes détectées par contenu
             if col_rue is None:
