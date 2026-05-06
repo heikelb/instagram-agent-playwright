@@ -233,6 +233,30 @@ class AdresseImportee(db.Model):
 
 
 # ---------------------------------------------------------------------------
+# Modèle Rappels client
+# ---------------------------------------------------------------------------
+
+MOMENTS_RAPPEL = {
+    "matin":  "🌅 Matin",
+    "pause":  "☀️ Pause",
+    "soir":   "🌙 Soir",
+}
+
+
+class Rappel(db.Model):
+    __tablename__ = "rappels"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nom = db.Column(db.String(100), nullable=False)
+    telephone = db.Column(db.String(20), nullable=True)
+    motif = db.Column(db.String(200), nullable=False)
+    moment = db.Column(db.String(20), nullable=False, default="pause")
+    done = db.Column(db.Boolean, default=False)
+    vente_id = db.Column(db.Integer, db.ForeignKey("ventes.id"), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+# ---------------------------------------------------------------------------
 # SMS
 # ---------------------------------------------------------------------------
 
@@ -268,6 +292,23 @@ def construire_message_rappel(vente: Vente) -> str:
     )
 
 
+def envoyer_sms_rappels_clients():
+    """Tâche planifiée : envoie au commercial ses rappels clients en attente."""
+    with app.app_context():
+        mon_tel = os.environ.get("MON_TELEPHONE", "")
+        if not mon_tel:
+            return
+        rappels = Rappel.query.filter_by(done=False).order_by(Rappel.created_at).all()
+        if not rappels:
+            return
+        lignes = [f"📋 {len(rappels)} rappel(s) client en attente :"]
+        for r in rappels:
+            tel_part = f" ({r.telephone})" if r.telephone else ""
+            emoji = {"matin": "🌅", "pause": "☀️", "soir": "🌙"}.get(r.moment, "")
+            lignes.append(f"{emoji} {r.nom}{tel_part} : {r.motif}")
+        envoyer_sms(mon_tel, "\n".join(lignes))
+
+
 def envoyer_rappels_du_jour():
     """Tâche planifiée : envoie les rappels SMS pour les RDV du lendemain."""
     with app.app_context():
@@ -284,6 +325,24 @@ def envoyer_rappels_du_jour():
                 vente.sms_envoye = True
                 db.session.commit()
                 app.logger.info("SMS rappel envoyé → %s %s", vente.prenom, vente.nom)
+
+
+# ---------------------------------------------------------------------------
+# Context processor — badges nav
+# ---------------------------------------------------------------------------
+
+@app.context_processor
+def inject_nav_badges():
+    if current_user.is_authenticated:
+        nb_rappels = Rappel.query.filter_by(done=False).count()
+        nb_repasser = (
+            Porte.query
+            .filter_by(resultat="absent")
+            .filter(Porte.adresse_id.isnot(None))
+            .count()
+        )
+        return dict(nb_rappels=nb_rappels, nb_repasser=nb_repasser)
+    return dict(nb_rappels=0, nb_repasser=0)
 
 
 # ---------------------------------------------------------------------------
@@ -1110,6 +1169,85 @@ def structure_fichier():
         return f"Erreur : {e}", 500
 
 
+# ---------------------------------------------------------------------------
+# Routes : À repasser (absents du terrain)
+# ---------------------------------------------------------------------------
+
+@app.route("/repasser")
+@login_required
+def repasser():
+    from collections import defaultdict
+    rows = (
+        db.session.query(Porte, AdresseImportee, SessionProspection)
+        .join(AdresseImportee, Porte.adresse_id == AdresseImportee.id)
+        .join(SessionProspection, Porte.session_id == SessionProspection.id)
+        .filter(Porte.resultat == "absent")
+        .order_by(SessionProspection.date.desc(), AdresseImportee.rue, AdresseImportee.numero)
+        .all()
+    )
+    grouped = defaultdict(list)
+    for porte, adresse, sess in rows:
+        grouped[sess.date].append((porte, adresse, sess))
+    JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
+    MOIS = ["", "jan.", "fév.", "mars", "avr.", "mai", "juin", "juil.", "août", "sep.", "oct.", "nov.", "déc."]
+    groupes = []
+    for d in sorted(grouped.keys(), reverse=True):
+        label = f"{JOURS[d.weekday()]} {d.day} {MOIS[d.month]} {d.year}"
+        groupes.append((label, grouped[d]))
+    return render_template("repasser.html", groupes=groupes, nb_total=len(rows))
+
+
+# ---------------------------------------------------------------------------
+# Routes : Rappels client
+# ---------------------------------------------------------------------------
+
+@app.route("/rappels")
+@login_required
+def liste_rappels():
+    rappels = Rappel.query.filter_by(done=False).order_by(Rappel.created_at).all()
+    faits = (
+        Rappel.query.filter_by(done=True)
+        .order_by(Rappel.created_at.desc())
+        .limit(10).all()
+    )
+    return render_template("rappels.html", rappels=rappels, faits=faits,
+                           moments=MOMENTS_RAPPEL)
+
+
+@app.route("/rappels/nouveau", methods=["POST"])
+@login_required
+def nouveau_rappel():
+    nom = request.form.get("nom", "").strip()
+    telephone = request.form.get("telephone", "").strip() or None
+    motif = request.form.get("motif", "").strip()
+    moment = request.form.get("moment", "pause")
+    if not nom or not motif:
+        flash("Nom et motif obligatoires.", "warning")
+        return redirect(url_for("liste_rappels"))
+    db.session.add(Rappel(nom=nom, telephone=telephone, motif=motif, moment=moment))
+    db.session.commit()
+    flash(f"Rappel ajouté pour {nom}.", "success")
+    return redirect(url_for("liste_rappels"))
+
+
+@app.route("/rappels/<int:rappel_id>/done", methods=["POST"])
+@login_required
+def rappel_done(rappel_id):
+    r = Rappel.query.get_or_404(rappel_id)
+    r.done = True
+    db.session.commit()
+    return redirect(url_for("liste_rappels"))
+
+
+@app.route("/rappels/<int:rappel_id>/supprimer", methods=["POST"])
+@login_required
+def rappel_supprimer(rappel_id):
+    r = Rappel.query.get_or_404(rappel_id)
+    db.session.delete(r)
+    db.session.commit()
+    return redirect(url_for("liste_rappels"))
+
+
 @app.route("/import/effacer", methods=["POST"])
 @login_required
 def effacer_adresses():
@@ -1125,14 +1263,22 @@ def effacer_adresses():
 
 def creer_scheduler():
     scheduler = BackgroundScheduler()
-    # Tous les jours à 9h00 : envoyer les rappels J-1
+    # Tous les jours à 9h00 : envoyer les rappels RDV clients J-1
     scheduler.add_job(
         envoyer_rappels_du_jour,
-        trigger="cron",
-        hour=9,
-        minute=0,
-        id="rappels_sms",
-        replace_existing=True,
+        trigger="cron", hour=9, minute=0,
+        id="rappels_sms", replace_existing=True,
+    )
+    # À 12h30 et 19h00 : SMS au commercial avec ses rappels clients en attente
+    scheduler.add_job(
+        envoyer_sms_rappels_clients,
+        trigger="cron", hour=12, minute=30,
+        id="sms_rappels_pause", replace_existing=True,
+    )
+    scheduler.add_job(
+        envoyer_sms_rappels_clients,
+        trigger="cron", hour=19, minute=0,
+        id="sms_rappels_soir", replace_existing=True,
     )
     scheduler.start()
     return scheduler
