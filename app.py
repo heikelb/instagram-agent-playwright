@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import io
 import os
@@ -666,111 +667,204 @@ def lancer_rappels():
 
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Prompt Claude Vision (partagé entre scan photo et suivi URL)
+# ---------------------------------------------------------------------------
+
+_PROMPT_SCAN = (
+    "Tu es un assistant pour un commercial Orange en porte-à-porte.\n"
+    "Extrait les informations client de ce document "
+    "(bon de commande, contrat, écran CRM Orange, suivi de commande, fiche client...).\n\n"
+    "Retourne UNIQUEMENT un objet JSON valide avec ces champs "
+    "(null si non trouvé) :\n"
+    "{\n"
+    '  "prenom": "...",\n'
+    '  "nom": "...",\n'
+    '  "telephone": "...",\n'
+    '  "adresse": "...",\n'
+    '  "produit": "...",\n'
+    '  "reference": "...",\n'
+    '  "date_rdv": "YYYY-MM-DDTHH:MM",\n'
+    '  "statut": "..."\n'
+    "}\n\n"
+    "Règles :\n"
+    "- nom/prenom : sur l'écran CRM Orange le nom complet est souvent dans la section 'client' "
+    "(ex: 'Blanchet Chantale' → prenom='Chantale', nom='Blanchet').\n"
+    "- telephone : prendre le numéro mobile (07/06) en priorité. "
+    "Convertir '07 83 14 00 32' → '+33783140032'.\n"
+    "- produit : choisir le plus proche parmi : "
+    "'En option', 'Livebox Fibre', 'Livebox Up', 'Livebox Max', 'Série Spécial Lite Fibre'. "
+    "'Livebox Classic Fibre', 'Livebox Fibre +' → 'Livebox Fibre'. "
+    "'Livebox Up Fibre' → 'Livebox Up'.\n"
+    "- reference : prendre EN PRIORITÉ 'référence interne'. Sinon 'référence commande'. "
+    "Ignorer 'code d'accès Suivi Cde'.\n"
+    "- date_rdv : cherche dans cet ordre :\n"
+    "  1. 'Rdv d'installation' ou 'RDV installation' (ignorer si marqué 'supprimé' ou 'annulé')\n"
+    "  2. 'Date de livraison initiale', 'date de livraison', 'date d'activation'\n"
+    "  3. 'créneau', 'intervention prévue', 'date de pose'\n"
+    "  Formats français à convertir en YYYY-MM-DDTHH:MM :\n"
+    "  'le jeudi 25 juin' → déduire l'année depuis les autres dates du document → '2026-06-25T08:00'\n"
+    "  '25/06' ou '25 juin' sans année → utiliser l'année visible ailleurs dans le document\n"
+    "  Plage horaire '8h-12h' → prendre l'heure de début → T08:00\n"
+    "  Si pas d'heure précise → T08:00 par défaut.\n"
+    "- statut : analyser l'état de la commande et retourner EXACTEMENT l'une de ces valeurs :\n"
+    "  'annule' si tu vois 'annulée', 'annulé', 'résiliée', 'résiliation', 'annulation'\n"
+    "  'installe' si tu vois 'installée', 'installé', 'activée', 'activé', 'livrée', 'en service'\n"
+    "  'confirme' si tu vois 'confirmée', 'confirmé', 'validée', 'en cours'\n"
+    "  'no_show' si tu vois 'no show', 'absent', 'client absent'\n"
+    "  'en_attente' dans tous les autres cas\n"
+    "Retourne UNIQUEMENT le JSON brut, sans balises markdown."
+)
+
+
+async def _playwright_screenshot(url: str, login: str, password: str) -> bytes:
+    """Navigue vers l'URL Orange (avec login SSO si besoin) et retourne un screenshot."""
+    from playwright.async_api import async_playwright
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(
+            headless=True,
+            args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu",
+                  "--disable-setuid-sandbox", "--no-zygote"],
+        )
+        ctx = await browser.new_context(
+            viewport={"width": 1280, "height": 900},
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
+        )
+        page = await ctx.new_page()
+        try:
+            await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            await page.wait_for_timeout(2000)
+
+            # Boucle SSO (max 3 tentatives : identifiant, puis mot de passe)
+            for _ in range(3):
+                cur = page.url
+                if not any(kw in cur for kw in
+                           ["login", "auth", "sso", "signin", "prelogin", "portail", "rso."]):
+                    break
+
+                # Remplir identifiant (email / numéro Orange)
+                for sel in ["#username", "#login", "#email",
+                            'input[name="username"]', 'input[name="login"]',
+                            'input[type="email"]:visible', 'input[type="text"]:visible']:
+                    try:
+                        loc = page.locator(sel).first
+                        if await loc.is_visible():
+                            await loc.fill(login)
+                            break
+                    except Exception:
+                        continue
+
+                # Remplir mot de passe si déjà visible
+                for sel in ["#password", 'input[name="password"]',
+                            'input[type="password"]:visible']:
+                    try:
+                        loc = page.locator(sel).first
+                        if await loc.is_visible():
+                            await loc.fill(password)
+                            break
+                    except Exception:
+                        continue
+
+                # Cliquer sur le bouton de validation
+                for sel in ['button[type="submit"]', 'input[type="submit"]',
+                            "#bouton-valider", ".btn-connexion", ".btn-primary"]:
+                    try:
+                        loc = page.locator(sel).first
+                        if await loc.is_visible():
+                            await loc.click()
+                            break
+                    except Exception:
+                        continue
+
+                await page.wait_for_load_state("domcontentloaded", timeout=15000)
+                await page.wait_for_timeout(2000)
+
+            # Screenshot de la page de suivi
+            screenshot = await page.screenshot(
+                full_page=False, type="jpeg", quality=88
+            )
+            return screenshot
+        finally:
+            await browser.close()
+
+
+# ---------------------------------------------------------------------------
 # Route : Scan bon de commande (Claude Vision)
 # ---------------------------------------------------------------------------
 
 @app.route("/scan-affiche", methods=["POST"])
 @login_required
 def scan_affiche():
-    import base64
-    import json as _json
+    import base64, json as _json
 
     photo = request.files.get("photo")
     if not photo:
         return jsonify({"error": "Aucune photo reçue"}), 400
-
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
-        return jsonify({"error": "ANTHROPIC_API_KEY non configuré dans les variables d'environnement."}), 500
-
+        return jsonify({"error": "ANTHROPIC_API_KEY non configuré."}), 500
     img_bytes = photo.read()
-    if len(img_bytes) > 10 * 1024 * 1024:  # 10 Mo max
+    if len(img_bytes) > 10 * 1024 * 1024:
         return jsonify({"error": "Image trop lourde (max 10 Mo)."}), 400
-
     img_b64 = base64.standard_b64encode(img_bytes).decode("utf-8")
     media_type = photo.content_type if (photo.content_type or "").startswith("image/") else "image/jpeg"
+    return _claude_vision(img_b64, media_type, api_key)
 
+
+def _claude_vision(img_b64: str, media_type: str, api_key: str):
+    import json as _json, anthropic
     try:
-        import anthropic
         client = anthropic.Anthropic(api_key=api_key)
         msg = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=1024,
-            messages=[{
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": img_b64,
-                        },
-                    },
-                    {
-                        "type": "text",
-                        "text": (
-                            "Tu es un assistant pour un commercial Orange en porte-à-porte.\n"
-                            "Extrait les informations client de ce document "
-                            "(bon de commande, contrat, écran CRM Orange, suivi de commande, fiche client...).\n\n"
-                            "Retourne UNIQUEMENT un objet JSON valide avec ces champs "
-                            "(null si non trouvé) :\n"
-                            "{\n"
-                            '  "prenom": "...",\n'
-                            '  "nom": "...",\n'
-                            '  "telephone": "...",\n'
-                            '  "adresse": "...",\n'
-                            '  "produit": "...",\n'
-                            '  "reference": "...",\n'
-                            '  "date_rdv": "YYYY-MM-DDTHH:MM",\n'
-                            '  "statut": "..."\n'
-                            "}\n\n"
-                            "Règles :\n"
-                            "- nom/prenom : sur l'écran CRM Orange le nom complet est souvent dans la section 'client' (ex: 'Blanchet Chantale' → prenom='Chantale', nom='Blanchet').\n"
-                            "- telephone : prendre le numéro mobile (07/06) en priorité. Convertir '07 83 14 00 32' → '+33783140032'.\n"
-                            "- produit : choisir le plus proche parmi : "
-                            "'En option', 'Livebox Fibre', 'Livebox Up', "
-                            "'Livebox Max', 'Série Spécial Lite Fibre'. "
-                            "'Livebox Classic Fibre', 'Livebox Fibre +' → 'Livebox Fibre'. "
-                            "'Livebox Up Fibre' → 'Livebox Up'.\n"
-                            "- reference : prendre EN PRIORITÉ 'référence interne'. Sinon 'référence commande'. Ignorer 'code d'accès Suivi Cde'.\n"
-                            "- statut : analyser l'état de la commande et retourner EXACTEMENT l'une de ces valeurs :\n"
-                            "  'annule' si tu vois 'annulée', 'annulé', 'résiliée', 'résiliation', 'annulation'\n"
-                            "  'installe' si tu vois 'installée', 'installé', 'activée', 'activé', 'livrée', 'en service'\n"
-                            "  'confirme' si tu vois 'confirmée', 'confirmé', 'validée', 'en cours'\n"
-                            "  'no_show' si tu vois 'no show', 'absent', 'client absent'\n"
-                            "  'en_attente' dans tous les autres cas (ou si le statut n'est pas clair)\n"
-                            "- date_rdv : cherche dans cet ordre :\n"
-                            "  1. 'Rdv d'installation' ou 'RDV installation' (ignorer si marqué 'supprimé' ou 'annulé')\n"
-                            "  2. 'Date de livraison initiale', 'date de livraison', 'date d'activation'\n"
-                            "  3. 'créneau', 'intervention prévue', 'date de pose'\n"
-                            "  Formats français à convertir en YYYY-MM-DDTHH:MM :\n"
-                            "  'le jeudi 25 juin' → déduire l'année depuis les autres dates du document → '2026-06-25T08:00'\n"
-                            "  '25/06' ou '25 juin' sans année → utiliser l'année visible ailleurs dans le document\n"
-                            "  '25/04/2026 14h00' → '2026-04-25T14:00'\n"
-                            "  'lundi 25 avril 2026 à 9h' → '2026-04-25T09:00'\n"
-                            "  Plage horaire '8h-12h' → prendre l'heure de début → T08:00\n"
-                            "  Si pas d'heure précise → T08:00 par défaut.\n"
-                            "Retourne UNIQUEMENT le JSON brut, sans balises markdown."
-                        ),
-                    },
-                ],
-            }],
+            messages=[{"role": "user", "content": [
+                {"type": "image", "source": {"type": "base64",
+                                              "media_type": media_type, "data": img_b64}},
+                {"type": "text", "text": _PROMPT_SCAN},
+            ]}],
         )
-
         txt = msg.content[0].text.strip()
-        # Extraire le JSON si entouré de balises markdown
         m = re.search(r'\{[\s\S]*\}', txt)
         txt = m.group() if m else txt
-
-        data = _json.loads(txt)
-        # Nettoyer les None Python → null déjà géré par jsonify
-        return jsonify(data)
-
+        return jsonify(_json.loads(txt))
     except _json.JSONDecodeError as e:
         return jsonify({"error": f"Impossible de lire la réponse IA : {e}"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/track-commande", methods=["POST"])
+@login_required
+def track_commande():
+    import base64
+
+    url = request.form.get("url", "").strip()
+    if not url:
+        return jsonify({"error": "URL manquante."}), 400
+    orange_login = os.environ.get("ORANGE_LOGIN", "")
+    orange_password = os.environ.get("ORANGE_PASSWORD", "")
+    if not orange_login or not orange_password:
+        return jsonify({"error":
+            "ORANGE_LOGIN et ORANGE_PASSWORD doivent être configurés dans les variables Railway."}), 500
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return jsonify({"error": "ANTHROPIC_API_KEY non configuré."}), 500
+    try:
+        loop = asyncio.new_event_loop()
+        screenshot = loop.run_until_complete(
+            _playwright_screenshot(url, orange_login, orange_password)
+        )
+        loop.close()
+        img_b64 = base64.standard_b64encode(screenshot).decode("utf-8")
+        return _claude_vision(img_b64, "image/jpeg", api_key)
+    except Exception as e:
+        return jsonify({"error": f"Erreur Playwright : {e}"}), 500
 
 
 # ---------------------------------------------------------------------------

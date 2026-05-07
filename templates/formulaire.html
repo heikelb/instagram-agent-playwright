@@ -24,6 +24,26 @@
       </div>
     </div>
 
+    <!-- ── Suivi automatique via URL ── -->
+    <div class="card shadow-sm mb-3" style="border-left:4px solid #0d6efd;">
+      <div class="card-body py-3">
+        <div class="fw-semibold mb-1">
+          <i class="bi bi-link-45deg me-1 text-primary"></i>Suivi automatique depuis le CRM
+        </div>
+        <p class="text-muted small mb-2">
+          Colle le lien de la page de suivi Orange — l'app se connecte et récupère toutes les infos automatiquement.
+        </p>
+        <div class="input-group">
+          <input type="url" id="track-url" class="form-control"
+                 placeholder="https://suivicommande.sso.francetelecom.fr/…">
+          <button type="button" class="btn btn-primary fw-bold" id="track-btn" onclick="trackURL()">
+            <span id="track-label"><i class="bi bi-search me-1"></i>Suivre</span>
+          </button>
+        </div>
+        <div id="track-result" class="mt-2" style="display:none;"></div>
+      </div>
+    </div>
+
     <!-- ── Formulaire ── -->
     <div class="card shadow-sm">
       <div class="card-header bg-white fw-semibold">
@@ -245,5 +265,79 @@
       btn.style.opacity = '';
     }
   });
+
+  // ── Suivi automatique via URL ─────────────────────────────────────────────
+  async function trackURL() {
+    const url = document.getElementById('track-url').value.trim();
+    if (!url) { alert('Colle d\'abord un lien Orange.'); return; }
+
+    const btn    = document.getElementById('track-btn');
+    const label  = document.getElementById('track-label');
+    const result = document.getElementById('track-result');
+
+    btn.disabled = true;
+    label.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Connexion au CRM…';
+    result.style.display = 'none';
+
+    try {
+      const fd = new FormData();
+      fd.append('url', url);
+      const resp = await fetch('/track-commande', { method: 'POST', body: fd });
+      const data = await resp.json();
+
+      if (data.error) {
+        result.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="bi bi-exclamation-triangle me-1"></i>${data.error}</div>`;
+        result.style.display = '';
+        label.innerHTML = '<i class="bi bi-search me-1"></i>Réessayer';
+        return;
+      }
+
+      // Remplir les champs (même logique que le scan photo)
+      const filled = [];
+      const set = (id, val, lbl) => {
+        if (val) { document.getElementById(id).value = val; filled.push(lbl); }
+      };
+      set('f-prenom',    data.prenom,    'Prénom');
+      set('f-nom',       data.nom,       'Nom');
+      set('f-telephone', data.telephone, 'Téléphone');
+      set('f-adresse',   data.adresse,   'Adresse');
+      set('f-reference', data.reference, 'Référence');
+      set('f-date-rdv',  data.date_rdv,  'Date RDV');
+
+      if (data.statut) {
+        const sel = document.querySelector('[name="statut"]');
+        if (sel) for (let o of sel.options) if (o.value === data.statut) { sel.value = data.statut; filled.push('Statut'); break; }
+      }
+      if (data.produit) {
+        const sel = document.getElementById('f-produit');
+        const needle = data.produit.toLowerCase();
+        for (let o of sel.options) {
+          if (o.value.toLowerCase().includes(needle) || needle.includes(o.value.toLowerCase())) {
+            sel.value = o.value; filled.push('Produit'); break;
+          }
+        }
+      }
+
+      if (filled.length > 0) {
+        result.innerHTML = `<div class="alert alert-success py-2 mb-0">
+          <i class="bi bi-check2-circle me-1"></i>
+          <strong>Rempli :</strong> ${filled.join(', ')}. Vérifie et corrige si besoin.
+        </div>`;
+        label.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>OK';
+        btn.style.background = '#198754'; btn.style.borderColor = '#198754';
+      } else {
+        result.innerHTML = `<div class="alert alert-warning py-2 mb-0">Aucune information trouvée sur cette page.</div>`;
+        label.innerHTML = '<i class="bi bi-search me-1"></i>Réessayer';
+      }
+      result.style.display = '';
+
+    } catch (e) {
+      result.innerHTML = `<div class="alert alert-danger py-2 mb-0">Erreur réseau : ${e}</div>`;
+      result.style.display = '';
+      label.innerHTML = '<i class="bi bi-search me-1"></i>Réessayer';
+    } finally {
+      btn.disabled = false;
+    }
+  }
 </script>
 {% endblock %}
