@@ -732,7 +732,7 @@ def scan_affiche():
                             "'Livebox Max', 'Série Spécial Lite Fibre'. "
                             "'Livebox Classic Fibre', 'Livebox Fibre +' → 'Livebox Fibre'. "
                             "'Livebox Up Fibre' → 'Livebox Up'.\n"
-                            "- reference : prendre 'code d'accès Suivi Cde', 'référence commande', ou 'référence interne'.\n"
+                            "- reference : prendre EN PRIORITÉ 'référence interne'. Sinon 'référence commande'. Ignorer 'code d'accès Suivi Cde'.\n"
                             "- date_rdv : cherche dans cet ordre :\n"
                             "  1. 'Rdv d'installation' ou 'RDV installation' (ignorer si marqué 'supprimé' ou 'annulé')\n"
                             "  2. 'Date de livraison initiale', 'date de livraison', 'date d'activation'\n"
