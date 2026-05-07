@@ -16,7 +16,9 @@ load_dotenv()
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///ventes.db"
+# Chemin DB : utilise le volume Railway si configuré, sinon local
+_db_path = os.environ.get("DATABASE_URL", "sqlite:////data/ventes.db")
+app.config["SQLALCHEMY_DATABASE_URI"] = _db_path
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
