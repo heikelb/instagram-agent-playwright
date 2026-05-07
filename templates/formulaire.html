@@ -187,6 +187,16 @@
       set('f-reference', data.reference, 'Référence');
       set('f-date-rdv',  data.date_rdv,  'Date RDV');
 
+      // Statut
+      if (data.statut) {
+        const statutSel = document.querySelector('[name="statut"]');
+        if (statutSel) {
+          for (let opt of statutSel.options) {
+            if (opt.value === data.statut) { statutSel.value = data.statut; filled.push('Statut'); break; }
+          }
+        }
+      }
+
       // Produit : correspondance approximative
       if (data.produit) {
         const sel = document.getElementById('f-produit');

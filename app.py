@@ -722,7 +722,8 @@ def scan_affiche():
                             '  "adresse": "...",\n'
                             '  "produit": "...",\n'
                             '  "reference": "...",\n'
-                            '  "date_rdv": "YYYY-MM-DDTHH:MM"\n'
+                            '  "date_rdv": "YYYY-MM-DDTHH:MM",\n'
+                            '  "statut": "..."\n'
                             "}\n\n"
                             "Règles :\n"
                             "- nom/prenom : sur l'écran CRM Orange le nom complet est souvent dans la section 'client' (ex: 'Blanchet Chantale' → prenom='Chantale', nom='Blanchet').\n"
@@ -733,6 +734,12 @@ def scan_affiche():
                             "'Livebox Classic Fibre', 'Livebox Fibre +' → 'Livebox Fibre'. "
                             "'Livebox Up Fibre' → 'Livebox Up'.\n"
                             "- reference : prendre EN PRIORITÉ 'référence interne'. Sinon 'référence commande'. Ignorer 'code d'accès Suivi Cde'.\n"
+                            "- statut : analyser l'état de la commande et retourner EXACTEMENT l'une de ces valeurs :\n"
+                            "  'annule' si tu vois 'annulée', 'annulé', 'résiliée', 'résiliation', 'annulation'\n"
+                            "  'installe' si tu vois 'installée', 'installé', 'activée', 'activé', 'livrée', 'en service'\n"
+                            "  'confirme' si tu vois 'confirmée', 'confirmé', 'validée', 'en cours'\n"
+                            "  'no_show' si tu vois 'no show', 'absent', 'client absent'\n"
+                            "  'en_attente' dans tous les autres cas (ou si le statut n'est pas clair)\n"
                             "- date_rdv : cherche dans cet ordre :\n"
                             "  1. 'Rdv d'installation' ou 'RDV installation' (ignorer si marqué 'supprimé' ou 'annulé')\n"
                             "  2. 'Date de livraison initiale', 'date de livraison', 'date d'activation'\n"
