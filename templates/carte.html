@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Carte des clients — Ventes Orange{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h4 class="mb-0 fw-bold"><i class="bi bi-map me-1 text-warning"></i>Carte des clients</h4>
+  <span class="text-muted small" id="geocode-status">Chargement…</span>
+</div>
+
+<div id="geocode-progress" class="progress mb-2" style="display:none; height:5px;">
+  <div class="progress-bar bg-warning progress-bar-striped progress-bar-animated"
+       id="geocode-bar" style="width:0%"></div>
+</div>
+
+<!-- Légende -->
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <span class="badge" style="background:#ff7900;">En attente</span>
+  <span class="badge" style="background:#0d6efd;">Confirmé</span>
+  <span class="badge" style="background:#198754;">Installé</span>
+  <span class="badge" style="background:#dc3545;">Annulé</span>
+  <span class="badge" style="background:#6c757d;">No-show</span>
+</div>
+
+<div class="card shadow-sm">
+  <div id="map" style="height: 68vh; border-radius: 8px;"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const VENTES = {{ ventes | tojson }};
+
+const COULEURS = {
+  en_attente: '#ff7900',
+  confirme:   '#0d6efd',
+  installe:   '#198754',
+  annule:     '#dc3545',
+  no_show:    '#6c757d',
+};
+const LABELS = {
+  en_attente: 'En attente',
+  confirme:   'Confirmé',
+  installe:   'Installé',
+  annule:     'Annulé',
+  no_show:    'No-show',
+};
+
+const map = L.map('map').setView([46.2276, 2.2137], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+}).addTo(map);
+
+function markerIcon(couleur) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${couleur};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+    popupAnchor: [0, -8],
+  });
+}
+
+const CACHE_KEY = 'geocode_cache_v1';
+let cache = {};
+try { cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch(e) {}
+function saveCache() { try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch(e) {} }
+
+async function geocode(adresse) {
+  if (cache[adresse]) return cache[adresse];
+  try {
+    const url = 'https://nominatim.openstreetmap.org/search?q=' +
+      encodeURIComponent(adresse + ', France') + '&format=json&limit=1';
+    const r = await fetch(url, { headers: { 'Accept-Language': 'fr' } });
+    const data = await r.json();
+    if (data.length > 0) {
+      const pos = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      cache[adresse] = pos;
+      saveCache();
+      return pos;
+    }
+  } catch(e) {}
+  cache[adresse] = null; // mark as not found so we don't retry
+  saveCache();
+  return null;
+}
+
+async function chargerCarte() {
+  const status = document.getElementById('geocode-status');
+  const progress = document.getElementById('geocode-progress');
+  const bar = document.getElementById('geocode-bar');
+
+  const sanscache = VENTES.filter(v => cache[v.adresse] === undefined);
+  if (sanscache.length > 0) {
+    progress.style.display = '';
+    status.textContent = `Localisation de ${sanscache.length} adresse${sanscache.length > 1 ? 's' : ''}…`;
+  }
+
+  const allMarkers = [];
+  const total = VENTES.length;
+
+  for (let i = 0; i < VENTES.length; i++) {
+    const v = VENTES[i];
+    if (cache[v.adresse] === undefined) {
+      await new Promise(r => setTimeout(r, 1100)); // Nominatim rate limit: 1 req/s
+    }
+    const pos = await geocode(v.adresse);
+    if (total > 0) bar.style.width = Math.round(((i + 1) / total) * 100) + '%';
+
+    if (pos) {
+      const couleur = COULEURS[v.statut] || '#6c757d';
+      const label = LABELS[v.statut] || v.statut;
+      const marker = L.marker(pos, { icon: markerIcon(couleur) }).addTo(map);
+      marker.bindPopup(
+        `<strong>${v.nom}</strong><br>` +
+        `<span class="text-muted" style="font-size:.85em;">${v.adresse}</span><br>` +
+        `<span style="font-size:.85em;">${v.produit} — RDV ${v.date_rdv}</span><br>` +
+        `<span style="font-weight:600;color:${couleur};">${label}</span><br>` +
+        `<a href="https://maps.google.com/?q=${encodeURIComponent(v.adresse)}" target="_blank" rel="noopener" style="font-size:.85em;">📍 Ouvrir dans Maps</a>`
+      );
+      allMarkers.push(marker);
+    }
+  }
+
+  progress.style.display = 'none';
+  if (allMarkers.length > 0) {
+    map.fitBounds(L.featureGroup(allMarkers).getBounds().pad(0.15));
+    status.textContent = `${allMarkers.length} client${allMarkers.length > 1 ? 's' : ''} sur la carte`;
+  } else if (VENTES.length === 0) {
+    status.textContent = 'Aucune vente enregistrée';
+  } else {
+    status.textContent = 'Adresses non localisées';
+  }
+}
+
+chargerCarte();
+</script>
+{% endblock %}

@@ -635,6 +635,24 @@ def changer_statut(vente_id, statut):
     return redirect(request.referrer or url_for("liste_ventes"))
 
 
+@app.route("/carte")
+@login_required
+def carte():
+    ventes = Vente.query.order_by(Vente.date_rdv.desc()).all()
+    ventes_data = [
+        {
+            "id": v.id,
+            "nom": f"{v.prenom} {v.nom}",
+            "adresse": v.adresse,
+            "produit": v.produit,
+            "statut": v.statut,
+            "date_rdv": v.date_rdv.strftime("%d/%m/%Y"),
+        }
+        for v in ventes if v.adresse
+    ]
+    return render_template("carte.html", ventes=ventes_data)
+
+
 # ---------------------------------------------------------------------------
 # Routes : Envoyer un SMS manuellement
 # ---------------------------------------------------------------------------
@@ -1293,7 +1311,9 @@ def structure_fichier():
 @login_required
 def repasser():
     from collections import defaultdict
-    rows = (
+
+    # Absents avec adresse spécifique (sessions avec liste importée)
+    rows_addr = (
         db.session.query(Porte, AdresseImportee, SessionProspection)
         .join(AdresseImportee, Porte.adresse_id == AdresseImportee.id)
         .join(SessionProspection, Porte.session_id == SessionProspection.id)
@@ -1301,16 +1321,32 @@ def repasser():
         .order_by(SessionProspection.date.desc(), AdresseImportee.rue, AdresseImportee.numero)
         .all()
     )
-    grouped = defaultdict(list)
-    for porte, adresse, sess in rows:
-        grouped[sess.date].append((porte, adresse, sess))
+
+    # Absents sans adresse précise (mode compteur libre)
+    rows_libre = (
+        db.session.query(Porte, SessionProspection)
+        .join(SessionProspection, Porte.session_id == SessionProspection.id)
+        .filter(Porte.resultat == "absent", Porte.adresse_id == None)
+        .order_by(SessionProspection.date.desc())
+        .all()
+    )
+
     JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
     MOIS = ["", "jan.", "fév.", "mars", "avr.", "mai", "juin", "juil.", "août", "sep.", "oct.", "nov.", "déc."]
+
+    grouped = defaultdict(lambda: {"adresses": [], "libres": defaultdict(int)})
+    for porte, adresse, sess in rows_addr:
+        grouped[sess.date]["adresses"].append((porte, adresse, sess))
+    for porte, sess in rows_libre:
+        grouped[sess.date]["libres"][sess.nom] += 1
+
     groupes = []
     for d in sorted(grouped.keys(), reverse=True):
         label = f"{JOURS[d.weekday()]} {d.day} {MOIS[d.month]} {d.year}"
-        groupes.append((label, grouped[d]))
-    return render_template("repasser.html", groupes=groupes, nb_total=len(rows))
+        groupes.append((label, grouped[d]["adresses"], dict(grouped[d]["libres"])))
+
+    nb_total = len(rows_addr) + len(rows_libre)
+    return render_template("repasser.html", groupes=groupes, nb_total=nb_total)
 
 
 # ---------------------------------------------------------------------------
