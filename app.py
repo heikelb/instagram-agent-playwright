@@ -1387,11 +1387,11 @@ def backup_db():
     m = _re.match(r"sqlite:///+(.*)", db_uri)
     if not m:
         flash("Backup non disponible (base non SQLite).", "danger")
-        return redirect(url_for("index"))
+        return redirect(url_for("dashboard"))
     db_file = "/" + m.group(1).lstrip("/")
     if not os.path.exists(db_file):
         flash(f"Fichier base introuvable : {db_file}", "danger")
-        return redirect(url_for("index"))
+        return redirect(url_for("dashboard"))
     return send_file(
         db_file,
         as_attachment=True,
@@ -1414,7 +1414,7 @@ def restore_db():
         m = _re.match(r"sqlite:///+(.*)", db_uri)
         if not m:
             flash("Restore non disponible (base non SQLite).", "danger")
-            return redirect(url_for("index"))
+            return redirect(url_for("dashboard"))
         db_file = "/" + m.group(1).lstrip("/")
         # Sauvegarder l'ancienne base au cas où
         if os.path.exists(db_file):
@@ -1425,7 +1425,7 @@ def restore_db():
         tmp.close()
         _shutil.move(tmp.name, db_file)
         flash("Base restaurée. Redémarre le service Railway pour recharger les données.", "success")
-        return redirect(url_for("index"))
+        return redirect(url_for("dashboard"))
     return render_template("restore_db.html")
 
 
