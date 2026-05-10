@@ -956,6 +956,7 @@ def tap_session(session_id):
             "rue": a.rue,
             "numero": a.numero,
             "complement": a.complement,
+            "ville": a.ville or "",
             "resultat": taps.get(a.id),
         } for a in adresses]
         return render_template(
