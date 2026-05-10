@@ -6,7 +6,7 @@ import re
 from datetime import datetime, date, timedelta
 
 import hashlib
-from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify, session, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin, current_user
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -491,7 +491,7 @@ def liste_ventes():
             ])
         output.seek(0)
         return Response(
-            "\ufeff" + output.getvalue(),  # BOM pour Excel
+            "﻿" + output.getvalue(),  # BOM pour Excel
             mimetype="text/csv",
             headers={"Content-Disposition": "attachment; filename=ventes_orange.csv"},
         )
@@ -1371,6 +1371,62 @@ def effacer_adresses():
     db.session.commit()
     flash("Toutes les adresses importées ont été supprimées.", "info")
     return redirect(url_for("importer_fichier"))
+
+
+# ---------------------------------------------------------------------------
+# Backup / Restore base de données
+# ---------------------------------------------------------------------------
+
+@app.route("/backup-db")
+@login_required
+def backup_db():
+    """Télécharge la base SQLite — pour migrer les données vers un autre service."""
+    import re as _re
+    db_uri = app.config["SQLALCHEMY_DATABASE_URI"]
+    # Extraire le chemin depuis sqlite:////... ou sqlite:///...
+    m = _re.match(r"sqlite:///+(.*)", db_uri)
+    if not m:
+        flash("Backup non disponible (base non SQLite).", "danger")
+        return redirect(url_for("index"))
+    db_file = "/" + m.group(1).lstrip("/")
+    if not os.path.exists(db_file):
+        flash(f"Fichier base introuvable : {db_file}", "danger")
+        return redirect(url_for("index"))
+    return send_file(
+        db_file,
+        as_attachment=True,
+        download_name="ventes_backup.db",
+        mimetype="application/octet-stream",
+    )
+
+
+@app.route("/restore-db", methods=["GET", "POST"])
+@login_required
+def restore_db():
+    """Restaure la base SQLite depuis un fichier uploadé."""
+    import re as _re, shutil as _shutil, tempfile as _tempfile
+    if request.method == "POST":
+        f = request.files.get("fichier_db")
+        if not f or not f.filename.endswith(".db"):
+            flash("Fichier .db requis.", "danger")
+            return redirect(url_for("restore_db"))
+        db_uri = app.config["SQLALCHEMY_DATABASE_URI"]
+        m = _re.match(r"sqlite:///+(.*)", db_uri)
+        if not m:
+            flash("Restore non disponible (base non SQLite).", "danger")
+            return redirect(url_for("index"))
+        db_file = "/" + m.group(1).lstrip("/")
+        # Sauvegarder l'ancienne base au cas où
+        if os.path.exists(db_file):
+            _shutil.copy2(db_file, db_file + ".bak")
+        # Écrire le fichier uploadé
+        tmp = _tempfile.NamedTemporaryFile(delete=False, suffix=".db")
+        f.save(tmp.name)
+        tmp.close()
+        _shutil.move(tmp.name, db_file)
+        flash("Base restaurée. Redémarre le service Railway pour recharger les données.", "success")
+        return redirect(url_for("index"))
+    return render_template("restore_db.html")
 
 
 # ---------------------------------------------------------------------------
