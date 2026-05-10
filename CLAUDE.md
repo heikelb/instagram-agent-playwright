@@ -30,7 +30,7 @@ App web Flask pour un commercial Orange en porte-à-porte (utilisateur = Michaë
 
 ```bash
 pip install -r requirements.txt
-playwrigh install chromium --with-deps
+playwright install chromium --with-deps
 flask run          # ou : python app.py
 ```
 
