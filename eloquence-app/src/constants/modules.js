@@ -1,0 +1,68 @@
+import { COLORS } from './colors.js';
+
+export const MODULES = [
+  {
+    id: "vocab",
+    icon: "⚡",
+    title: "Mots Percutants",
+    subtitle: "Vocabulaire d'impact",
+    color: COLORS.gold,
+    colorSoft: COLORS.goldSoft,
+    xp: 50,
+    maxXp: 150,
+    level: 1,
+    lessons: [
+      { id: "v1", title: "Verbes de conviction", done: true, xp: 50 },
+      { id: "v2", title: "Adjectifs percutants", done: false, xp: 50 },
+      { id: "v3", title: "Formules d'autorité", done: false, xp: 50 },
+    ],
+  },
+  {
+    id: "pitch",
+    icon: "🎯",
+    title: "L'Art du Pitch",
+    subtitle: "Convaincre en 60 secondes",
+    color: COLORS.accent,
+    colorSoft: COLORS.accentSoft,
+    xp: 0,
+    maxXp: 150,
+    level: 1,
+    lessons: [
+      { id: "p1", title: "L'accroche mortelle", done: false, xp: 50 },
+      { id: "p2", title: "La structure AIDA", done: false, xp: 50 },
+      { id: "p3", title: "L'appel à l'action", done: false, xp: 50 },
+    ],
+  },
+  {
+    id: "oral",
+    icon: "🎙️",
+    title: "Maîtrise Orale",
+    subtitle: "Voix, rythme, diction",
+    color: COLORS.blue,
+    colorSoft: COLORS.blueSoft,
+    xp: 0,
+    maxXp: 150,
+    level: 1,
+    lessons: [
+      { id: "o1", title: "La respiration du guerrier", done: false, xp: 50 },
+      { id: "o2", title: "Les silences stratégiques", done: false, xp: 50 },
+      { id: "o3", title: "Variation de rythme", done: false, xp: 50 },
+    ],
+  },
+  {
+    id: "objections",
+    icon: "🛡️",
+    title: "Gestion d'Objections",
+    subtitle: "Transformer le non en oui",
+    color: COLORS.purple,
+    colorSoft: COLORS.purpleSoft,
+    xp: 0,
+    maxXp: 150,
+    level: 1,
+    lessons: [
+      { id: "obj1", title: "\"C'est trop cher\"", done: false, xp: 50 },
+      { id: "obj2", title: "\"Je réfléchis\"", done: false, xp: 50 },
+      { id: "obj3", title: "\"Je suis pas intéressé\"", done: false, xp: 50 },
+    ],
+  },
+];
