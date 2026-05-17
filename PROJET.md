@@ -50,22 +50,22 @@ L'app permet de :
 ### 1. Dashboard
 - Compteurs : total ventes, RDV demain, no-shows, installés
 - Liste des ventes récentes
-- Bouton “Nouvelle vente”
+- Bouton "Nouvelle vente"
 
 ### 2. Nouvelle vente — Scan IA
-Prendre en photo un contrat Orange ou la page CRM → l’IA (Claude Vision) remplit automatiquement :
+Prendre en photo un contrat Orange ou la page CRM → l'IA (Claude Vision) remplit automatiquement :
 - Prénom / Nom du client
 - Téléphone
 - Adresse
 - Produit (Livebox Fibre, Up, Max, etc.)
 - Référence interne de commande
-- Date du RDV d’installation
+- Date du RDV d'installation
 - Statut (en attente / confirmé / installé / annulé / no-show)
 
 **Route :** `POST /scan-affiche`
 
 ### 3. Suivi URL CRM
-Coller l’URL d’une commande CRM Orange → Playwright se connecte automatiquement, prend une capture d’écran, et l’IA extrait toutes les infos.
+Coller l'URL d'une commande CRM Orange → Playwright se connecte automatiquement, prend une capture d'écran, et l'IA extrait toutes les infos.
 
 **Route :** `POST /track-commande`  
 **Nécessite :** `ORANGE_LOGIN` + `ORANGE_PASSWORD` dans les variables Railway
@@ -81,10 +81,10 @@ Coller l’URL d’une commande CRM Orange → Playwright se connecte automatiqu
 Vue hebdomadaire des ventes par jour, navigation semaine par semaine.
 
 ### 6. Prospection terrain
-- Créer une session terrain (ex: “Rue du Bourg”)
+- Créer une session terrain (ex: "Rue du Bourg")
 - Taper le résultat de chaque porte : ABSENT / REFUS / CAUSÉ / ENTRÉ / SIGNÉ
 - Statistiques en temps réel (taux ouverture, causé, entré, signé)
-- Deux modes : liste d’adresses (si fichier importé) ou compteur libre
+- Deux modes : liste d'adresses (si fichier importé) ou compteur libre
 
 ### 7. Importer un fichier terrain (Excel Orange)
 - Importer le fichier Excel fourni par Orange (format officiel)
@@ -92,17 +92,33 @@ Vue hebdomadaire des ventes par jour, navigation semaine par semaine.
 - Filtre par ville dans la liste des rues
 
 ### 8. Onglet Repasser
-Liste de toutes les portes marquées “ABSENT” lors des sessions terrain, avec :
+Liste de toutes les portes marquées "ABSENT" lors des sessions terrain, avec :
 - Lien Google Maps par adresse
 - Groupement par date de visite
+- Gère aussi les absents des sessions sans liste d'adresses importée
 
-### 9. Rappels clients
+### 9. Carte GPS (`/carte`)
+- Carte interactive Leaflet.js (OpenStreetMap, entièrement gratuit)
+- Tous les clients affichés sur la carte, colorés par statut de vente
+- Géocodage automatique des adresses (Nominatim) avec cache localStorage (1 req/sec)
+- Bouton "Ma position" : localisation GPS en temps réel (`watchPosition`)
+- Calcul d'itinéraire depuis la position GPS jusqu'au client (OSRM, gratuit, sans clé API)
+- Distance et durée estimée affichées
+- Lien Google Maps sur chaque marqueur
+
+### 10. Liens Google Maps sur toutes les adresses
+- Dashboard (RDV demain) → clic sur l'adresse → ouvre Maps
+- Liste des ventes → clic sur l'adresse → ouvre Maps
+- Terrain (tap_adresses) → bouton 📍 sur chaque porte
+- Repasser → bouton Maps sur chaque absent
+
+### 11. Rappels clients
 - Ajouter un rappel pour un client (nom, téléphone, motif, moment)
 - **SMS automatique à 12h30 et 19h00** : liste des rappels en attente envoyée au commercial
 - **SMS automatique à 9h00** : rappel J-1 envoyé aux clients qui ont un RDV le lendemain
 - Marquer un rappel comme traité
 
-### 10. Backup / Restore base de données
+### 12. Backup / Restore base de données
 - `GET /backup-db` → télécharge le fichier SQLite complet
 - `GET|POST /restore-db` → importe un fichier SQLite pour restaurer les données
 
@@ -113,7 +129,7 @@ Liste de toutes les portes marquées “ABSENT” lors des sessions terrain, ave
 ### Enregistrer une vente rapide
 1. Dashboard → **Nouvelle vente**
 2. Prendre en photo le contrat Orange (ou la page CRM)
-3. L’IA remplit les champs automatiquement
+3. L'IA remplit les champs automatiquement
 4. Vérifier et corriger si besoin → **Enregistrer**
 
 ### Faire sa prospection terrain
@@ -124,11 +140,14 @@ Liste de toutes les portes marquées “ABSENT” lors des sessions terrain, ave
 
 ### Suivre une commande
 1. Ouvrir la commande dans le CRM Orange
-2. Copier l’URL
-3. Menu → **Nouvelle vente** → onglet “Suivi URL” → Coller l’URL → **Suivre**
+2. Copier l'URL
+3. Menu → **Nouvelle vente** → onglet "Suivi URL" → Coller l'URL → **Suivre**
 
 ### Récupérer les absents à revisiter
 Menu → **Repasser** → liste de toutes les portes absentes avec lien Maps
+
+### Voir tous ses clients sur la carte
+Menu → **Carte** → activer le GPS → cliquer sur un marqueur → lancer l'itinéraire
 
 ---
 
@@ -143,20 +162,23 @@ Menu → **Repasser** → liste de toutes les portes absentes avec lien Maps
 - **Tâches planifiées :** APScheduler (9h00, 12h30, 19h00)
 - **Déploiement :** Railway + Nixpacks
 - **Frontend :** Bootstrap 5 + PWA (installable sur téléphone)
+- **Carte :** Leaflet.js 1.9.4 (OpenStreetMap, OSRM, Nominatim)
 
 ### Fichiers principaux
 ```
-app.py               — Backend complet (~1480 lignes, tout en un seul fichier)
+app.py               — Backend complet (~1500 lignes, tout en un seul fichier)
 templates/           — Templates Jinja2
   base.html          — Layout commun (nav, badges rappels/repasser)
-  dashboard.html     — Page d'accueil
+  dashboard.html     — Page d'accueil avec liens Maps sur les RDV
+  ventes.html        — Liste des ventes avec liens Maps sur adresses
   formulaire.html    — Nouvelle vente + scan + suivi URL
   prospection.html   — Liste des sessions terrain
   tap.html           — Session terrain sans adresses (compteur)
-  tap_adresses.html  — Session terrain avec liste d'adresses
+  tap_adresses.html  — Session terrain avec liste d'adresses + bouton Maps
+  carte.html         — Carte GPS interactive (Leaflet + OSRM + GPS)
   import.html        — Import fichier Excel + filtre ville
   rappels.html       — Rappels clients
-  repasser.html      — Absents à revisiter
+  repasser.html      — Absents à revisiter avec liens Maps
   restore_db.html    — Interface restore base
 static/
   manifest.json      — PWA manifest
@@ -211,22 +233,22 @@ Ouvrir une nouvelle session Claude Code dans ce repo — le fichier `CLAUDE.md` 
 
 ### Exemples de demandes à Claude Code
 ```
-“Ajoute un champ ‘nombre d’étages’ sur la fiche immeuble”
-“Je veux voir mes ventes par commune sur le dashboard”
-“Quand je clique sur SIGNÉ, propose-moi d’ouvrir directement le formulaire vente”
-“Envoie-moi un SMS chaque matin avec le résumé de ma semaine”
-“Ajoute un bouton pour exporter mes sessions terrain en PDF”
+"Ajoute un champ 'nombre d'étages' sur la fiche immeuble"
+"Je veux voir mes ventes par commune sur le dashboard"
+"Quand je clique sur SIGNÉ, propose-moi d'ouvrir directement le formulaire vente"
+"Envoie-moi un SMS chaque matin avec le résumé de ma semaine"
+"Ajoute un bouton pour exporter mes sessions terrain en PDF"
 ```
 
 ### Demande type pour une nouvelle fonctionnalité
 ```
-J’aimerais [description de ce que tu veux].
+J'aimerais [description de ce que tu veux].
 Contexte : [pourquoi tu en as besoin, comment tu travailles].
-L’app est sur Railway, branche app-orange.
+L'app est sur Railway, branche app-orange.
 ```
 
 ### Si Claude est bloqué (push réseau)
-Le proxy Railway peut bloquer les push HTTP. Dans ce cas Claude utilise automatiquement l’API GitHub directement.
+Le proxy Railway peut bloquer les push HTTP. Dans ce cas Claude utilise automatiquement l'API GitHub directement.
 
 ---
 
@@ -245,11 +267,20 @@ Aller sur `[URL du nouveau service]/restore-db` → uploader le fichier `.db` �
 - **Ancien service** (`web-production-7700a.up.railway.app`) : contient les données terrain et ventes de la semaine du 04-08 mai 2026
 - **Nouveau service** (`instagram-agent-playwright-production.up.railway.app`) : code amélioré, à migrer
 
-**Pour récupérer les données de l’ancien service :**
+**Pour récupérer les données de l'ancien service :**
 1. Aller sur `https://web-production-7700a.up.railway.app/ventes?export=csv` → télécharger le CSV
 2. Aller sur `https://web-production-7700a.up.railway.app/backup-db` (après déploiement du code backup) → télécharger la base complète
 3. Restaurer via `/restore-db` sur le nouveau service
 
 ---
 
-*Dernière mise à jour : 10 mai 2026*
+## Prochaines étapes envisagées
+
+- **Multi-utilisateurs** : chaque vendeur a son propre compte avec ses propres données isolées (ventes, sessions terrain, statistiques)
+- Objectifs mensuels avec barre de progression visuelle
+- Statistiques par période (semaine, mois, comparaison)
+- Partage de session terrain entre collègues
+
+---
+
+*Dernière mise à jour : 17 mai 2026*
