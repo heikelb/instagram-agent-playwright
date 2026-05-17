@@ -234,6 +234,10 @@
     {% set done = adresses | selectattr('resultat') | list | length %}
     {{ done }}/{{ adresses|length }} traités
   </span>
+  <a href="{{ url_for('itineraire_session', session_id=session.id) }}"
+     style="color:#ff7900;text-decoration:none;font-size:.82rem;border:1px solid #ff7900;border-radius:7px;padding:3px 9px;">
+    &#x1F5FA; Itinéraire
+  </a>
   <a href="{{ url_for('liste_prospection') }}" class="home-link">
     <i class="bi bi-list-ul me-1"></i>Sessions
   </a>
@@ -272,7 +276,6 @@ document.querySelectorAll('.res-btn').forEach(btn => {
 
     if (navigator.vibrate) navigator.vibrate(25);
 
-    // Optimistic update
     row.dataset.resultat = resultat;
     row.className = 'addr-row r-' + resultat;
     row.querySelectorAll('.res-btn').forEach(b => {
@@ -289,7 +292,6 @@ document.querySelectorAll('.res-btn').forEach(btn => {
       const data = await resp.json();
       updateStats(data.stats);
     } catch (e) {
-      // Revert on error
       row.dataset.resultat = prevRes;
       row.className = 'addr-row' + (prevRes ? ' r-' + prevRes : '');
       row.querySelectorAll('.res-btn').forEach(b => {
@@ -301,7 +303,6 @@ document.querySelectorAll('.res-btn').forEach(btn => {
   });
 });
 
-// Prevent double-tap zoom
 let lastTap = 0;
 document.querySelectorAll('.res-btn').forEach(btn => {
   btn.addEventListener('touchend', e => {

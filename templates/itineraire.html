@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Itinéraire — {{ session.nom }}</title>
+  <link href="/static/css/bootstrap-icons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      background: #111;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* ── Top bar ── */
+    .top-bar {
+      background: #1a1a1a;
+      padding: 10px 14px;
+      border-bottom: 1px solid #333;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .top-title {
+      font-size: .86rem;
+      color: #aaa;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .top-title strong { color: #ff7900; }
+    .back-link {
+      color: #888;
+      text-decoration: none;
+      font-size: .8rem;
+      flex-shrink: 0;
+    }
+
+    /* ── Map ── */
+    #map { height: 46vh; flex-shrink: 0; }
+
+    /* ── Action bar ── */
+    .action-bar {
+      background: #1a1a1a;
+      border-top: 1px solid #333;
+      border-bottom: 1px solid #333;
+      padding: 7px 12px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #btn-optimise {
+      background: #ff7900;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 13px;
+      font-size: .82rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    #btn-optimise:disabled { background: #555; cursor: default; }
+    #status-text {
+      font-size: .76rem;
+      color: #888;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── Progress ── */
+    .progress-strip { height: 3px; background: #222; flex-shrink: 0; }
+    .progress-fill { height: 100%; background: #ff7900; width: 0%; transition: width .3s ease; }
+
+    /* ── Address list ── */
+    .addr-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+    .addr-row {
+      display: flex;
+      align-items: center;
+      padding: 8px 10px;
+      border-bottom: 1px solid #1e1e1e;
+      gap: 7px;
+      transition: background .12s;
+    }
+    .addr-row.r-absent { background: #1c1c1c; }
+    .addr-row.r-refus  { background: #1f0c0c; }
+    .addr-row.r-cause  { background: #1f1000; }
+    .addr-row.r-entre  { background: #091525; }
+    .addr-row.r-signe  { background: #071a0d; }
+
+    .addr-num {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: #ff7900;
+      color: #fff;
+      font-weight: 700;
+      font-size: .72rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      border: 2px solid rgba(255,255,255,.12);
+      transition: background .2s;
+    }
+
+    .addr-info { flex: 1; min-width: 0; }
+    .addr-label { font-size: .98rem; font-weight: 700; color: #fff; }
+    .addr-sub {
+      font-size: .72rem;
+      color: #888;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+
+    .result-btns { display: flex; gap: 4px; flex-shrink: 0; }
+    .res-btn {
+      width: 33px; height: 33px;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      background: #1e1e1e;
+      font-size: .9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform .07s, border-color .1s, background .1s;
+    }
+    .res-btn:active { transform: scale(.85); }
+    .res-btn.active-absent { background: #2e2e2e; border-color: #6c757d; }
+    .res-btn.active-refus  { background: #5c1111; border-color: #dc3545; }
+    .res-btn.active-cause  { background: #5c2800; border-color: #fd7e14; }
+    .res-btn.active-entre  { background: #0d2c4f; border-color: #4dabf7; }
+    .res-btn.active-signe  { background: #0a3d1a; border-color: #51cf66; }
+
+    .map-btn {
+      width: 29px; height: 33px;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      background: #1e1e1e;
+      font-size: .82rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+    .map-btn:active { transform: scale(.85); }
+
+    .empty-state {
+      padding: 36px 20px;
+      text-align: center;
+      color: #555;
+      font-size: .88rem;
+      line-height: 1.6;
+    }
+    .empty-state .icon { font-size: 2.2rem; display: block; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="top-bar">
+  <div class="top-title">
+    <i class="bi bi-signpost-split" style="color:#ff7900;"></i>
+    <strong>{{ session.nom }}</strong>
+    <span style="color:#444; font-size:.7rem; margin-left:5px;">{{ adresses|length }} adresses</span>
+  </div>
+  <a href="{{ url_for('tap_session', session_id=session.id) }}" class="back-link">
+    <i class="bi bi-list-ul me-1"></i>Liste
+  </a>
+</div>
+
+<!-- Map -->
+<div id="map"></div>
+
+<!-- Action bar -->
+<div class="action-bar">
+  <button id="btn-optimise" onclick="optimiser()">&#x1F5FA; Optimiser</button>
+  <span id="status-text">{{ adresses|length }} adresses — appuyez pour optimiser depuis votre position</span>
+</div>
+
+<!-- Progress bar -->
+<div class="progress-strip">
+  <div class="progress-fill" id="progress-fill"></div>
+</div>
+
+<!-- Address list -->
+<div class="addr-list" id="addr-list">
+  <div class="empty-state">
+    <span class="icon">&#x1F5FA;</span>
+    Appuyez sur <strong style="color:#ff7900;">Optimiser</strong> pour calculer l'ordre idéal de visite depuis votre position GPS.<br><br>
+    <span style="color:#444; font-size:.75rem;">Le géocodage peut prendre ~1s par adresse la première fois, puis c'est mis en cache.</span>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const SESSION_ID = {{ session.id }};
+const ADRESSES = {{ adresses | tojson }};
+
+const RESULT_COLORS = {
+  absent: '#6c757d',
+  refus:  '#dc3545',
+  cause:  '#fd7e14',
+  entre:  '#4dabf7',
+  signe:  '#51cf66',
+};
+
+// ── Carte ──────────────────────────────────────────────────────────────────────
+const map = L.map('map').setView([46.2276, 2.2137], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap',
+  maxZoom: 19,
+}).addTo(map);
+
+let routeLayer = null;
+let markerGroup = L.featureGroup().addTo(map);
+let userMarker = null;
+const markerByAdresseId = {};
+
+// ── Géocodage (Nominatim + cache localStorage partagé) ─────────────────────────
+const CACHE_KEY = 'geocode_cache_v1';
+let cache = {};
+try { cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch(e) {}
+function saveCache() { try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch(e) {} }
+
+async function geocode(adresse) {
+  if (cache[adresse] !== undefined) return cache[adresse];
+  await sleep(1100);
+  try {
+    const url = 'https://nominatim.openstreetmap.org/search?q=' +
+      encodeURIComponent(adresse + ', France') + '&format=json&limit=1';
+    const r = await fetch(url, { headers: { 'Accept-Language': 'fr' } });
+    const data = await r.json();
+    if (data.length > 0) {
+      const pos = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      cache[adresse] = pos; saveCache(); return pos;
+    }
+  } catch(e) {}
+  cache[adresse] = null; saveCache(); return null;
+}
+
+// ── GPS ───────────────────────────────────────────────────────────────────────
+function getGPS() {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) { resolve(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      p => resolve([p.coords.latitude, p.coords.longitude]),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 12000 }
+    );
+  });
+}
+
+// ── Utilitaires ──────────────────────────────────────────────────────────────────
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function setStatus(txt) { document.getElementById('status-text').textContent = txt; }
+function setProgress(pct) { document.getElementById('progress-fill').style.width = pct + '%'; }
+
+function haversineKm(a, b) {
+  const R = 6371;
+  const dLat = (b[0] - a[0]) * Math.PI / 180;
+  const dLng = (b[1] - a[1]) * Math.PI / 180;
+  const x = Math.sin(dLat/2)**2 +
+    Math.cos(a[0]*Math.PI/180) * Math.cos(b[0]*Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
+}
+
+function createNumberedIcon(num, color) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:26px;height:26px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.72rem;">${num}</div>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+    popupAnchor: [0, -14],
+  });
+}
+
+// ── État ───────────────────────────────────────────────────────────────────────
+let orderedAddresses = [];
+
+// ── Optimisation principale ───────────────────────────────────────────────────────────────
+async function optimiser() {
+  const btn = document.getElementById('btn-optimise');
+  btn.disabled = true;
+  btn.textContent = '⏳ En cours…';
+  setProgress(0);
+
+  // 1. GPS
+  setStatus('Récupération de votre position GPS…');
+  const userPos = await getGPS();
+  if (!userPos) {
+    setStatus('❌ GPS indisponible — autorisez la géolocalisation et réessayez.');
+    btn.disabled = false; btn.textContent = '🗺 Optimiser';
+    return;
+  }
+
+  if (userMarker) map.removeLayer(userMarker);
+  userMarker = L.circleMarker(userPos, {
+    radius: 9, color: '#fff', fillColor: '#0d6efd', fillOpacity: 1, weight: 3,
+  }).addTo(map).bindPopup('📍 Vous êtes ici');
+  map.setView(userPos, 14);
+
+  // 2. Géocodage des adresses
+  const needGeocode = ADRESSES.filter(a => cache[a.adresse_complete] === undefined);
+  if (needGeocode.length > 0) {
+    setStatus(`Localisation de ${needGeocode.length} adresse${needGeocode.length > 1 ? 's' : ''}… (environ ${needGeocode.length}s)`);
+  }
+
+  const geocoded = [];
+  for (let i = 0; i < ADRESSES.length; i++) {
+    const addr = ADRESSES[i];
+    const pos = await geocode(addr.adresse_complete);
+    geocoded.push({ ...addr, pos });
+    setProgress(8 + (i + 1) / ADRESSES.length * 68);
+  }
+
+  const valid = geocoded.filter(a => a.pos);
+  if (valid.length === 0) {
+    setStatus('❌ Aucune adresse localisée. Vérifiez les données.');
+    btn.disabled = false; btn.textContent = '🗺 Optimiser';
+    return;
+  }
+
+  // 3. OSRM Trip API (optimisation du trajet)
+  setStatus('Calcul de l\'itinéraire optimal…');
+  setProgress(80);
+
+  try {
+    if (valid.length === 1) {
+      orderedAddresses = valid;
+    } else {
+      const waypoints = [userPos, ...valid.map(a => a.pos)];
+      const coords = waypoints.map(([lat, lng]) => `${lng},${lat}`).join(';');
+      const url = `https://router.project-osrm.org/trip/v1/driving/${coords}` +
+        `?source=first&roundtrip=false&geometries=geojson&overview=full`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+
+      if (data.code === 'Ok' && data.trips && data.trips.length) {
+        const routeOrder = new Array(data.waypoints.length);
+        data.waypoints.forEach((wp, inputIdx) => { routeOrder[wp.waypoint_index] = inputIdx; });
+        orderedAddresses = routeOrder.slice(1).map(inputIdx => valid[inputIdx - 1]);
+
+        if (routeLayer) map.removeLayer(routeLayer);
+        routeLayer = L.geoJSON(data.trips[0].geometry, {
+          style: { color: '#ff7900', weight: 4, opacity: .85 },
+        }).addTo(map);
+
+        const km = (data.trips[0].distance / 1000).toFixed(1);
+        const min = Math.round(data.trips[0].duration / 60);
+        const duree = min >= 60
+          ? `${Math.floor(min/60)}h${String(min%60).padStart(2,'0')}`
+          : `${min} min`;
+        setStatus(`${orderedAddresses.length} adresses · ${km} km · ${duree} en voiture`);
+      } else {
+        throw new Error('OSRM non disponible');
+      }
+    }
+  } catch(e) {
+    orderedAddresses = nearestNeighbor(userPos, valid);
+    const totalKm = orderedAddresses.reduce((acc, addr, i) => {
+      const prev = i === 0 ? userPos : orderedAddresses[i-1].pos;
+      return acc + (prev && addr.pos ? haversineKm(prev, addr.pos) : 0);
+    }, 0).toFixed(1);
+    setStatus(`${orderedAddresses.length} adresses · ~${totalKm} km (optimisation route indisponible)`);
+  }
+
+  setProgress(92);
+
+  markerGroup.clearLayers();
+  Object.keys(markerByAdresseId).forEach(k => delete markerByAdresseId[k]);
+
+  orderedAddresses.forEach((addr, i) => {
+    if (!addr.pos) return;
+    const color = RESULT_COLORS[addr.resultat] || '#ff7900';
+    const marker = L.marker(addr.pos, { icon: createNumberedIcon(i + 1, color) });
+    marker.bindPopup(
+      `<strong>${i + 1}. ${addr.numero} ${addr.rue}</strong>` +
+      (addr.ville ? `<br><small style="color:#888">${addr.ville}</small>` : '')
+    );
+    markerGroup.addLayer(marker);
+    markerByAdresseId[addr.id] = { marker, index: i };
+  });
+
+  const allPos = [userPos, ...orderedAddresses.filter(a => a.pos).map(a => a.pos)];
+  if (allPos.length > 1) map.fitBounds(L.latLngBounds(allPos).pad(0.12));
+
+  setProgress(100);
+  renderList(orderedAddresses, userPos);
+  setProgress(0);
+  btn.disabled = false;
+  btn.textContent = '🔄 Recalculer';
+}
+
+// ── Nearest Neighbor (fallback) ───────────────────────────────────────────────────────────────
+function nearestNeighbor(start, addresses) {
+  const remaining = [...addresses];
+  const ordered = [];
+  let current = start;
+  while (remaining.length) {
+    let bestIdx = 0;
+    let bestDist = Infinity;
+    remaining.forEach((addr, i) => {
+      if (!addr.pos) return;
+      const d = haversineKm(current, addr.pos);
+      if (d < bestDist) { bestDist = d; bestIdx = i; }
+    });
+    const next = remaining.splice(bestIdx, 1)[0];
+    ordered.push(next);
+    current = next.pos || current;
+  }
+  return ordered;
+}
+
+// ── Affichage de la liste ─────────────────────────────────────────────────────────────────
+function renderList(adresses, userPos) {
+  const list = document.getElementById('addr-list');
+  list.innerHTML = '';
+
+  adresses.forEach((addr, i) => {
+    const r = addr.resultat || '';
+    const prevPos = i === 0 ? userPos : (adresses[i-1].pos || userPos);
+    const distM = (addr.pos && prevPos) ? Math.round(haversineKm(prevPos, addr.pos) * 1000) : null;
+    const distStr = distM !== null
+      ? (distM >= 1000 ? `+${(distM/1000).toFixed(1)} km` : `+${distM} m`)
+      : '';
+
+    const div = document.createElement('div');
+    div.className = `addr-row${r ? ' r-' + r : ''}`;
+    div.id = `row-${addr.id}`;
+    div.dataset.id = addr.id;
+    div.dataset.resultat = r;
+
+    const numColor = RESULT_COLORS[r] || '#ff7900';
+
+    div.innerHTML = `
+      <div class="addr-num" id="num-${addr.id}" style="background:${numColor};">${i + 1}</div>
+      <div class="addr-info">
+        <div class="addr-label">${addr.numero} <span style="font-weight:400;font-size:.85rem;">${addr.rue}</span></div>
+        <div class="addr-sub">${[addr.ville, distStr].filter(Boolean).join(' · ')}</div>
+      </div>
+      <a href="https://maps.google.com/?q=${encodeURIComponent(addr.adresse_complete)}"
+         target="_blank" rel="noopener" class="map-btn" title="Ouvrir dans Maps">📍</a>
+      <div class="result-btns" id="btns-${addr.id}">
+        <button class="res-btn${r==='absent'?' active-absent':''}" data-res="absent" title="Absent">🔘</button>
+        <button class="res-btn${r==='refus' ?' active-refus' :''}" data-res="refus"  title="Refus">❌</button>
+        <button class="res-btn${r==='cause' ?' active-cause' :''}" data-res="cause"  title="Causé">💬</button>
+        <button class="res-btn${r==='entre' ?' active-entre' :''}" data-res="entre"  title="Entré">🏠</button>
+        <button class="res-btn${r==='signe' ?' active-signe' :''}" data-res="signe"  title="Signé">✅</button>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+
+  attachTapListeners();
+}
+
+// ── Boutons de tap ────────────────────────────────────────────────────────────────────
+function attachTapListeners() {
+  document.querySelectorAll('#addr-list .res-btn').forEach(btn => {
+    btn.addEventListener('click', async function () {
+      const row = this.closest('.addr-row');
+      const adresseId = row.dataset.id;
+      const resultat = this.dataset.res;
+      const prevRes = row.dataset.resultat;
+
+      if (navigator.vibrate) navigator.vibrate(25);
+
+      row.dataset.resultat = resultat;
+      row.className = 'addr-row r-' + resultat;
+      row.querySelectorAll('.res-btn').forEach(b => {
+        b.className = 'res-btn' + (b.dataset.res === resultat ? ' active-' + resultat : '');
+      });
+      const numBadge = document.getElementById('num-' + adresseId);
+      if (numBadge) numBadge.style.background = RESULT_COLORS[resultat] || '#ff7900';
+      updateMapMarker(adresseId, resultat);
+
+      try {
+        const resp = await fetch(
+          `/prospection/${SESSION_ID}/tap-adresse/${adresseId}/${resultat}`,
+          { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } }
+        );
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const addr = orderedAddresses.find(a => String(a.id) === String(adresseId));
+        if (addr) addr.resultat = resultat;
+      } catch(e) {
+        row.dataset.resultat = prevRes;
+        row.className = 'addr-row' + (prevRes ? ' r-' + prevRes : '');
+        row.querySelectorAll('.res-btn').forEach(b => {
+          b.className = 'res-btn' + (b.dataset.res === prevRes ? ' active-' + prevRes : '');
+        });
+        if (numBadge) numBadge.style.background = RESULT_COLORS[prevRes] || '#ff7900';
+        updateMapMarker(adresseId, prevRes);
+        console.error('Erreur réseau', e);
+      }
+    });
+  });
+}
+
+function updateMapMarker(adresseId, resultat) {
+  const entry = markerByAdresseId[adresseId];
+  if (!entry) return;
+  const color = RESULT_COLORS[resultat] || '#ff7900';
+  entry.marker.setIcon(createNumberedIcon(entry.index + 1, color));
+}
+
+let lastTap = 0;
+document.addEventListener('touchend', e => {
+  if (e.target.classList.contains('res-btn')) {
+    const now = Date.now();
+    if (now - lastTap < 300) e.preventDefault();
+    lastTap = now;
+  }
+}, { passive: false });
+</script>
+</body>
+</html>
