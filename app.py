@@ -956,6 +956,27 @@ def tap_session(session_id):
     return render_template("tap.html", session=sess, resultats=RESULTATS_PORTE)
 
 
+@app.route("/prospection/<int:session_id>/itineraire")
+@login_required
+def itineraire_session(session_id):
+    sess = SessionProspection.query.get_or_404(session_id)
+    adresses = trouver_adresses_pour_rue(sess.nom)
+    if not adresses:
+        flash("Cette session n'a pas d'adresses importées.", "warning")
+        return redirect(url_for("tap_session", session_id=session_id))
+    taps = {p.adresse_id: p.resultat for p in sess.portes if p.adresse_id is not None}
+    adresses_data = [{
+        "id": a.id,
+        "rue": a.rue,
+        "numero": a.numero,
+        "complement": a.complement or "",
+        "ville": a.ville or "",
+        "resultat": taps.get(a.id),
+        "adresse_complete": f"{a.numero} {a.rue}{' ' + a.ville if a.ville else ''}",
+    } for a in adresses]
+    return render_template("itineraire.html", session=sess, adresses=adresses_data)
+
+
 @app.route("/prospection/<int:session_id>/tap/<resultat>", methods=["POST"])
 @login_required
 def tap_porte(session_id, resultat):
