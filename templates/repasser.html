@@ -23,12 +23,15 @@
 </div>
 {% endif %}
 
-{% for label_date, adresses in groupes %}
+{% for label_date, adresses, libres in groupes %}
 <div class="mb-4">
   <h6 class="fw-bold text-muted mb-2">
     <i class="bi bi-calendar3 me-1"></i>{{ label_date }}
-    <span class="text-secondary fw-normal">({{ adresses|length }} adresse{{ 's' if adresses|length > 1 }})</span>
+    <span class="text-secondary fw-normal">
+      ({{ adresses|length + libres.values()|sum }} absent{{ 's' if adresses|length + libres.values()|sum > 1 }})
+    </span>
   </h6>
+
   <div class="row g-2">
     {% for porte, adresse, sess in adresses %}
     <div class="col-12 col-md-6">
@@ -50,6 +53,26 @@
               <i class="bi bi-map"></i>
             </a>
           </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+    {% for session_nom, nb in libres.items() %}
+    <div class="col-12 col-md-6">
+      <div class="card shadow-sm h-100" style="border-left: 3px solid #adb5bd;">
+        <div class="card-body py-2 px-3 d-flex align-items-center gap-3">
+          <div class="flex-grow-1 min-width-0">
+            <div class="fw-semibold text-muted">{{ session_nom }}</div>
+            <div class="text-muted small">
+              <i class="bi bi-door-closed me-1"></i>{{ nb }} absent{{ 's' if nb > 1 }} — adresse non précisée
+            </div>
+          </div>
+          <a href="https://maps.google.com/?q={{ session_nom | urlencode }}"
+             target="_blank" rel="noopener"
+             class="btn btn-outline-secondary btn-sm flex-shrink-0" title="Chercher dans Maps">
+            <i class="bi bi-map"></i>
+          </a>
         </div>
       </div>
     </div>

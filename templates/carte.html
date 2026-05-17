@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% block title %}Carte GPS — Ventes Orange{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+  <h4 class="mb-0 fw-bold"><i class="bi bi-map me-1 text-warning"></i>Carte GPS</h4>
+  <span class="text-muted small" id="geocode-status"></span>
+</div>
+
+<!-- Barre GPS -->
+<div class="d-flex gap-2 align-items-center mb-2 flex-wrap">
+  <button id="btn-gps" class="btn btn-primary btn-sm fw-semibold" onclick="activerGPS()">
+    <i class="bi bi-crosshair me-1"></i>Ma position
+  </button>
+  <div id="route-info" class="d-none alert alert-info py-1 px-2 mb-0 small d-flex align-items-center gap-2">
+    <span id="route-detail"></span>
+    <button type="button" class="btn-close btn-sm" onclick="effacerItineraire()"></button>
+  </div>
+</div>
+
+<div id="geocode-progress" class="progress mb-2" style="display:none; height:4px;">
+  <div class="progress-bar bg-warning progress-bar-striped progress-bar-animated"
+       id="geocode-bar" style="width:0%"></div>
+</div>
+
+<!-- Légende -->
+<div class="d-flex flex-wrap gap-2 mb-2">
+  <span class="badge" style="background:#ff7900;">En attente</span>
+  <span class="badge" style="background:#0d6efd;">Confirmé</span>
+  <span class="badge" style="background:#198754;">Installé</span>
+  <span class="badge" style="background:#dc3545;">Annulé</span>
+  <span class="badge" style="background:#6c757d;">No-show</span>
+</div>
+
+<div class="card shadow-sm">
+  <div id="map" style="height: 65vh; border-radius: 8px;"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const VENTES = {{ ventes | tojson }};
+
+const COULEURS = {
+  en_attente: '#ff7900',
+  confirme:   '#0d6efd',
+  installe:   '#198754',
+  annule:     '#dc3545',
+  no_show:    '#6c757d',
+};
+const LABELS = {
+  en_attente: 'En attente',
+  confirme:   'Confirmé',
+  installe:   'Installé',
+  annule:     'Annulé',
+  no_show:    'No-show',
+};
+
+// ── Carte ──────────────────────────────────────────────────────────────────
+const map = L.map('map').setView([46.2276, 2.2137], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom: 19,
+}).addTo(map);
+
+// ── GPS ────────────────────────────────────────────────────────────────────
+let userMarker = null;
+let userPos = null;
+let routeLayer = null;
+let watchId = null;
+
+function activerGPS() {
+  if (!navigator.geolocation) {
+    alert('GPS non disponible sur cet appareil.');
+    return;
+  }
+  document.getElementById('btn-gps').disabled = true;
+  document.getElementById('btn-gps').innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Localisation…';
+
+  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+  watchId = navigator.geolocation.watchPosition(
+    pos => {
+      const latlng = [pos.coords.latitude, pos.coords.longitude];
+      userPos = latlng;
+
+      if (!userMarker) {
+        userMarker = L.circleMarker(latlng, {
+          radius: 10,
+          color: '#fff',
+          fillColor: '#0d6efd',
+          fillOpacity: 1,
+          weight: 3,
+        }).addTo(map).bindPopup('📍 Vous êtes ici');
+        map.setView(latlng, 15);
+      } else {
+        userMarker.setLatLng(latlng);
+      }
+
+      const btn = document.getElementById('btn-gps');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-crosshair me-1"></i>Centrer sur moi';
+      btn.onclick = () => map.setView(userPos, 15);
+    },
+    err => {
+      const btn = document.getElementById('btn-gps');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-crosshair me-1"></i>Ma position';
+      alert('GPS refusé ou indisponible.');
+    },
+    { enableHighAccuracy: true, maximumAge: 5000 }
+  );
+}
+
+// ── Itinéraire via OSRM (gratuit, sans clé API) ───────────────────────────
+async function naviguerVers(destLat, destLng, nomDest) {
+  if (!userPos) {
+    activerGPS();
+    alert('Active le GPS d\'abord puis réessaie.');
+    return;
+  }
+  effacerItineraire();
+
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/` +
+      `${userPos[1]},${userPos[0]};${destLng},${destLat}` +
+      `?overview=full&geometries=geojson`;
+    const r = await fetch(url);
+    const data = await r.json();
+
+    if (data.code !== 'Ok' || !data.routes.length) {
+      alert('Itinéraire introuvable.');
+      return;
+    }
+
+    routeLayer = L.geoJSON(data.routes[0].geometry, {
+      style: { color: '#0d6efd', weight: 5, opacity: 0.75 }
+    }).addTo(map);
+
+    const distKm = (data.routes[0].distance / 1000).toFixed(1);
+    const dureeMin = Math.round(data.routes[0].duration / 60);
+    const dureeStr = dureeMin >= 60
+      ? `${Math.floor(dureeMin / 60)}h${String(dureeMin % 60).padStart(2, '0')}`
+      : `${dureeMin} min`;
+
+    document.getElementById('route-detail').innerHTML =
+      `<strong>${nomDest}</strong> — ${distKm} km · ${dureeStr}`;
+    document.getElementById('route-info').classList.remove('d-none');
+
+    const bounds = L.latLngBounds([userPos, [destLat, destLng]]);
+    map.fitBounds(bounds.pad(0.2));
+
+  } catch(e) {
+    alert('Erreur lors du calcul de l\'itinéraire.');
+  }
+}
+
+function effacerItineraire() {
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+  document.getElementById('route-info').classList.add('d-none');
+}
+
+// ── Marqueurs clients ─────────────────────────────────────────────────────
+function markerIcon(couleur) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${couleur};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+    popupAnchor: [0, -8],
+  });
+}
+
+// ── Géocodage (Nominatim + cache localStorage) ────────────────────────────
+const CACHE_KEY = 'geocode_cache_v1';
+let cache = {};
+try { cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch(e) {}
+function saveCache() { try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch(e) {} }
+
+async function geocode(adresse) {
+  if (cache[adresse] !== undefined) return cache[adresse];
+  try {
+    const url = 'https://nominatim.openstreetmap.org/search?q=' +
+      encodeURIComponent(adresse + ', France') + '&format=json&limit=1';
+    const r = await fetch(url, { headers: { 'Accept-Language': 'fr' } });
+    const data = await r.json();
+    if (data.length > 0) {
+      const pos = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      cache[adresse] = pos;
+      saveCache();
+      return pos;
+    }
+  } catch(e) {}
+  cache[adresse] = null;
+  saveCache();
+  return null;
+}
+
+async function chargerCarte() {
+  const status = document.getElementById('geocode-status');
+  const progress = document.getElementById('geocode-progress');
+  const bar = document.getElementById('geocode-bar');
+
+  const sanscache = VENTES.filter(v => cache[v.adresse] === undefined);
+  if (sanscache.length > 0) {
+    progress.style.display = '';
+    status.textContent = `Localisation de ${sanscache.length} adresse${sanscache.length > 1 ? 's' : ''}…`;
+  }
+
+  const allMarkers = [];
+
+  for (let i = 0; i < VENTES.length; i++) {
+    const v = VENTES[i];
+    if (cache[v.adresse] === undefined) {
+      await new Promise(r => setTimeout(r, 1100));
+    }
+    const pos = await geocode(v.adresse);
+    if (VENTES.length > 0) bar.style.width = Math.round(((i + 1) / VENTES.length) * 100) + '%';
+
+    if (pos) {
+      const couleur = COULEURS[v.statut] || '#6c757d';
+      const label = LABELS[v.statut] || v.statut;
+      const marker = L.marker(pos, { icon: markerIcon(couleur) }).addTo(map);
+
+      marker.bindPopup(
+        `<strong>${v.nom}</strong><br>` +
+        `<span style="font-size:.85em;color:#6c757d;">${v.adresse}</span><br>` +
+        `<span style="font-size:.85em;">${v.produit} — RDV ${v.date_rdv}</span><br>` +
+        `<span style="font-weight:600;color:${couleur};">${label}</span><br><br>` +
+        `<div style="display:flex;gap:6px;">` +
+          `<button onclick="naviguerVers(${pos[0]},${pos[1]},'${v.nom.replace(/'/g,"\\'")});map.closePopup();" ` +
+            `style="flex:1;padding:4px 8px;background:#0d6efd;color:#fff;border:none;border-radius:6px;font-size:.85em;cursor:pointer;">` +
+            `🧭 Itinéraire</button>` +
+          `<a href="https://maps.google.com/?q=${encodeURIComponent(v.adresse)}" target="_blank" rel="noopener" ` +
+            `style="flex:1;padding:4px 8px;background:#6c757d;color:#fff;border:none;border-radius:6px;font-size:.85em;text-align:center;text-decoration:none;">` +
+            `📍 Maps</a>` +
+        `</div>`
+      );
+      allMarkers.push(marker);
+    }
+  }
+
+  progress.style.display = 'none';
+  if (allMarkers.length > 0) {
+    map.fitBounds(L.featureGroup(allMarkers).getBounds().pad(0.15));
+    status.textContent = `${allMarkers.length} client${allMarkers.length > 1 ? 's' : ''} sur la carte`;
+  } else if (VENTES.length === 0) {
+    status.textContent = 'Aucune vente enregistrée';
+  } else {
+    status.textContent = 'Adresses non localisées';
+  }
+}
+
+chargerCarte();
+</script>
+{% endblock %}
