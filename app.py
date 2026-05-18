@@ -140,7 +140,7 @@ class SessionProspection(db.Model):
     __tablename__ = "sessions_prospection"
 
     id = db.Column(db.Integer, primary_key=True)
-    nom = db.Column(db.String(200), nullable=False)
+    nom = db.Column(db.String(200), nullable=False)   # ex: "Rue de la Paix, Paris 2"
     date = db.Column(db.Date, nullable=False, default=date.today)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     portes = db.relationship(
@@ -810,7 +810,7 @@ _PROMPT_SCAN = (
     "Ignorer 'code d'accès Suivi Cde'.\n"
     "- date_rdv : cherche dans cet ordre :\n"
     "  1. 'Rdv d'installation' ou 'RDV installation' (ignorer si marqué 'supprimé' ou 'annulé')\n"
-    "  2. 'Date de livraison initiale', 'date de livraison', 'date d'activation'\n"
+    "  2. 'Date de livraison initiale', 'date de livraison', 'date d\'activation'\n"
     "  3. 'créneau', 'intervention prévue', 'date de pose'\n"
     "  Formats français à convertir en YYYY-MM-DDTHH:MM :\n"
     "  'le jeudi 25 juin' → déduire l'année depuis les autres dates du document → '2026-06-25T08:00'\n"
