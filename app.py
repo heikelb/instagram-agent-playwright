@@ -140,7 +140,7 @@ class SessionProspection(db.Model):
     __tablename__ = "sessions_prospection"
 
     id = db.Column(db.Integer, primary_key=True)
-    nom = db.Column(db.String(200), nullable=False)   # ex: "Rue de la Paix, Paris 2"
+    nom = db.Column(db.String(200), nullable=False)
     date = db.Column(db.Date, nullable=False, default=date.today)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     portes = db.relationship(
@@ -627,6 +627,103 @@ def changer_statut(vente_id, statut):
         f"{vente.prenom} {vente.nom} → {STATUTS[statut]}", "success"
     )
     return redirect(request.referrer or url_for("liste_ventes"))
+
+
+@app.route("/stats")
+@login_required
+def stats():
+    from collections import defaultdict
+    from sqlalchemy import func as _func
+
+    aujourd_hui = date.today()
+
+    # ── Ventes globales ──
+    total_ventes = Vente.query.count()
+    installes   = Vente.query.filter_by(statut="installe").count()
+    no_shows    = Vente.query.filter_by(statut="no_show").count()
+    annules     = Vente.query.filter_by(statut="annule").count()
+    taux_installation = round(installes / total_ventes * 100) if total_ventes else 0
+    taux_no_show      = round(no_shows  / total_ventes * 100) if total_ventes else 0
+
+    # ── Ventes par produit ──
+    par_produit = (
+        db.session.query(Vente.produit, _func.count(Vente.id))
+        .group_by(Vente.produit)
+        .order_by(_func.count(Vente.id).desc())
+        .all()
+    )
+
+    # ── Ventes par jour de semaine ──
+    JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
+    par_jour = defaultdict(int)
+    for (ds,) in db.session.query(Vente.date_signature).all():
+        par_jour[ds.weekday()] += 1
+    par_jour_data = [(JOURS[i], par_jour[i]) for i in range(7)]
+    meilleur_jour = JOURS[max(range(7), key=lambda i: par_jour[i])] if total_ventes else "—"
+
+    # ── 4 dernières semaines ──
+    semaines = []
+    for i in range(4):
+        lundi    = aujourd_hui - timedelta(days=aujourd_hui.weekday()) - timedelta(weeks=i)
+        dimanche = lundi + timedelta(days=6)
+        nb = Vente.query.filter(
+            Vente.date_signature >= lundi,
+            Vente.date_signature <= dimanche,
+        ).count()
+        semaines.append({"label": "Cette sem." if i == 0 else f"S-{i}", "nb": nb})
+    semaines.reverse()
+
+    # ── Ce mois vs mois dernier ──
+    debut_mois = aujourd_hui.replace(day=1)
+    if debut_mois.month == 1:
+        debut_mois_dernier = debut_mois.replace(year=debut_mois.year - 1, month=12)
+    else:
+        debut_mois_dernier = debut_mois.replace(month=debut_mois.month - 1)
+    ventes_ce_mois      = Vente.query.filter(Vente.date_signature >= debut_mois).count()
+    ventes_mois_dernier = Vente.query.filter(
+        Vente.date_signature >= debut_mois_dernier,
+        Vente.date_signature < debut_mois,
+    ).count()
+
+    # ── Prospection terrain ──
+    total_portes      = Porte.query.count()
+    nb_absent         = Porte.query.filter_by(resultat="absent").count()
+    nb_cause          = Porte.query.filter_by(resultat="cause").count()
+    nb_entre          = Porte.query.filter_by(resultat="entre").count()
+    nb_signe_terrain  = Porte.query.filter_by(resultat="signe").count()
+    portes_ouvert      = total_portes - nb_absent
+    portes_cause_total = nb_cause + nb_entre + nb_signe_terrain
+    taux_ouverture    = round(portes_ouvert      / total_portes * 100) if total_portes else 0
+    taux_cause_p      = round(portes_cause_total / total_portes * 100) if total_portes else 0
+    taux_entre_p      = round((nb_entre + nb_signe_terrain) / total_portes * 100) if total_portes else 0
+    taux_signe_p      = round(nb_signe_terrain   / total_portes * 100) if total_portes else 0
+    ratio_portes_vente = round(total_portes / total_ventes) if total_ventes and total_portes else None
+
+    return render_template("stats.html",
+        aujourd_hui=aujourd_hui,
+        total_ventes=total_ventes,
+        installes=installes,
+        no_shows=no_shows,
+        annules=annules,
+        taux_installation=taux_installation,
+        taux_no_show=taux_no_show,
+        par_produit=par_produit,
+        par_jour_data=par_jour_data,
+        meilleur_jour=meilleur_jour,
+        ventes_ce_mois=ventes_ce_mois,
+        ventes_mois_dernier=ventes_mois_dernier,
+        semaines=semaines,
+        total_portes=total_portes,
+        portes_ouvert=portes_ouvert,
+        portes_cause_total=portes_cause_total,
+        nb_entre=nb_entre,
+        nb_signe_terrain=nb_signe_terrain,
+        taux_ouverture=taux_ouverture,
+        taux_cause_p=taux_cause_p,
+        taux_entre_p=taux_entre_p,
+        taux_signe_p=taux_signe_p,
+        ratio_portes_vente=ratio_portes_vente,
+    )
 
 
 @app.route("/carte")
