@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block title %}Statistiques — Ventes Orange{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="mb-0 fw-bold">
+    <i class="bi bi-bar-chart-fill me-1 text-warning"></i>Statistiques
+  </h4>
+  <small class="text-muted">{{ aujourd_hui.strftime('%B %Y') }}</small>
+</div>
+
+<!-- KPIs globaux -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card stat-card orange shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small mb-1"><i class="bi bi-bag-check me-1"></i>Total ventes</div>
+        <div class="fs-2 fw-bold">{{ total_ventes }}</div>
+        <div class="text-muted" style="font-size:.75rem;">{{ installes }} installés</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card blue shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small mb-1"><i class="bi bi-calendar-month me-1"></i>Ce mois</div>
+        <div class="fs-2 fw-bold">{{ ventes_ce_mois }}</div>
+        <div class="text-muted" style="font-size:.75rem;">mois dernier : {{ ventes_mois_dernier }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card green shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small mb-1"><i class="bi bi-wifi me-1"></i>Installés</div>
+        <div class="fs-2 fw-bold">{{ taux_installation }}%</div>
+        <div class="text-muted" style="font-size:.75rem;">{{ installes }} / {{ total_ventes }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card red shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small mb-1"><i class="bi bi-person-x me-1"></i>No-show</div>
+        <div class="fs-2 fw-bold">{{ taux_no_show }}%</div>
+        <div class="text-muted" style="font-size:.75rem;">{{ no_shows }} / {{ total_ventes }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Ratio magique portes/vente -->
+{% if ratio_portes_vente %}
+<div class="card shadow-sm mb-4" style="border-left:4px solid #ff7900;">
+  <div class="card-body d-flex align-items-center gap-3">
+    <div style="font-size:2.2rem;line-height:1;">🚪</div>
+    <div>
+      <div class="fw-bold fs-5">
+        1 vente toutes les <span style="color:#ff7900;">{{ ratio_portes_vente }} portes</span>
+      </div>
+      <div class="text-muted small">{{ total_portes }} portes frappées · {{ total_ventes }} ventes signées</div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- 4 dernières semaines -->
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-white fw-semibold">
+    <i class="bi bi-calendar-week me-1 text-warning"></i>4 dernières semaines
+  </div>
+  <div class="card-body">
+    {% set max_sem = semaines | map(attribute='nb') | max %}
+    {% for s in semaines %}
+    <div class="mb-3">
+      <div class="d-flex justify-content-between mb-1">
+        <span class="small fw-semibold">{{ s.label }}</span>
+        <span class="fw-bold">{{ s.nb }} vente{{ 's' if s.nb != 1 else '' }}</span>
+      </div>
+      <div class="progress" style="height:10px;border-radius:6px;">
+        <div class="progress-bar"
+             style="width:{% if max_sem > 0 %}{{ (s.nb / max_sem * 100)|round|int }}{% else %}0{% endif %}%;background:#ff7900;border-radius:6px;transition:width .4s;"></div>
+      </div>
+    </div>
+    {% endfor %}
+    {% if total_ventes == 0 %}
+      <p class="text-muted text-center mb-0">Aucune vente enregistrée.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Entonnoir terrain -->
+{% if total_portes > 0 %}
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-white fw-semibold">
+    <i class="bi bi-funnel me-1 text-warning"></i>Entonnoir terrain
+  </div>
+  <div class="card-body">
+    <div class="mb-3">
+      <div class="d-flex justify-content-between mb-1">
+        <span class="small">🔘 Portes frappées</span>
+        <span class="fw-bold">{{ total_portes }}</span>
+      </div>
+      <div class="progress" style="height:10px;border-radius:6px;">
+        <div class="progress-bar bg-secondary" style="width:100%;border-radius:6px;"></div>
+      </div>
+    </div>
+    <div class="mb-3">
+      <div class="d-flex justify-content-between mb-1">
+        <span class="small">🚪 Ouvertes</span>
+        <span class="fw-bold">{{ portes_ouvert }} <span class="text-muted fw-normal small">({{ taux_ouverture }}%)</span></span>
+      </div>
+      <div class="progress" style="height:10px;border-radius:6px;">
+        <div class="progress-bar bg-info" style="width:{{ taux_ouverture }}%;border-radius:6px;"></div>
+      </div>
+    </div>
+    <div class="mb-3">
+      <div class="d-flex justify-content-between mb-1">
+        <span class="small">💬 Causé / Entré</span>
+        <span class="fw-bold">{{ portes_cause_total }} <span class="text-muted fw-normal small">({{ taux_cause_p }}%)</span></span>
+      </div>
+      <div class="progress" style="height:10px;border-radius:6px;">
+        <div class="progress-bar bg-warning" style="width:{{ taux_cause_p }}%;border-radius:6px;"></div>
+      </div>
+    </div>
+    <div class="mb-3">
+      <div class="d-flex justify-content-between mb-1">
+        <span class="small">🏠 Entré chez client</span>
+        <span class="fw-bold">{{ nb_entre + nb_signe_terrain }} <span class="text-muted fw-normal small">({{ taux_entre_p }}%)</span></span>
+      </div>
+      <div class="progress" style="height:10px;border-radius:6px;">
+        <div class="progress-bar bg-primary" style="width:{{ taux_entre_p }}%;border-radius:6px;"></div>
+      </div>
+    </div>
+    <div class="mb-0">
+      <div class="d-flex justify-content-between mb-1">
+        <span class="small">✅ Signé sur le terrain</span>
+        <span class="fw-bold">{{ nb_signe_terrain }} <span class="text-muted fw-normal small">({{ taux_signe_p }}%)</span></span>
+      </div>
+      <div class="progress" style="height:10px;border-radius:6px;">
+        <div class="progress-bar bg-success" style="width:{{ taux_signe_p }}%;border-radius:6px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Ventes par produit -->
+{% if par_produit %}
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-white fw-semibold">
+    <i class="bi bi-router me-1 text-warning"></i>Ventes par produit
+  </div>
+  <div class="card-body">
+    {% set max_p = par_produit[0][1] %}
+    {% for produit, nb in par_produit %}
+    <div class="mb-3">
+      <div class="d-flex justify-content-between mb-1">
+        <span class="small fw-semibold">{{ produit }}</span>
+        <span class="fw-bold">{{ nb }}</span>
+      </div>
+      <div class="progress" style="height:10px;border-radius:6px;">
+        <div class="progress-bar"
+             style="width:{{ (nb / max_p * 100)|round|int }}%;background:#ff7900;border-radius:6px;"></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Meilleur jour de la semaine -->
+{% if total_ventes > 0 %}
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-white fw-semibold">
+    <i class="bi bi-trophy me-1 text-warning"></i>Meilleur jour
+    <span class="badge bg-warning text-dark ms-2" style="font-size:.75rem;">{{ meilleur_jour }}</span>
+  </div>
+  <div class="card-body">
+    {% set max_j = par_jour_data | map(attribute=1) | max %}
+    {% for jour, nb in par_jour_data %}
+    <div class="mb-2">
+      <div class="d-flex justify-content-between mb-1">
+        <span class="small {% if nb == max_j and max_j > 0 %}fw-bold{% endif %}">{{ jour }}</span>
+        <span class="fw-bold {% if nb == max_j and max_j > 0 %}text-warning{% endif %}">{{ nb }}</span>
+      </div>
+      <div class="progress" style="height:8px;border-radius:6px;">
+        <div class="progress-bar {% if nb == max_j and max_j > 0 %}bg-warning{% else %}bg-secondary{% endif %}"
+             style="width:{% if max_j > 0 %}{{ (nb / max_j * 100)|round|int }}{% else %}0{% endif %}%;border-radius:6px;opacity:.75;"></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
