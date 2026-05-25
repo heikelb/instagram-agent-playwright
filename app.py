@@ -621,6 +621,30 @@ def stats():
     else:
         moyenne_par_jour = moyenne_par_semaine = moyenne_par_mois = 0
         nb_jours_actifs = 0
+    MOIS_FR = ["", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+               "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
+    par_mois_dict = defaultdict(lambda: {"total": 0, "installes": 0, "no_shows": 0, "annules": 0})
+    for v in Vente.query.all():
+        key = (v.date_signature.year, v.date_signature.month)
+        par_mois_dict[key]["total"] += 1
+        if v.statut == "installe":
+            par_mois_dict[key]["installes"] += 1
+        elif v.statut == "no_show":
+            par_mois_dict[key]["no_shows"] += 1
+        elif v.statut == "annule":
+            par_mois_dict[key]["annules"] += 1
+    par_mois = []
+    for (year, month), data in sorted(par_mois_dict.items(), reverse=True):
+        t = data["total"]
+        taux = round(data["installes"] / t * 100) if t else 0
+        par_mois.append({
+            "label": f"{MOIS_FR[month]} {year}",
+            "total": t,
+            "installes": data["installes"],
+            "no_shows": data["no_shows"],
+            "annules": data["annules"],
+            "taux": taux,
+        })
     return render_template("stats.html",
         aujourd_hui=aujourd_hui, total_ventes=total_ventes, installes=installes,
         no_shows=no_shows, annules=annules, taux_installation=taux_installation,
@@ -633,7 +657,7 @@ def stats():
         taux_cause_p=taux_cause_p, taux_entre_p=taux_entre_p, taux_signe_p=taux_signe_p,
         ratio_portes_vente=ratio_portes_vente, moyenne_par_jour=moyenne_par_jour,
         moyenne_par_semaine=moyenne_par_semaine, moyenne_par_mois=moyenne_par_mois,
-        nb_jours_actifs=nb_jours_actifs)
+        nb_jours_actifs=nb_jours_actifs, par_mois=par_mois)
 
 
 @app.route("/carte")

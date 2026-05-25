@@ -97,6 +97,47 @@
 </div>
 {% endif %}
 
+<!-- Par mois -->
+{% if par_mois %}
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-white fw-semibold">
+    <i class="bi bi-calendar3 me-1 text-warning"></i>Résultats par mois
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Mois</th>
+            <th class="text-center">Contrats</th>
+            <th class="text-center">Installés</th>
+            <th class="text-center">No-show</th>
+            <th class="text-center">Annulés</th>
+            <th class="text-center">Raccordement</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in par_mois %}
+          <tr>
+            <td class="fw-semibold">{{ m.label }}</td>
+            <td class="text-center fw-bold fs-5">{{ m.total }}</td>
+            <td class="text-center fw-semibold text-success">{{ m.installes }}</td>
+            <td class="text-center text-danger">{{ m.no_shows }}</td>
+            <td class="text-center text-secondary">{{ m.annules }}</td>
+            <td class="text-center">
+              <span class="badge {% if m.taux >= 40 %}bg-success{% elif m.taux >= 25 %}bg-warning text-dark{% else %}bg-secondary{% endif %} px-2 py-1">
+                {{ m.taux }}%
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <!-- 4 dernières semaines -->
 <div class="card shadow-sm mb-4">
   <div class="card-header bg-white fw-semibold">
