@@ -32,12 +32,9 @@
     .table th { font-size: .85rem; text-transform: uppercase; color: #6c757d; }
     .badge-sms { font-size: .7rem; }
 
-    /* ── Mobile ────────────────────────────── */
     @media (max-width: 768px) {
       .container-fluid { padding: 12px !important; }
       h4.mb-0 { font-size: 1.1rem; }
-
-      /* Tableau → cartes empilées */
       .table-mobile-cards thead { display: none; }
       .table-mobile-cards tbody tr {
         display: block;
@@ -65,12 +62,8 @@
         min-width: 90px;
       }
       .table-mobile-cards tbody td:empty { display: none; }
-
-      /* Boutons du haut alignés */
       .page-header { flex-wrap: wrap; gap: 8px; }
       .page-header .btn { font-size: .8rem; padding: 6px 10px; }
-
-      /* Stats dashboard 2x2 */
       .stat-card .fs-2 { font-size: 1.6rem !important; }
     }
   </style>
@@ -111,9 +104,21 @@
           </a>
         </li>
         <li class="nav-item">
+          <a class="nav-link {% if request.endpoint == 'stats' %}active{% endif %}"
+             href="{{ url_for('stats') }}">
+            <i class="bi bi-bar-chart-fill me-1"></i>Stats
+          </a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link {% if request.endpoint == 'recap_semaine' %}active{% endif %}"
              href="{{ url_for('recap_semaine') }}">
             <i class="bi bi-calendar-week me-1"></i>Récap
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint == 'memoire' %}active{% endif %}"
+             href="{{ url_for('memoire') }}">
+            <i class="bi bi-clock-history me-1"></i>Mémoire
           </a>
         </li>
         <li class="nav-item">
