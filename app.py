@@ -20,6 +20,15 @@ _db_path = os.environ.get("DATABASE_URL", "sqlite:////data/ventes.db")
 # Railway PostgreSQL URLs commencent par postgres:// — SQLAlchemy requiert postgresql://
 if _db_path.startswith("postgres://"):
     _db_path = _db_path.replace("postgres://", "postgresql://", 1)
+elif "sqlite" in _db_path:
+    # Créer le dossier parent si nécessaire (ex: /data sur Railway)
+    m = re.match(r'sqlite:////(.+)', _db_path)
+    if m:
+        try:
+            os.makedirs(os.path.dirname("/" + m.group(1)), exist_ok=True)
+        except Exception:
+            _db_path = "sqlite:////tmp/ventes.db"
+            os.makedirs("/tmp", exist_ok=True)
 app.config["SQLALCHEMY_DATABASE_URI"] = _db_path
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
