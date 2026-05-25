@@ -49,6 +49,39 @@
   </div>
 </div>
 
+<!-- Moyennes de performance -->
+{% if total_ventes > 0 %}
+<div class="row g-3 mb-4">
+  <div class="col-4">
+    <div class="card shadow-sm h-100 text-center" style="border-top:3px solid #ff7900;">
+      <div class="card-body py-3">
+        <div class="text-muted" style="font-size:.7rem;">MOY. / JOUR</div>
+        <div class="fs-3 fw-bold" style="color:#ff7900;">{{ moyenne_par_jour }}</div>
+        <div class="text-muted" style="font-size:.7rem;">{{ nb_jours_actifs }} jour{{ 's' if nb_jours_actifs != 1 else '' }} travaillé{{ 's' if nb_jours_actifs != 1 else '' }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-4">
+    <div class="card shadow-sm h-100 text-center" style="border-top:3px solid #0d6efd;">
+      <div class="card-body py-3">
+        <div class="text-muted" style="font-size:.7rem;">MOY. / SEMAINE</div>
+        <div class="fs-3 fw-bold" style="color:#0d6efd;">{{ moyenne_par_semaine }}</div>
+        <div class="text-muted" style="font-size:.7rem;">contrats</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-4">
+    <div class="card shadow-sm h-100 text-center" style="border-top:3px solid #198754;">
+      <div class="card-body py-3">
+        <div class="text-muted" style="font-size:.7rem;">MOY. / MOIS</div>
+        <div class="fs-3 fw-bold" style="color:#198754;">{{ moyenne_par_mois }}</div>
+        <div class="text-muted" style="font-size:.7rem;">contrats</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <!-- Ratio magique portes/vente -->
 {% if ratio_portes_vente %}
 <div class="card shadow-sm mb-4" style="border-left:4px solid #ff7900;">
