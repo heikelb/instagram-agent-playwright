@@ -16,8 +16,10 @@ load_dotenv()
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
-# Chemin DB : utilise le volume Railway si configuré, sinon local
 _db_path = os.environ.get("DATABASE_URL", "sqlite:////data/ventes.db")
+# Railway PostgreSQL URLs commencent par postgres:// — SQLAlchemy requiert postgresql://
+if _db_path.startswith("postgres://"):
+    _db_path = _db_path.replace("postgres://", "postgresql://", 1)
 app.config["SQLALCHEMY_DATABASE_URI"] = _db_path
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -126,7 +128,6 @@ class Vente(db.Model):
 # Modèles prospection terrain
 # ---------------------------------------------------------------------------
 
-# Résultats possibles à chaque porte
 RESULTATS_PORTE = {
     "absent":  {"label": "ABSENT",  "emoji": "🔘", "color": "#6c757d"},
     "refus":   {"label": "REFUS",   "emoji": "❌", "color": "#dc3545"},
@@ -140,7 +141,7 @@ class SessionProspection(db.Model):
     __tablename__ = "sessions_prospection"
 
     id = db.Column(db.Integer, primary_key=True)
-    nom = db.Column(db.String(200), nullable=False)   # ex: "Rue de la Paix, Paris 2"
+    nom = db.Column(db.String(200), nullable=False)
     date = db.Column(db.Date, nullable=False, default=date.today)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     portes = db.relationship(
@@ -264,7 +265,6 @@ class Rappel(db.Model):
 # ---------------------------------------------------------------------------
 
 def envoyer_sms(telephone: str, message: str) -> bool:
-    """Envoie un SMS via Twilio. Retourne True si succès."""
     sid = os.environ.get("TWILIO_ACCOUNT_SID")
     token = os.environ.get("TWILIO_AUTH_TOKEN")
     from_number = os.environ.get("TWILIO_PHONE_NUMBER")
@@ -296,7 +296,6 @@ def construire_message_rappel(vente: Vente) -> str:
 
 
 def envoyer_sms_rappels_clients():
-    """Tâche planifiée : envoie au commercial ses rappels clients en attente."""
     with app.app_context():
         mon_tel = os.environ.get("MON_TELEPHONE", "")
         if not mon_tel:
@@ -313,7 +312,6 @@ def envoyer_sms_rappels_clients():
 
 
 def envoyer_rappels_du_jour():
-    """Tâche planifiée : envoie les rappels SMS pour les RDV du lendemain."""
     with app.app_context():
         demain = date.today() + timedelta(days=1)
         ventes = Vente.query.filter(
@@ -699,6 +697,23 @@ def stats():
     taux_signe_p      = round(nb_signe_terrain   / total_portes * 100) if total_portes else 0
     ratio_portes_vente = round(total_portes / total_ventes) if total_ventes and total_portes else None
 
+    # ── Moyennes de performance ──
+    from sqlalchemy import func as _func2
+    premiere_vente_date = db.session.query(_func2.min(Vente.date_signature)).scalar()
+    nb_jours_actifs = db.session.query(
+        _func2.count(_func2.distinct(Vente.date_signature))
+    ).scalar() or 0
+    if premiere_vente_date and total_ventes:
+        nb_jours_calendrier = (aujourd_hui - premiere_vente_date).days + 1
+        nb_semaines_calendrier = max(1, round(nb_jours_calendrier / 7))
+        nb_mois_calendrier = max(1, round(nb_jours_calendrier / 30))
+        moyenne_par_jour    = round(total_ventes / nb_jours_actifs, 1) if nb_jours_actifs else 0
+        moyenne_par_semaine = round(total_ventes / nb_semaines_calendrier, 1)
+        moyenne_par_mois    = round(total_ventes / nb_mois_calendrier, 1)
+    else:
+        moyenne_par_jour = moyenne_par_semaine = moyenne_par_mois = 0
+        nb_jours_actifs = 0
+
     return render_template("stats.html",
         aujourd_hui=aujourd_hui,
         total_ventes=total_ventes,
@@ -723,6 +738,10 @@ def stats():
         taux_entre_p=taux_entre_p,
         taux_signe_p=taux_signe_p,
         ratio_portes_vente=ratio_portes_vente,
+        moyenne_par_jour=moyenne_par_jour,
+        moyenne_par_semaine=moyenne_par_semaine,
+        moyenne_par_mois=moyenne_par_mois,
+        nb_jours_actifs=nb_jours_actifs,
     )
 
 
@@ -828,7 +847,6 @@ _PROMPT_SCAN = (
 
 
 async def _playwright_screenshot(url: str, login: str, password: str) -> bytes:
-    """Navigue vers l'URL Orange (avec login SSO si besoin) et retourne un screenshot."""
     from playwright.async_api import async_playwright
 
     async with async_playwright() as p:
@@ -991,7 +1009,6 @@ def _sort_numero(a):
 
 
 def trouver_adresses_pour_rue(nom_session):
-    """Retourne les AdresseImportee correspondant au nom de session (matching souple)."""
     nom_norm = nom_session.lower().strip()
     rues = [r[0] for r in db.session.query(AdresseImportee.rue).distinct().all()]
     matching = [r for r in rues if r.lower() in nom_norm or nom_norm in r.lower()]
