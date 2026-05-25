@@ -56,6 +56,81 @@
   </div>
 </div>
 
+<!-- Progression -->
+<div class="row g-3 mb-4">
+  <!-- Objectif mensuel -->
+  <div class="col-12 col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="fw-semibold"><i class="bi bi-bullseye me-1 text-warning"></i>Objectif du mois</span>
+          <span class="text-muted small">{{ ventes_ce_mois }} / {{ objectif }}</span>
+        </div>
+        <div class="progress mb-2" style="height:12px;">
+          <div class="progress-bar bg-warning" style="width:{{ progress_objectif }}%"></div>
+        </div>
+        {% if progress_objectif >= 100 %}
+          <div class="text-success small fw-semibold">Objectif atteint !</div>
+        {% else %}
+          <div class="text-muted small">{{ objectif - ventes_ce_mois }} contrat{{ 's' if objectif - ventes_ce_mois > 1 }} restant{{ 's' if objectif - ventes_ce_mois > 1 }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Niveau -->
+  <div class="col-12 col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="fw-semibold"><i class="bi bi-trophy me-1" style="color:{{ niveau.color }}"></i>Niveau</span>
+          <span class="fw-bold" style="color:{{ niveau.color }}">{{ niveau.emoji }} {{ niveau.nom }}</span>
+        </div>
+        <div class="progress mb-2" style="height:12px;">
+          <div class="progress-bar" style="width:{{ niveau.progress }}%;background:{{ niveau.color }}"></div>
+        </div>
+        {% if niveau.prochain %}
+          <div class="text-muted small">{{ niveau.manquant }} contrat{{ 's' if niveau.manquant > 1 }} pour {{ niveau.prochain_emoji }} {{ niveau.prochain }}</div>
+        {% else %}
+          <div class="small fw-semibold" style="color:{{ niveau.color }}">Niveau maximum atteint !</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Records & semaine -->
+  <div class="col-12 col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <div class="fw-semibold mb-2"><i class="bi bi-graph-up-arrow me-1 text-warning"></i>Performances</div>
+        <div class="d-flex justify-content-between small mb-1">
+          <span class="text-muted">Record / jour</span>
+          <span class="fw-bold">{{ record_jour }} contrat{{ 's' if record_jour > 1 }}</span>
+        </div>
+        <div class="d-flex justify-content-between small mb-2">
+          <span class="text-muted">Record / semaine</span>
+          <span class="fw-bold">{{ record_semaine }} contrat{{ 's' if record_semaine > 1 }}</span>
+        </div>
+        <hr class="my-2">
+        <div class="d-flex justify-content-between small">
+          <span class="text-muted">Cette semaine</span>
+          <span class="fw-bold">
+            {{ ventes_cette_sem }}
+            {% if diff_semaine > 0 %}
+              <span class="text-success ms-1">+{{ diff_semaine }}</span>
+            {% elif diff_semaine < 0 %}
+              <span class="text-danger ms-1">{{ diff_semaine }}</span>
+            {% else %}
+              <span class="text-muted ms-1">=</span>
+            {% endif %}
+            <span class="text-muted fw-normal">vs S-1</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="row g-4">
   <!-- RDV demain -->
   <div class="col-md-5">

@@ -401,12 +401,35 @@ def recap_semaine(offset_semaines=0):
 
 
 # ---------------------------------------------------------------------------
+# Helpers : Progression / Gamification
+# ---------------------------------------------------------------------------
+
+def get_niveau_info(n):
+    if n >= 100:
+        return dict(nom="Diamant", emoji="💎", color="#0dcaf0", progress=100,
+                    manquant=0, prochain=None, prochain_emoji=None)
+    elif n >= 50:
+        return dict(nom="Or", emoji="🥇", color="#ffc107",
+                    progress=round((n - 50) / 50 * 100), manquant=100 - n,
+                    prochain="Diamant", prochain_emoji="💎")
+    elif n >= 20:
+        return dict(nom="Argent", emoji="🥈", color="#adb5bd",
+                    progress=round((n - 20) / 30 * 100), manquant=50 - n,
+                    prochain="Or", prochain_emoji="🥇")
+    else:
+        return dict(nom="Bronze", emoji="🥉", color="#b87333",
+                    progress=round(n / 20 * 100) if n else 0, manquant=20 - n,
+                    prochain="Argent", prochain_emoji="🥈")
+
+
+# ---------------------------------------------------------------------------
 # Routes : Dashboard
 # ---------------------------------------------------------------------------
 
 @app.route("/")
 @login_required
 def dashboard():
+    from collections import defaultdict
     aujourd_hui = date.today()
     demain = aujourd_hui + timedelta(days=1)
 
@@ -429,6 +452,40 @@ def dashboard():
         Vente.statut.in_(["en_attente", "confirme"]),
     ).order_by(Vente.date_rdv).all()
 
+    # ── Objectif mensuel ──
+    objectif = int(os.environ.get("OBJECTIF_MENSUEL", "20"))
+    debut_mois = aujourd_hui.replace(day=1)
+    ventes_ce_mois = Vente.query.filter(Vente.date_signature >= debut_mois).count()
+    progress_objectif = min(100, round(ventes_ce_mois / objectif * 100)) if objectif else 0
+
+    # ── Niveau ──
+    niveau = get_niveau_info(total)
+
+    # ── Records personnels ──
+    ventes_par_jour = defaultdict(int)
+    for (ds,) in db.session.query(Vente.date_signature).all():
+        ventes_par_jour[ds] += 1
+    record_jour = max(ventes_par_jour.values()) if ventes_par_jour else 0
+
+    ventes_par_semaine = defaultdict(int)
+    for d, nb in ventes_par_jour.items():
+        lundi = d - timedelta(days=d.weekday())
+        ventes_par_semaine[lundi] += nb
+    record_semaine = max(ventes_par_semaine.values()) if ventes_par_semaine else 0
+
+    # ── Comparaison semaine ──
+    lundi_cette_sem = aujourd_hui - timedelta(days=aujourd_hui.weekday())
+    lundi_sem_prec  = lundi_cette_sem - timedelta(weeks=1)
+    dim_sem_prec    = lundi_cette_sem - timedelta(days=1)
+    ventes_cette_sem = Vente.query.filter(
+        Vente.date_signature >= lundi_cette_sem
+    ).count()
+    ventes_sem_prec = Vente.query.filter(
+        Vente.date_signature >= lundi_sem_prec,
+        Vente.date_signature <= dim_sem_prec,
+    ).count()
+    diff_semaine = ventes_cette_sem - ventes_sem_prec
+
     return render_template(
         "dashboard.html",
         total=total,
@@ -440,6 +497,15 @@ def dashboard():
         ventes_recentes=ventes_recentes,
         rdv_demain_liste=rdv_demain_liste,
         aujourd_hui=aujourd_hui,
+        objectif=objectif,
+        ventes_ce_mois=ventes_ce_mois,
+        progress_objectif=progress_objectif,
+        niveau=niveau,
+        record_jour=record_jour,
+        record_semaine=record_semaine,
+        ventes_cette_sem=ventes_cette_sem,
+        ventes_sem_prec=ventes_sem_prec,
+        diff_semaine=diff_semaine,
     )
 
 
