@@ -17,11 +17,9 @@ load_dotenv()
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 _db_path = os.environ.get("DATABASE_URL", "sqlite:////data/ventes.db")
-# Railway PostgreSQL URLs commencent par postgres:// — SQLAlchemy requiert postgresql://
 if _db_path.startswith("postgres://"):
     _db_path = _db_path.replace("postgres://", "postgresql://", 1)
 elif "sqlite" in _db_path:
-    # Créer le dossier parent si nécessaire (ex: /data sur Railway)
     m = re.match(r'sqlite:////(.+)', _db_path)
     if m:
         try:
@@ -33,10 +31,6 @@ app.config["SQLALCHEMY_DATABASE_URI"] = _db_path
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
-
-# ---------------------------------------------------------------------------
-# Authentification
-# ---------------------------------------------------------------------------
 
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
@@ -79,10 +73,6 @@ def logout():
     logout_user()
     return redirect(url_for("login"))
 
-
-# ---------------------------------------------------------------------------
-# Modèle
-# ---------------------------------------------------------------------------
 
 STATUTS = {
     "en_attente": "En attente",
@@ -132,10 +122,6 @@ class Vente(db.Model):
             "annule": "bg-secondary",
         }.get(self.statut, "bg-secondary")
 
-
-# ---------------------------------------------------------------------------
-# Modèles prospection terrain
-# ---------------------------------------------------------------------------
 
 RESULTATS_PORTE = {
     "absent":  {"label": "ABSENT",  "emoji": "🔘", "color": "#6c757d"},
@@ -223,10 +209,6 @@ class Porte(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
-# ---------------------------------------------------------------------------
-# Modèle import adresses terrain
-# ---------------------------------------------------------------------------
-
 class AdresseImportee(db.Model):
     __tablename__ = "adresses_importees"
 
@@ -244,10 +226,6 @@ class AdresseImportee(db.Model):
             parts.append(self.complement)
         return " ".join(parts)
 
-
-# ---------------------------------------------------------------------------
-# Modèle Rappels client
-# ---------------------------------------------------------------------------
 
 MOMENTS_RAPPEL = {
     "matin":  "🌅 Matin",
@@ -269,19 +247,13 @@ class Rappel(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
-# ---------------------------------------------------------------------------
-# SMS
-# ---------------------------------------------------------------------------
-
 def envoyer_sms(telephone: str, message: str) -> bool:
     sid = os.environ.get("TWILIO_ACCOUNT_SID")
     token = os.environ.get("TWILIO_AUTH_TOKEN")
     from_number = os.environ.get("TWILIO_PHONE_NUMBER")
-
     if not all([sid, token, from_number]):
         app.logger.warning("Twilio non configuré — SMS non envoyé.")
         return False
-
     try:
         from twilio.rest import Client
         client = Client(sid, token)
@@ -328,7 +300,6 @@ def envoyer_rappels_du_jour():
             Vente.sms_envoye == False,
             Vente.statut.in_(["en_attente", "confirme"]),
         ).all()
-
         for vente in ventes:
             message = construire_message_rappel(vente)
             if envoyer_sms(vente.telephone, message):
@@ -336,10 +307,6 @@ def envoyer_rappels_du_jour():
                 db.session.commit()
                 app.logger.info("SMS rappel envoyé → %s %s", vente.prenom, vente.nom)
 
-
-# ---------------------------------------------------------------------------
-# Context processor — badges nav
-# ---------------------------------------------------------------------------
 
 @app.context_processor
 def inject_nav_badges():
@@ -355,10 +322,6 @@ def inject_nav_badges():
     return dict(nb_rappels=0, nb_repasser=0)
 
 
-# ---------------------------------------------------------------------------
-# Routes : Récap semaine
-# ---------------------------------------------------------------------------
-
 @app.route("/recap")
 @app.route("/recap/<int:offset_semaines>")
 @login_required
@@ -366,12 +329,10 @@ def recap_semaine(offset_semaines=0):
     aujourd_hui = date.today()
     lundi = aujourd_hui - timedelta(days=aujourd_hui.weekday()) + timedelta(weeks=offset_semaines)
     dimanche = lundi + timedelta(days=6)
-
     ventes_semaine = Vente.query.filter(
         Vente.date_signature >= lundi,
         Vente.date_signature <= dimanche,
     ).order_by(Vente.date_signature.asc(), Vente.created_at.asc()).all()
-
     jours = []
     noms_jours = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
     for i in range(7):
@@ -383,11 +344,9 @@ def recap_semaine(offset_semaines=0):
             "ventes": ventes_jour,
             "is_today": jour == aujourd_hui,
         })
-
     par_produit = {}
     for v in ventes_semaine:
         par_produit[v.produit] = par_produit.get(v.produit, 0) + 1
-
     return render_template(
         "recap.html",
         jours=jours,
@@ -399,10 +358,6 @@ def recap_semaine(offset_semaines=0):
         aujourd_hui=aujourd_hui,
     )
 
-
-# ---------------------------------------------------------------------------
-# Helpers : Progression / Gamification
-# ---------------------------------------------------------------------------
 
 def get_niveau_info(n):
     if n >= 100:
@@ -422,17 +377,12 @@ def get_niveau_info(n):
                     prochain="Argent", prochain_emoji="🥈")
 
 
-# ---------------------------------------------------------------------------
-# Routes : Dashboard
-# ---------------------------------------------------------------------------
-
 @app.route("/")
 @login_required
 def dashboard():
     from collections import defaultdict
     aujourd_hui = date.today()
     demain = aujourd_hui + timedelta(days=1)
-
     total = Vente.query.count()
     rdv_demain = Vente.query.filter(
         db.func.date(Vente.date_rdv) == demain,
@@ -441,77 +391,46 @@ def dashboard():
     no_shows = Vente.query.filter_by(statut="no_show").count()
     installes = Vente.query.filter_by(statut="installe").count()
     en_attente = Vente.query.filter_by(statut="en_attente").count()
-
     taux_no_show = round((no_shows / total * 100) if total else 0, 1)
-
-    ventes_recentes = (
-        Vente.query.order_by(Vente.created_at.desc()).limit(8).all()
-    )
+    ventes_recentes = Vente.query.order_by(Vente.created_at.desc()).limit(8).all()
     rdv_demain_liste = Vente.query.filter(
         db.func.date(Vente.date_rdv) == demain,
         Vente.statut.in_(["en_attente", "confirme"]),
     ).order_by(Vente.date_rdv).all()
-
-    # ── Objectif mensuel ──
     objectif = int(os.environ.get("OBJECTIF_MENSUEL", "20"))
     debut_mois = aujourd_hui.replace(day=1)
     ventes_ce_mois = Vente.query.filter(Vente.date_signature >= debut_mois).count()
     progress_objectif = min(100, round(ventes_ce_mois / objectif * 100)) if objectif else 0
-
-    # ── Niveau ──
     niveau = get_niveau_info(total)
-
-    # ── Records personnels ──
     ventes_par_jour = defaultdict(int)
     for (ds,) in db.session.query(Vente.date_signature).all():
         ventes_par_jour[ds] += 1
     record_jour = max(ventes_par_jour.values()) if ventes_par_jour else 0
-
     ventes_par_semaine = defaultdict(int)
     for d, nb in ventes_par_jour.items():
         lundi = d - timedelta(days=d.weekday())
         ventes_par_semaine[lundi] += nb
     record_semaine = max(ventes_par_semaine.values()) if ventes_par_semaine else 0
-
-    # ── Comparaison semaine ──
     lundi_cette_sem = aujourd_hui - timedelta(days=aujourd_hui.weekday())
     lundi_sem_prec  = lundi_cette_sem - timedelta(weeks=1)
     dim_sem_prec    = lundi_cette_sem - timedelta(days=1)
-    ventes_cette_sem = Vente.query.filter(
-        Vente.date_signature >= lundi_cette_sem
-    ).count()
+    ventes_cette_sem = Vente.query.filter(Vente.date_signature >= lundi_cette_sem).count()
     ventes_sem_prec = Vente.query.filter(
         Vente.date_signature >= lundi_sem_prec,
         Vente.date_signature <= dim_sem_prec,
     ).count()
     diff_semaine = ventes_cette_sem - ventes_sem_prec
-
     return render_template(
         "dashboard.html",
-        total=total,
-        rdv_demain=rdv_demain,
-        no_shows=no_shows,
-        installes=installes,
-        en_attente=en_attente,
-        taux_no_show=taux_no_show,
-        ventes_recentes=ventes_recentes,
-        rdv_demain_liste=rdv_demain_liste,
-        aujourd_hui=aujourd_hui,
-        objectif=objectif,
-        ventes_ce_mois=ventes_ce_mois,
-        progress_objectif=progress_objectif,
-        niveau=niveau,
-        record_jour=record_jour,
-        record_semaine=record_semaine,
-        ventes_cette_sem=ventes_cette_sem,
-        ventes_sem_prec=ventes_sem_prec,
-        diff_semaine=diff_semaine,
+        total=total, rdv_demain=rdv_demain, no_shows=no_shows,
+        installes=installes, en_attente=en_attente, taux_no_show=taux_no_show,
+        ventes_recentes=ventes_recentes, rdv_demain_liste=rdv_demain_liste,
+        aujourd_hui=aujourd_hui, objectif=objectif, ventes_ce_mois=ventes_ce_mois,
+        progress_objectif=progress_objectif, niveau=niveau, record_jour=record_jour,
+        record_semaine=record_semaine, ventes_cette_sem=ventes_cette_sem,
+        ventes_sem_prec=ventes_sem_prec, diff_semaine=diff_semaine,
     )
 
-
-# ---------------------------------------------------------------------------
-# Routes : Liste des ventes
-# ---------------------------------------------------------------------------
 
 @app.route("/ventes")
 @login_required
@@ -519,9 +438,7 @@ def liste_ventes():
     statut_filtre = request.args.get("statut", "")
     produit_filtre = request.args.get("produit", "")
     search = request.args.get("q", "").strip()
-
     query = Vente.query
-
     if statut_filtre:
         query = query.filter_by(statut=statut_filtre)
     if produit_filtre:
@@ -530,70 +447,39 @@ def liste_ventes():
         like = f"%{search}%"
         query = query.filter(
             db.or_(
-                Vente.prenom.ilike(like),
-                Vente.nom.ilike(like),
-                Vente.telephone.ilike(like),
-                Vente.adresse.ilike(like),
+                Vente.prenom.ilike(like), Vente.nom.ilike(like),
+                Vente.telephone.ilike(like), Vente.adresse.ilike(like),
             )
         )
-
     ventes = query.order_by(Vente.date_rdv.desc()).all()
-
     if request.args.get("export") == "csv":
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow([
-            "ID", "Prénom", "Nom", "Téléphone", "Adresse",
-            "Produit", "Réf. commande", "Date RDV", "Date signature", "Statut", "SMS envoyé", "Notes",
-        ])
+        writer.writerow(["ID", "Prénom", "Nom", "Téléphone", "Adresse",
+            "Produit", "Réf. commande", "Date RDV", "Date signature", "Statut", "SMS envoyé", "Notes"])
         for v in ventes:
-            writer.writerow([
-                v.id, v.prenom, v.nom, v.telephone, v.adresse,
-                v.produit,
-                v.reference or "",
-                v.date_rdv.strftime("%d/%m/%Y %H:%M"),
-                v.date_signature.strftime("%d/%m/%Y"),
-                v.statut_label,
-                "Oui" if v.sms_envoye else "Non",
-                v.notes or "",
-            ])
+            writer.writerow([v.id, v.prenom, v.nom, v.telephone, v.adresse, v.produit,
+                v.reference or "", v.date_rdv.strftime("%d/%m/%Y %H:%M"),
+                v.date_signature.strftime("%d/%m/%Y"), v.statut_label,
+                "Oui" if v.sms_envoye else "Non", v.notes or ""])
         output.seek(0)
-        return Response(
-            "﻿" + output.getvalue(),
-            mimetype="text/csv",
-            headers={"Content-Disposition": "attachment; filename=ventes_orange.csv"},
-        )
+        return Response("﻿" + output.getvalue(), mimetype="text/csv",
+            headers={"Content-Disposition": "attachment; filename=ventes_orange.csv"})
+    return render_template("ventes.html", ventes=ventes, statuts=STATUTS, produits=PRODUITS,
+        statut_filtre=statut_filtre, produit_filtre=produit_filtre, search=search)
 
-    return render_template(
-        "ventes.html",
-        ventes=ventes,
-        statuts=STATUTS,
-        produits=PRODUITS,
-        statut_filtre=statut_filtre,
-        produit_filtre=produit_filtre,
-        search=search,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Routes : Ajouter une vente
-# ---------------------------------------------------------------------------
 
 @app.route("/ajouter", methods=["GET", "POST"])
 @login_required
 def ajouter_vente():
     if request.method == "POST":
         try:
-            date_rdv_str = request.form["date_rdv"]
-            date_rdv = datetime.strptime(date_rdv_str, "%Y-%m-%dT%H:%M")
-
+            date_rdv = datetime.strptime(request.form["date_rdv"], "%Y-%m-%dT%H:%M")
             date_signature_str = request.form.get("date_signature")
             date_signature = (
                 datetime.strptime(date_signature_str, "%Y-%m-%d").date()
-                if date_signature_str
-                else date.today()
+                if date_signature_str else date.today()
             )
-
             vente = Vente(
                 prenom=request.form["prenom"].strip().capitalize(),
                 nom=request.form["nom"].strip().upper(),
@@ -601,8 +487,7 @@ def ajouter_vente():
                 adresse=request.form["adresse"].strip(),
                 produit=request.form["produit"],
                 reference=request.form.get("reference", "").strip() or None,
-                date_rdv=date_rdv,
-                date_signature=date_signature,
+                date_rdv=date_rdv, date_signature=date_signature,
                 statut=request.form.get("statut", "en_attente"),
                 notes=request.form.get("notes", "").strip() or None,
             )
@@ -612,25 +497,14 @@ def ajouter_vente():
             return redirect(url_for("dashboard"))
         except Exception as exc:
             flash(f"Erreur : {exc}", "danger")
+    return render_template("formulaire.html", vente=None, produits=PRODUITS,
+        statuts=STATUTS, titre="Nouvelle vente")
 
-    return render_template(
-        "formulaire.html",
-        vente=None,
-        produits=PRODUITS,
-        statuts=STATUTS,
-        titre="Nouvelle vente",
-    )
-
-
-# ---------------------------------------------------------------------------
-# Routes : Modifier une vente
-# ---------------------------------------------------------------------------
 
 @app.route("/modifier/<int:vente_id>", methods=["GET", "POST"])
 @login_required
 def modifier_vente(vente_id):
     vente = Vente.query.get_or_404(vente_id)
-
     if request.method == "POST":
         try:
             vente.prenom = request.form["prenom"].strip().capitalize()
@@ -639,39 +513,23 @@ def modifier_vente(vente_id):
             vente.adresse = request.form["adresse"].strip()
             vente.produit = request.form["produit"]
             vente.reference = request.form.get("reference", "").strip() or None
-            vente.date_rdv = datetime.strptime(
-                request.form["date_rdv"], "%Y-%m-%dT%H:%M"
-            )
+            vente.date_rdv = datetime.strptime(request.form["date_rdv"], "%Y-%m-%dT%H:%M")
             date_sig_str = request.form.get("date_signature")
             if date_sig_str:
-                vente.date_signature = datetime.strptime(
-                    date_sig_str, "%Y-%m-%d"
-                ).date()
+                vente.date_signature = datetime.strptime(date_sig_str, "%Y-%m-%d").date()
             ancien_statut = vente.statut
             vente.statut = request.form.get("statut", vente.statut)
             vente.notes = request.form.get("notes", "").strip() or None
-
             if vente.statut != ancien_statut and vente.statut in ("en_attente", "confirme"):
                 vente.sms_envoye = False
-
             db.session.commit()
             flash("Vente mise à jour.", "success")
             return redirect(url_for("liste_ventes"))
         except Exception as exc:
             flash(f"Erreur : {exc}", "danger")
+    return render_template("formulaire.html", vente=vente, produits=PRODUITS,
+        statuts=STATUTS, titre="Modifier la vente")
 
-    return render_template(
-        "formulaire.html",
-        vente=vente,
-        produits=PRODUITS,
-        statuts=STATUTS,
-        titre="Modifier la vente",
-    )
-
-
-# ---------------------------------------------------------------------------
-# Routes : Supprimer une vente
-# ---------------------------------------------------------------------------
 
 @app.route("/supprimer/<int:vente_id>", methods=["POST"])
 @login_required
@@ -683,10 +541,6 @@ def supprimer_vente(vente_id):
     return redirect(url_for("liste_ventes"))
 
 
-# ---------------------------------------------------------------------------
-# Routes : Changer le statut rapidement
-# ---------------------------------------------------------------------------
-
 @app.route("/statut/<int:vente_id>/<statut>", methods=["POST"])
 @login_required
 def changer_statut(vente_id, statut):
@@ -696,9 +550,7 @@ def changer_statut(vente_id, statut):
     vente = Vente.query.get_or_404(vente_id)
     vente.statut = statut
     db.session.commit()
-    flash(
-        f"{vente.prenom} {vente.nom} → {STATUTS[statut]}", "success"
-    )
+    flash(f"{vente.prenom} {vente.nom} → {STATUTS[statut]}", "success")
     return redirect(request.referrer or url_for("liste_ventes"))
 
 
@@ -707,46 +559,32 @@ def changer_statut(vente_id, statut):
 def stats():
     from collections import defaultdict
     from sqlalchemy import func as _func
-
     aujourd_hui = date.today()
-
-    # ── Ventes globales ──
     total_ventes = Vente.query.count()
     installes   = Vente.query.filter_by(statut="installe").count()
     no_shows    = Vente.query.filter_by(statut="no_show").count()
     annules     = Vente.query.filter_by(statut="annule").count()
     taux_installation = round(installes / total_ventes * 100) if total_ventes else 0
     taux_no_show      = round(no_shows  / total_ventes * 100) if total_ventes else 0
-
-    # ── Ventes par produit ──
     par_produit = (
         db.session.query(Vente.produit, _func.count(Vente.id))
-        .group_by(Vente.produit)
-        .order_by(_func.count(Vente.id).desc())
-        .all()
+        .group_by(Vente.produit).order_by(_func.count(Vente.id).desc()).all()
     )
-
-    # ── Ventes par jour de semaine ──
     JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
     par_jour = defaultdict(int)
     for (ds,) in db.session.query(Vente.date_signature).all():
         par_jour[ds.weekday()] += 1
     par_jour_data = [(JOURS[i], par_jour[i]) for i in range(7)]
     meilleur_jour = JOURS[max(range(7), key=lambda i: par_jour[i])] if total_ventes else "—"
-
-    # ── 4 dernières semaines ──
     semaines = []
     for i in range(4):
         lundi    = aujourd_hui - timedelta(days=aujourd_hui.weekday()) - timedelta(weeks=i)
         dimanche = lundi + timedelta(days=6)
         nb = Vente.query.filter(
-            Vente.date_signature >= lundi,
-            Vente.date_signature <= dimanche,
+            Vente.date_signature >= lundi, Vente.date_signature <= dimanche,
         ).count()
         semaines.append({"label": "Cette sem." if i == 0 else f"S-{i}", "nb": nb})
     semaines.reverse()
-
-    # ── Ce mois vs mois dernier ──
     debut_mois = aujourd_hui.replace(day=1)
     if debut_mois.month == 1:
         debut_mois_dernier = debut_mois.replace(year=debut_mois.year - 1, month=12)
@@ -754,11 +592,8 @@ def stats():
         debut_mois_dernier = debut_mois.replace(month=debut_mois.month - 1)
     ventes_ce_mois      = Vente.query.filter(Vente.date_signature >= debut_mois).count()
     ventes_mois_dernier = Vente.query.filter(
-        Vente.date_signature >= debut_mois_dernier,
-        Vente.date_signature < debut_mois,
+        Vente.date_signature >= debut_mois_dernier, Vente.date_signature < debut_mois,
     ).count()
-
-    # ── Prospection terrain ──
     total_portes      = Porte.query.count()
     nb_absent         = Porte.query.filter_by(resultat="absent").count()
     nb_cause          = Porte.query.filter_by(resultat="cause").count()
@@ -771,8 +606,6 @@ def stats():
     taux_entre_p      = round((nb_entre + nb_signe_terrain) / total_portes * 100) if total_portes else 0
     taux_signe_p      = round(nb_signe_terrain   / total_portes * 100) if total_portes else 0
     ratio_portes_vente = round(total_portes / total_ventes) if total_ventes and total_portes else None
-
-    # ── Moyennes de performance ──
     from sqlalchemy import func as _func2
     premiere_vente_date = db.session.query(_func2.min(Vente.date_signature)).scalar()
     nb_jours_actifs = db.session.query(
@@ -788,36 +621,19 @@ def stats():
     else:
         moyenne_par_jour = moyenne_par_semaine = moyenne_par_mois = 0
         nb_jours_actifs = 0
-
     return render_template("stats.html",
-        aujourd_hui=aujourd_hui,
-        total_ventes=total_ventes,
-        installes=installes,
-        no_shows=no_shows,
-        annules=annules,
-        taux_installation=taux_installation,
-        taux_no_show=taux_no_show,
-        par_produit=par_produit,
-        par_jour_data=par_jour_data,
-        meilleur_jour=meilleur_jour,
-        ventes_ce_mois=ventes_ce_mois,
-        ventes_mois_dernier=ventes_mois_dernier,
-        semaines=semaines,
-        total_portes=total_portes,
-        portes_ouvert=portes_ouvert,
-        portes_cause_total=portes_cause_total,
-        nb_entre=nb_entre,
-        nb_signe_terrain=nb_signe_terrain,
-        taux_ouverture=taux_ouverture,
-        taux_cause_p=taux_cause_p,
-        taux_entre_p=taux_entre_p,
-        taux_signe_p=taux_signe_p,
-        ratio_portes_vente=ratio_portes_vente,
-        moyenne_par_jour=moyenne_par_jour,
-        moyenne_par_semaine=moyenne_par_semaine,
-        moyenne_par_mois=moyenne_par_mois,
-        nb_jours_actifs=nb_jours_actifs,
-    )
+        aujourd_hui=aujourd_hui, total_ventes=total_ventes, installes=installes,
+        no_shows=no_shows, annules=annules, taux_installation=taux_installation,
+        taux_no_show=taux_no_show, par_produit=par_produit, par_jour_data=par_jour_data,
+        meilleur_jour=meilleur_jour, ventes_ce_mois=ventes_ce_mois,
+        ventes_mois_dernier=ventes_mois_dernier, semaines=semaines,
+        total_portes=total_portes, portes_ouvert=portes_ouvert,
+        portes_cause_total=portes_cause_total, nb_entre=nb_entre,
+        nb_signe_terrain=nb_signe_terrain, taux_ouverture=taux_ouverture,
+        taux_cause_p=taux_cause_p, taux_entre_p=taux_entre_p, taux_signe_p=taux_signe_p,
+        ratio_portes_vente=ratio_portes_vente, moyenne_par_jour=moyenne_par_jour,
+        moyenne_par_semaine=moyenne_par_semaine, moyenne_par_mois=moyenne_par_mois,
+        nb_jours_actifs=nb_jours_actifs)
 
 
 @app.route("/carte")
@@ -825,22 +641,12 @@ def stats():
 def carte():
     ventes = Vente.query.order_by(Vente.date_rdv.desc()).all()
     ventes_data = [
-        {
-            "id": v.id,
-            "nom": f"{v.prenom} {v.nom}",
-            "adresse": v.adresse,
-            "produit": v.produit,
-            "statut": v.statut,
-            "date_rdv": v.date_rdv.strftime("%d/%m/%Y"),
-        }
+        {"id": v.id, "nom": f"{v.prenom} {v.nom}", "adresse": v.adresse,
+         "produit": v.produit, "statut": v.statut, "date_rdv": v.date_rdv.strftime("%d/%m/%Y")}
         for v in ventes if v.adresse
     ]
     return render_template("carte.html", ventes=ventes_data)
 
-
-# ---------------------------------------------------------------------------
-# Routes : Envoyer un SMS manuellement
-# ---------------------------------------------------------------------------
 
 @app.route("/envoyer-sms/<int:vente_id>", methods=["POST"])
 @login_required
@@ -852,16 +658,9 @@ def envoyer_sms_manuel(vente_id):
         db.session.commit()
         flash(f"SMS envoyé à {vente.prenom} {vente.nom} ({vente.telephone}).", "success")
     else:
-        flash(
-            "Impossible d'envoyer le SMS. Vérifiez la config Twilio dans .env.",
-            "warning",
-        )
+        flash("Impossible d'envoyer le SMS. Vérifiez la config Twilio dans .env.", "warning")
     return redirect(request.referrer or url_for("liste_ventes"))
 
-
-# ---------------------------------------------------------------------------
-# Routes : Déclencher les rappels manuellement (test)
-# ---------------------------------------------------------------------------
 
 @app.route("/lancer-rappels", methods=["POST"])
 @login_required
@@ -871,25 +670,15 @@ def lancer_rappels():
     return redirect(url_for("dashboard"))
 
 
-# ---------------------------------------------------------------------------
-# Prompt Claude Vision (partagé entre scan photo et suivi URL)
-# ---------------------------------------------------------------------------
-
 _PROMPT_SCAN = (
     "Tu es un assistant pour un commercial Orange en porte-à-porte.\n"
     "Extrait les informations client de ce document "
     "(bon de commande, contrat, écran CRM Orange, suivi de commande, fiche client...).\n\n"
-    "Retourne UNIQUEMENT un objet JSON valide avec ces champs "
-    "(null si non trouvé) :\n"
+    "Retourne UNIQUEMENT un objet JSON valide avec ces champs (null si non trouvé) :\n"
     "{\n"
-    '  "prenom": "...",\n'
-    '  "nom": "...",\n'
-    '  "telephone": "...",\n'
-    '  "adresse": "...",\n'
-    '  "produit": "...",\n'
-    '  "reference": "...",\n'
-    '  "date_rdv": "YYYY-MM-DDTHH:MM",\n'
-    '  "statut": "..."\n'
+    '  "prenom": "...",\n  "nom": "...",\n  "telephone": "...",\n'
+    '  "adresse": "...",\n  "produit": "...",\n  "reference": "...",\n'
+    '  "date_rdv": "YYYY-MM-DDTHH:MM",\n  "statut": "..."\n'
     "}\n\n"
     "Règles :\n"
     "- nom/prenom : sur l'écran CRM Orange le nom complet est souvent dans la section 'client' "
@@ -923,35 +712,23 @@ _PROMPT_SCAN = (
 
 async def _playwright_screenshot(url: str, login: str, password: str) -> bytes:
     from playwright.async_api import async_playwright
-
     async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=True,
+        browser = await p.chromium.launch(headless=True,
             args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu",
-                  "--disable-setuid-sandbox", "--no-zygote"],
-        )
-        ctx = await browser.new_context(
-            viewport={"width": 1280, "height": 900},
-            user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/124.0.0.0 Safari/537.36"
-            ),
-        )
+                  "--disable-setuid-sandbox", "--no-zygote"])
+        ctx = await browser.new_context(viewport={"width": 1280, "height": 900},
+            user_agent=("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"))
         page = await ctx.new_page()
         try:
             await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             await page.wait_for_timeout(2000)
-
             for _ in range(3):
                 cur = page.url
-                if not any(kw in cur for kw in
-                           ["login", "auth", "sso", "signin", "prelogin", "portail", "rso."]):
+                if not any(kw in cur for kw in ["login","auth","sso","signin","prelogin","portail","rso."]):
                     break
-
-                for sel in ["#username", "#login", "#email",
-                            'input[name="username"]', 'input[name="login"]',
-                            'input[type="email"]:visible', 'input[type="text"]:visible']:
+                for sel in ["#username","#login","#email",'input[name="username"]',
+                            'input[name="login"]','input[type="email"]:visible','input[type="text"]:visible']:
                     try:
                         loc = page.locator(sel).first
                         if await loc.is_visible():
@@ -959,9 +736,7 @@ async def _playwright_screenshot(url: str, login: str, password: str) -> bytes:
                             break
                     except Exception:
                         continue
-
-                for sel in ["#password", 'input[name="password"]',
-                            'input[type="password"]:visible']:
+                for sel in ["#password",'input[name="password"]','input[type="password"]:visible']:
                     try:
                         loc = page.locator(sel).first
                         if await loc.is_visible():
@@ -969,9 +744,8 @@ async def _playwright_screenshot(url: str, login: str, password: str) -> bytes:
                             break
                     except Exception:
                         continue
-
-                for sel in ['button[type="submit"]', 'input[type="submit"]',
-                            "#bouton-valider", ".btn-connexion", ".btn-primary"]:
+                for sel in ['button[type="submit"]','input[type="submit"]',
+                            "#bouton-valider",".btn-connexion",".btn-primary"]:
                     try:
                         loc = page.locator(sel).first
                         if await loc.is_visible():
@@ -979,27 +753,18 @@ async def _playwright_screenshot(url: str, login: str, password: str) -> bytes:
                             break
                     except Exception:
                         continue
-
                 await page.wait_for_load_state("domcontentloaded", timeout=15000)
                 await page.wait_for_timeout(2000)
-
-            screenshot = await page.screenshot(
-                full_page=False, type="jpeg", quality=88
-            )
+            screenshot = await page.screenshot(full_page=False, type="jpeg", quality=88)
             return screenshot
         finally:
             await browser.close()
 
 
-# ---------------------------------------------------------------------------
-# Route : Scan bon de commande (Claude Vision)
-# ---------------------------------------------------------------------------
-
 @app.route("/scan-affiche", methods=["POST"])
 @login_required
 def scan_affiche():
     import base64, json as _json
-
     photo = request.files.get("photo")
     if not photo:
         return jsonify({"error": "Aucune photo reçue"}), 400
@@ -1019,14 +784,11 @@ def _claude_vision(img_b64: str, media_type: str, api_key: str):
     try:
         client = anthropic.Anthropic(api_key=api_key)
         msg = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=1024,
+            model="claude-sonnet-4-6", max_tokens=1024,
             messages=[{"role": "user", "content": [
-                {"type": "image", "source": {"type": "base64",
-                                              "media_type": media_type, "data": img_b64}},
+                {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": img_b64}},
                 {"type": "text", "text": _PROMPT_SCAN},
-            ]}],
-        )
+            ]}])
         txt = msg.content[0].text.strip()
         m = re.search(r'\{[\s\S]*\}', txt)
         txt = m.group() if m else txt
@@ -1041,23 +803,19 @@ def _claude_vision(img_b64: str, media_type: str, api_key: str):
 @login_required
 def track_commande():
     import base64
-
     url = request.form.get("url", "").strip()
     if not url:
         return jsonify({"error": "URL manquante."}), 400
     orange_login = os.environ.get("ORANGE_LOGIN", "")
     orange_password = os.environ.get("ORANGE_PASSWORD", "")
     if not orange_login or not orange_password:
-        return jsonify({"error":
-            "ORANGE_LOGIN et ORANGE_PASSWORD doivent être configurés dans les variables Railway."}), 500
+        return jsonify({"error": "ORANGE_LOGIN et ORANGE_PASSWORD doivent être configurés dans les variables Railway."}), 500
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         return jsonify({"error": "ANTHROPIC_API_KEY non configuré."}), 500
     try:
         loop = asyncio.new_event_loop()
-        screenshot = loop.run_until_complete(
-            _playwright_screenshot(url, orange_login, orange_password)
-        )
+        screenshot = loop.run_until_complete(_playwright_screenshot(url, orange_login, orange_password))
         loop.close()
         img_b64 = base64.standard_b64encode(screenshot).decode("utf-8")
         return _claude_vision(img_b64, "image/jpeg", api_key)
@@ -1065,18 +823,10 @@ def track_commande():
         return jsonify({"error": f"Erreur Playwright : {e}"}), 500
 
 
-# ---------------------------------------------------------------------------
-# Route offline (PWA fallback)
-# ---------------------------------------------------------------------------
-
 @app.route("/offline")
 def offline():
     return render_template("offline.html")
 
-
-# ---------------------------------------------------------------------------
-# Helpers : Prospection terrain
-# ---------------------------------------------------------------------------
 
 def _sort_numero(a):
     m = re.match(r'^(\d+)', str(a.numero).strip())
@@ -1093,17 +843,12 @@ def trouver_adresses_pour_rue(nom_session):
     return sorted(adresses, key=_sort_numero)
 
 
-# ---------------------------------------------------------------------------
-# Routes : Prospection terrain
-# ---------------------------------------------------------------------------
-
 @app.route("/prospection")
 @login_required
 def liste_prospection():
     sessions = (
         SessionProspection.query
-        .order_by(SessionProspection.date.desc(), SessionProspection.created_at.desc())
-        .all()
+        .order_by(SessionProspection.date.desc(), SessionProspection.created_at.desc()).all()
     )
     return render_template("prospection.html", sessions=sessions)
 
@@ -1129,19 +874,12 @@ def tap_session(session_id):
     if adresses:
         taps = {p.adresse_id: p.resultat for p in sess.portes if p.adresse_id is not None}
         adresses_data = [{
-            "id": a.id,
-            "rue": a.rue,
-            "numero": a.numero,
-            "complement": a.complement,
-            "ville": a.ville or "",
+            "id": a.id, "rue": a.rue, "numero": a.numero,
+            "complement": a.complement, "ville": a.ville or "",
             "resultat": taps.get(a.id),
         } for a in adresses]
-        return render_template(
-            "tap_adresses.html",
-            session=sess,
-            adresses=adresses_data,
-            resultats=RESULTATS_PORTE,
-        )
+        return render_template("tap_adresses.html", session=sess,
+            adresses=adresses_data, resultats=RESULTATS_PORTE)
     return render_template("tap.html", session=sess, resultats=RESULTATS_PORTE)
 
 
@@ -1155,11 +893,8 @@ def itineraire_session(session_id):
         return redirect(url_for("tap_session", session_id=session_id))
     taps = {p.adresse_id: p.resultat for p in sess.portes if p.adresse_id is not None}
     adresses_data = [{
-        "id": a.id,
-        "rue": a.rue,
-        "numero": a.numero,
-        "complement": a.complement or "",
-        "ville": a.ville or "",
+        "id": a.id, "rue": a.rue, "numero": a.numero,
+        "complement": a.complement or "", "ville": a.ville or "",
         "resultat": taps.get(a.id),
         "adresse_complete": f"{a.numero} {a.rue}{' ' + a.ville if a.ville else ''}",
     } for a in adresses]
@@ -1182,12 +917,7 @@ def tap_porte(session_id, resultat):
 @login_required
 def annuler_derniere_porte(session_id):
     sess = SessionProspection.query.get_or_404(session_id)
-    derniere = (
-        Porte.query
-        .filter_by(session_id=session_id)
-        .order_by(Porte.id.desc())
-        .first()
-    )
+    derniere = Porte.query.filter_by(session_id=session_id).order_by(Porte.id.desc()).first()
     if derniere:
         db.session.delete(derniere)
         db.session.commit()
@@ -1222,10 +952,6 @@ def supprimer_session(session_id):
     return redirect(url_for("liste_prospection"))
 
 
-# ---------------------------------------------------------------------------
-# Routes : Import fichier terrain
-# ---------------------------------------------------------------------------
-
 @app.route("/import", methods=["GET", "POST"])
 @login_required
 def importer_fichier():
@@ -1240,229 +966,148 @@ def importer_fichier():
         try:
             from openpyxl import load_workbook
             import tempfile, os as _os
-
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
             fichier.save(tmp.name)
             tmp.close()
             wb = load_workbook(tmp.name, data_only=True)
             _os.unlink(tmp.name)
             ws = wb.worksheets[0]
-
             def cell_str(c):
-                if c is None:
-                    return ""
+                if c is None: return ""
                 if hasattr(c, '__iter__') and not isinstance(c, str):
-                    try:
-                        return "".join(
-                            getattr(part, 'text', str(part)) for part in c
-                        ).strip()
-                    except Exception:
-                        pass
-                if isinstance(c, bool):
-                    return ""
-                if isinstance(c, float):
-                    return str(int(c)) if c.is_integer() else str(c)
-                if isinstance(c, int):
-                    return str(c)
+                    try: return "".join(getattr(p,'text',str(p)) for p in c).strip()
+                    except Exception: pass
+                if isinstance(c, bool): return ""
+                if isinstance(c, float): return str(int(c)) if c.is_integer() else str(c)
+                if isinstance(c, int): return str(c)
                 return str(c).strip()
-
             all_rows = [
                 [cell_str(c) for c in row]
                 for row in ws.iter_rows(min_row=1, values_only=True)
                 if any(c is not None for c in row)
             ]
             all_rows = [r for r in all_rows if any(v for v in r)]
-
             if not all_rows:
                 flash("Le fichier est vide.", "warning")
                 return redirect(url_for("importer_fichier"))
-
             n_cols = max(len(r) for r in all_rows)
-
-            HEADER_KW = {"rue", "adresse", "voie", "libelle", "libellé", "street",
-                         "num", "n°", "no", "porte", "portes", "numero", "numéro", "code",
-                         "nom de voie", "type voie", "type de voie", "libellé voie",
-                         "nom", "ville", "profil", "dep", "immeuble", "fermeture"}
+            HEADER_KW = {"rue","adresse","voie","libelle","libellé","street",
+                         "num","n°","no","porte","portes","numero","numéro","code",
+                         "nom de voie","type voie","type de voie","libellé voie",
+                         "nom","ville","profil","dep","immeuble","fermeture"}
             first_low = all_rows[0][0].lower().strip() if all_rows[0] else ""
             has_header = first_low in HEADER_KW
-
             header_row = all_rows[0] if has_header else None
             data_rows  = all_rows[1:] if has_header else all_rows
-
             if not data_rows:
                 flash("Aucune donnée trouvée dans le fichier.", "warning")
                 return redirect(url_for("importer_fichier"))
-
             PREFIXES_RUE = (
-                "rue ", "avenue ", "av ", "av. ", "boulevard ", "bd ", "bd.",
-                "chemin ", "impasse ", "allée ", "allee ", "passage ", "place ",
-                "route ", "voie ", "résidence ", "residence ", "cité ", "cite ",
-                "square ", "villa ", "domaine ", "lot ", "lieu-dit",
+                "rue ","avenue ","av ","av. ","boulevard ","bd ","bd.",
+                "chemin ","impasse ","allée ","allee ","passage ","place ",
+                "route ","voie ","résidence ","residence ","cité ","cite ",
+                "square ","villa ","domaine ","lot ","lieu-dit",
             )
             sample = data_rows[:50]
-            scores_rue = [0] * n_cols
-            scores_num = [0] * n_cols
-            scores_ville = [0] * n_cols
-
+            scores_rue = [0]*n_cols; scores_num = [0]*n_cols; scores_ville = [0]*n_cols
             col_unique_vals = [set() for _ in range(n_cols)]
-            col_zero_count  = [0] * n_cols
-
+            col_zero_count  = [0]*n_cols
             for row in sample:
-                for j in range(min(n_cols, len(row))):
+                for j in range(min(n_cols,len(row))):
                     v = row[j]
-                    if not v:
-                        continue
+                    if not v: continue
                     vl = v.lower()
-
-                    if any(vl.startswith(p) for p in PREFIXES_RUE):
-                        scores_rue[j] += 4
-                    elif " " in v and not v[0].isdigit() and "/" not in v and len(v) > 5:
-                        scores_rue[j] += 1
-
-                    if "/" not in v and re.match(r'^\d{1,4}\w{0,3}$', v):
-                        scores_num[j] += 4
-                    elif re.match(r'^\d+$', v) and len(v) <= 4:
-                        scores_num[j] += 2
-
-                    if re.match(r'^[A-Za-zÀ-ÿ\s\-\']+$', v) and 2 <= len(v) <= 35 and "/" not in v:
-                        if not any(vl.startswith(p) for p in PREFIXES_RUE):
-                            scores_ville[j] += 2
-
-                    if v == "0":
-                        col_zero_count[j] += 1
-                    else:
-                        col_unique_vals[j].add(v)
-
+                    if any(vl.startswith(p) for p in PREFIXES_RUE): scores_rue[j] += 4
+                    elif " " in v and not v[0].isdigit() and "/" not in v and len(v)>5: scores_rue[j] += 1
+                    if "/" not in v and re.match(r'^\d{1,4}\w{0,3}$',v): scores_num[j] += 4
+                    elif re.match(r'^\d+$',v) and len(v)<=4: scores_num[j] += 2
+                    if re.match(r'^[A-Za-zÀ-ÿ\s\-\']+$',v) and 2<=len(v)<=35 and "/" not in v:
+                        if not any(vl.startswith(p) for p in PREFIXES_RUE): scores_ville[j] += 2
+                    if v=="0": col_zero_count[j] += 1
+                    else: col_unique_vals[j].add(v)
             for j in range(n_cols):
-                n_unique = len(col_unique_vals[j])
-                n_zero   = col_zero_count[j]
-                total    = n_unique + n_zero
-                if total == 0:
-                    continue
-                if total > 3 and n_zero / total > 0.5:
-                    scores_num[j] = 0
-                if n_unique >= 3:
-                    scores_num[j] += n_unique * 2
-
-            col_rue = col_num = col_ville = None
+                n_unique=len(col_unique_vals[j]); n_zero=col_zero_count[j]; total=n_unique+n_zero
+                if total==0: continue
+                if total>3 and n_zero/total>0.5: scores_num[j]=0
+                if n_unique>=3: scores_num[j]+=n_unique*2
+            col_rue=col_num=col_ville=None
             if has_header and header_row:
-                for j, c in enumerate(header_row):
-                    cl = c.lower()
-                    if col_ville is None and any(w in cl for w in ("ville", "commune", "localit", "city")):
-                        col_ville = j
-                    if col_rue is None and "adresse" in cl and "mail" not in cl and "email" not in cl:
-                        col_rue = j
-                    if col_num is None and re.search(r'num[eé]ro\s*rue|n°\s*rue|num\s*rue', cl):
-                        col_num = j
-                for j, c in enumerate(header_row):
-                    cl = c.lower()
-                    if col_rue is None and any(w in cl for w in ("rue", "voie", "libelle", "libellé")):
-                        col_rue = j
-                    if col_num is None and any(w in cl for w in ("num", "n°", "numéro", "numero")):
-                        col_num = j
-                for j, c in enumerate(header_row):
-                    cl = c.lower()
-                    if col_rue is None and "nom" in cl:
-                        col_rue = j
-
-            if col_rue is None:
-                col_rue = max(range(n_cols), key=lambda j: scores_rue[j])
+                for j,c in enumerate(header_row):
+                    cl=c.lower()
+                    if col_ville is None and any(w in cl for w in ("ville","commune","localit","city")): col_ville=j
+                    if col_rue is None and "adresse" in cl and "mail" not in cl and "email" not in cl: col_rue=j
+                    if col_num is None and re.search(r'num[eé]ro\s*rue|n°\s*rue|num\s*rue',cl): col_num=j
+                for j,c in enumerate(header_row):
+                    cl=c.lower()
+                    if col_rue is None and any(w in cl for w in ("rue","voie","libelle","libellé")): col_rue=j
+                    if col_num is None and any(w in cl for w in ("num","n°","numéro","numero")): col_num=j
+                for j,c in enumerate(header_row):
+                    cl=c.lower()
+                    if col_rue is None and "nom" in cl: col_rue=j
+            if col_rue is None: col_rue=max(range(n_cols),key=lambda j:scores_rue[j])
             if col_num is None:
-                candidates = [j for j in range(n_cols) if j != col_rue]
-                col_num = max(candidates, key=lambda j: scores_num[j]) if candidates else (1 if col_rue == 0 else 0)
+                candidates=[j for j in range(n_cols) if j!=col_rue]
+                col_num=max(candidates,key=lambda j:scores_num[j]) if candidates else (1 if col_rue==0 else 0)
             if col_ville is None:
-                candidates_v = [j for j in range(n_cols) if j not in (col_rue, col_num)]
+                candidates_v=[j for j in range(n_cols) if j not in (col_rue,col_num)]
                 if candidates_v:
-                    best_v = max(candidates_v, key=lambda j: scores_ville[j])
-                    if scores_ville[best_v] >= 4:
-                        col_ville = best_v
-
-            nb_ok = nb_skip = 0
+                    best_v=max(candidates_v,key=lambda j:scores_ville[j])
+                    if scores_ville[best_v]>=4: col_ville=best_v
+            nb_ok=nb_skip=0
             for cells in data_rows:
-                rue_val = cells[col_rue] if col_rue < len(cells) else ""
-                num_val = cells[col_num] if col_num < len(cells) else ""
-
+                rue_val=cells[col_rue] if col_rue<len(cells) else ""
+                num_val=cells[col_num] if col_num<len(cells) else ""
                 if not num_val and rue_val:
-                    m = re.match(r'^(\d+\w*)\s+(.+)$', rue_val)
-                    if m:
-                        num_val, rue_val = m.group(1), m.group(2)
-
+                    m=re.match(r'^(\d+\w*)\s+(.+)$',rue_val)
+                    if m: num_val,rue_val=m.group(1),m.group(2)
                 if not rue_val or not num_val:
-                    nb_skip += 1
-                    continue
-
-                ville_val = cells[col_ville] if col_ville is not None and col_ville < len(cells) else None
-                ville_val = ville_val or None
-
-                db.session.add(AdresseImportee(rue=rue_val, numero=num_val, ville=ville_val))
-                nb_ok += 1
-
+                    nb_skip+=1; continue
+                ville_val=cells[col_ville] if col_ville is not None and col_ville<len(cells) else None
+                ville_val=ville_val or None
+                db.session.add(AdresseImportee(rue=rue_val,numero=num_val,ville=ville_val))
+                nb_ok+=1
             db.session.commit()
-            col_info = f"col {col_rue+1}=Rue, col {col_num+1}=Numéro"
-            if col_ville is not None:
-                col_info += f", col {col_ville+1}=Ville"
-            flash(
-                f"{nb_ok} adresses importées ({col_info}). {nb_skip} lignes ignorées.",
-                "success"
-            )
+            col_info=f"col {col_rue+1}=Rue, col {col_num+1}=Numéro"
+            if col_ville is not None: col_info+=f", col {col_ville+1}=Ville"
+            flash(f"{nb_ok} adresses importées ({col_info}). {nb_skip} lignes ignorées.","success")
             return redirect(url_for("importer_fichier"))
-
         except Exception as exc:
             db.session.rollback()
             flash(f"Erreur lors de l'import : {exc}", "danger")
-
     nb_adresses = AdresseImportee.query.count()
     from sqlalchemy import func as sa_func
     rues = (
-        db.session.query(
-            AdresseImportee.rue,
-            AdresseImportee.ville,
-            sa_func.count(AdresseImportee.id).label("nb")
-        )
+        db.session.query(AdresseImportee.rue, AdresseImportee.ville,
+            sa_func.count(AdresseImportee.id).label("nb"))
         .group_by(AdresseImportee.rue, AdresseImportee.ville)
-        .order_by(AdresseImportee.ville, AdresseImportee.rue)
-        .all()
+        .order_by(AdresseImportee.ville, AdresseImportee.rue).all()
     )
     villes = sorted(set(r.ville for r in rues if r.ville))
-    return render_template(
-        "import.html",
-        nb_adresses=nb_adresses,
-        nb_rues=len(rues),
-        nb_villes=len(villes),
-        rues=rues,
-    )
+    return render_template("import.html", nb_adresses=nb_adresses,
+        nb_rues=len(rues), nb_villes=len(villes), rues=rues)
 
 
 @app.route("/import/structure", methods=["POST"])
 @login_required
 def structure_fichier():
     fichier = request.files.get("fichier")
-    if not fichier:
-        return "Aucun fichier", 400
+    if not fichier: return "Aucun fichier", 400
     try:
         from openpyxl import load_workbook
         import tempfile, os as _os
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        fichier.save(tmp.name)
-        tmp.close()
-        wb = load_workbook(tmp.name, data_only=True)
-        _os.unlink(tmp.name)
+        fichier.save(tmp.name); tmp.close()
+        wb = load_workbook(tmp.name, data_only=True); _os.unlink(tmp.name)
         ws = wb.worksheets[0]
-
-        html = """<html><head><meta charset="utf-8">
-        <style>body{font-family:monospace;font-size:13px;padding:20px}
+        html = """<html><head><meta charset="utf-8"><style>body{font-family:monospace;font-size:13px;padding:20px}
         table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:4px 8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-        th{background:#eee}.row-num{color:#999;font-size:11px}.type{color:#07c;font-size:10px}</style>
-        </head><body>
+        th{background:#eee}.row-num{color:#999;font-size:11px}.type{color:#07c;font-size:10px}</style></head><body>
         <h3>Structure du fichier (15 premières lignes)</h3>
         <p>Chaque cellule montre : <strong>valeur</strong> <span style="color:#07c">type Python</span></p>
         <table><tr><th>#</th>"""
-
         first_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), [])
-        for j in range(len(first_row)):
-            html += f"<th>Col {j+1}</th>"
+        for j in range(len(first_row)): html += f"<th>Col {j+1}</th>"
         html += "</tr>"
-
         for i, row in enumerate(ws.iter_rows(min_row=1, max_row=15, values_only=True)):
             html += f"<tr><td class='row-num'>{i+1}</td>"
             for c in row:
@@ -1470,39 +1115,31 @@ def structure_fichier():
                 val = str(c)[:60] if c is not None else "(vide)"
                 html += f"<td>{val}<br><span class='type'>{typ}</span></td>"
             html += "</tr>"
-
         html += "</table></body></html>"
         return html
     except Exception as e:
         return f"Erreur : {e}", 500
 
 
-# ---------------------------------------------------------------------------
-# Routes : À repasser (absents du terrain)
-# ---------------------------------------------------------------------------
-
 @app.route("/repasser")
 @login_required
 def repasser():
     from collections import defaultdict
-
     rows_addr = (
         db.session.query(Porte, AdresseImportee, SessionProspection)
         .join(AdresseImportee, Porte.adresse_id == AdresseImportee.id)
         .join(SessionProspection, Porte.session_id == SessionProspection.id)
         .filter(Porte.resultat == "absent")
-        .order_by(SessionProspection.date.desc(), AdresseImportee.rue, AdresseImportee.numero)
-        .all()
+        .order_by(SessionProspection.date.desc(), AdresseImportee.rue, AdresseImportee.numero).all()
     )
     rows_libre = (
         db.session.query(Porte, SessionProspection)
         .join(SessionProspection, Porte.session_id == SessionProspection.id)
         .filter(Porte.resultat == "absent", Porte.adresse_id == None)
-        .order_by(SessionProspection.date.desc())
-        .all()
+        .order_by(SessionProspection.date.desc()).all()
     )
-    JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
-    MOIS = ["", "jan.", "fév.", "mars", "avr.", "mai", "juin", "juil.", "août", "sep.", "oct.", "nov.", "déc."]
+    JOURS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"]
+    MOIS = ["","jan.","fév.","mars","avr.","mai","juin","juil.","août","sep.","oct.","nov.","déc."]
     grouped = defaultdict(lambda: {"adresses": [], "libres": defaultdict(int)})
     for porte, adresse, sess in rows_addr:
         grouped[sess.date]["adresses"].append((porte, adresse, sess))
@@ -1516,21 +1153,12 @@ def repasser():
     return render_template("repasser.html", groupes=groupes, nb_total=nb_total)
 
 
-# ---------------------------------------------------------------------------
-# Routes : Rappels client
-# ---------------------------------------------------------------------------
-
 @app.route("/rappels")
 @login_required
 def liste_rappels():
     rappels = Rappel.query.filter_by(done=False).order_by(Rappel.created_at).all()
-    faits = (
-        Rappel.query.filter_by(done=True)
-        .order_by(Rappel.created_at.desc())
-        .limit(10).all()
-    )
-    return render_template("rappels.html", rappels=rappels, faits=faits,
-                           moments=MOMENTS_RAPPEL)
+    faits = Rappel.query.filter_by(done=True).order_by(Rappel.created_at.desc()).limit(10).all()
+    return render_template("rappels.html", rappels=rappels, faits=faits, moments=MOMENTS_RAPPEL)
 
 
 @app.route("/rappels/nouveau", methods=["POST"])
@@ -1576,10 +1204,6 @@ def effacer_adresses():
     return redirect(url_for("importer_fichier"))
 
 
-# ---------------------------------------------------------------------------
-# Backup / Restore base de données
-# ---------------------------------------------------------------------------
-
 @app.route("/backup-db")
 @login_required
 def backup_db():
@@ -1593,12 +1217,8 @@ def backup_db():
     if not os.path.exists(db_file):
         flash(f"Fichier base introuvable : {db_file}", "danger")
         return redirect(url_for("dashboard"))
-    return send_file(
-        db_file,
-        as_attachment=True,
-        download_name="ventes_backup.db",
-        mimetype="application/octet-stream",
-    )
+    return send_file(db_file, as_attachment=True, download_name="ventes_backup.db",
+        mimetype="application/octet-stream")
 
 
 @app.route("/restore-db", methods=["GET", "POST"])
@@ -1616,66 +1236,139 @@ def restore_db():
             flash("Restore non disponible (base non SQLite).", "danger")
             return redirect(url_for("dashboard"))
         db_file = "/" + m.group(1).lstrip("/")
-        if os.path.exists(db_file):
-            _shutil.copy2(db_file, db_file + ".bak")
+        if os.path.exists(db_file): _shutil.copy2(db_file, db_file + ".bak")
         tmp = _tempfile.NamedTemporaryFile(delete=False, suffix=".db")
-        f.save(tmp.name)
-        tmp.close()
+        f.save(tmp.name); tmp.close()
         _shutil.move(tmp.name, db_file)
         flash("Base restaurée. Redémarre le service Railway pour recharger les données.", "success")
         return redirect(url_for("dashboard"))
     return render_template("restore_db.html")
 
 
-# ---------------------------------------------------------------------------
-# Route : Mémoire / Historique
-# ---------------------------------------------------------------------------
-
 @app.route("/memoire")
 @login_required
 def memoire():
     from sqlalchemy import func
-
     sessions = SessionProspection.query.order_by(SessionProspection.date.desc()).all()
     ventes = Vente.query.order_by(Vente.date_signature.desc()).all()
-
     timeline = {}
     for s in sessions:
         d = s.date
-        if d not in timeline:
-            timeline[d] = {"portes": 0, "ventes": [], "zones": []}
+        if d not in timeline: timeline[d] = {"portes": 0, "ventes": [], "zones": []}
         timeline[d]["portes"] += s.total
-        if s.nom not in timeline[d]["zones"]:
-            timeline[d]["zones"].append(s.nom)
-
+        if s.nom not in timeline[d]["zones"]: timeline[d]["zones"].append(s.nom)
     for v in ventes:
         d = v.date_signature
-        if d not in timeline:
-            timeline[d] = {"portes": 0, "ventes": [], "zones": []}
+        if d not in timeline: timeline[d] = {"portes": 0, "ventes": [], "zones": []}
         timeline[d]["ventes"].append(v)
-
     timeline_sorted = sorted(timeline.items(), key=lambda x: x[0], reverse=True)
-
     villes = db.session.query(
-        AdresseImportee.ville,
-        func.count(AdresseImportee.id).label("nb"),
+        AdresseImportee.ville, func.count(AdresseImportee.id).label("nb"),
     ).filter(AdresseImportee.ville != None, AdresseImportee.ville != "").group_by(
         AdresseImportee.ville
     ).order_by(func.count(AdresseImportee.id).desc()).all()
-
     adresses_contrats = db.session.query(
-        Vente.adresse,
-        func.count(Vente.id).label("nb"),
+        Vente.adresse, func.count(Vente.id).label("nb"),
     ).filter(Vente.adresse != None, Vente.adresse != "").group_by(
         Vente.adresse
     ).order_by(func.count(Vente.id).desc()).all()
+    return render_template("memoire.html", timeline=timeline_sorted,
+        villes=villes, adresses_contrats=adresses_contrats)
 
-    return render_template(
-        "memoire.html",
-        timeline=timeline_sorted,
-        villes=villes,
-        adresses_contrats=adresses_contrats,
-    )
+
+# ---------------------------------------------------------------------------
+# Route temporaire : Seed données février 2026
+# ---------------------------------------------------------------------------
+
+@app.route("/admin/seed-fevrier")
+@login_required
+def seed_fevrier():
+    from datetime import date as _d, datetime as _dt, timedelta as _td
+    import random as _rnd
+    _rnd.seed(2026)
+    if Vente.query.filter(
+        Vente.date_signature >= _d(2026, 2, 1),
+        Vente.date_signature <= _d(2026, 2, 28),
+    ).count() > 0:
+        flash("Donnees fevrier deja injectees.", "warning")
+        return redirect(url_for("dashboard"))
+    PRENOMS = ["Mohamed", "Jean", "Pierre", "Ahmed", "Thomas", "Nicolas", "Karim", "David",
+               "Laurent", "Eric", "Rachid", "Patrick", "Stephane", "Bruno", "Marc", "Francois",
+               "Didier", "Sebastien", "Julien", "Anthony", "Christophe", "Alexandre", "Guillaume",
+               "Romain", "Maxime", "Sophie", "Marie", "Fatima", "Isabelle", "Nathalie", "Celine",
+               "Sandrine", "Amina", "Sylvie", "Virginie", "Aurelie", "Laure", "Karine", "Valerie",
+               "Nadege", "Leila", "Zineb", "Hafida", "Samia", "Karima", "Yasmine", "Sonia", "Nadia", "Aicha"]
+    NOMS = ["MARTIN", "BERNARD", "DUBOIS", "THOMAS", "ROBERT", "RICHARD", "PETIT", "DURAND",
+            "MOREAU", "SIMON", "LAURENT", "LEFEBVRE", "MICHEL", "GARCIA", "DAVID", "BERTRAND",
+            "ROUX", "VINCENT", "FOURNIER", "MOREL", "GIRARD", "ANDRE", "LEROY", "DUPONT",
+            "LAMBERT", "BONNET", "FRANCOIS", "MARTINEZ", "LEGRAND", "GARNIER", "FAURE", "ROUSSEAU",
+            "BLANC", "GUERIN", "MULLER", "HENRY", "ROUSSEL", "NICOLAS", "PERRIN", "MORIN",
+            "MATHIEU", "CLEMENT", "GAUTHIER", "DUMONT", "LOPEZ", "FONTAINE", "CHEVALIER", "ROBIN",
+            "MASSON"]
+    ADRESSES = [
+        "12 Rue Victor Hugo, Nimes", "45 Avenue Jean Jaures, Nimes", "8 Boulevard Gambetta, Nimes",
+        "23 Rue de la Paix, Nimes", "67 Allee des Roses, Nimes", "3 Impasse du Moulin, Nimes",
+        "15 Rue du Commerce, Nimes", "89 Avenue de la Republique, Nimes", "5 Chemin des Lilas, Nimes",
+        "34 Rue Saint-Nicolas, Nimes", "71 Boulevard du Marechal Foch, Ales", "18 Rue des Ecoles, Ales",
+        "56 Avenue Pierre Mendes France, Nimes", "9 Rue Emile Zola, Nimes", "42 Impasse des Acacias, Nimes",
+        "27 Rue du General de Gaulle, Uzes", "63 Avenue Francois Mitterrand, Nimes", "11 Rue Pasteur, Nimes",
+        "48 Boulevard Louis Blanc, Nimes", "7 Allee des Chenes, Nimes", "33 Rue Lamartine, Nimes",
+        "80 Avenue de la Gare, Ales", "16 Rue Voltaire, Nimes", "55 Boulevard Raspail, Nimes",
+        "22 Rue du 8 Mai 1945, Nimes", "41 Avenue de la Liberation, Lunel", "6 Impasse des Muriers, Nimes",
+        "77 Rue Jules Ferry, Nimes", "14 Chemin du Moulin, Nimes", "39 Rue Aristide Briand, Nimes",
+        "25 Rue de la Fontaine, Montpellier", "58 Avenue du Pont, Nimes", "13 Rue des Fleurs, Nimes",
+        "47 Allee des Pins, Nimes", "2 Rue de la Mairie, Vergeze", "31 Avenue des Sports, Nimes",
+        "64 Rue de la Croix, Nimes", "19 Impasse des Vignes, Nimes", "86 Boulevard de la Paix, Nimes",
+        "10 Rue Moliere, Nimes", "43 Avenue Carnot, Nimes", "28 Rue de l'Eglise, Saint-Gilles",
+        "72 Allee des Platanes, Nimes", "4 Chemin de la Colline, Nimes", "37 Rue Gambetta, Lunel",
+        "61 Boulevard National, Nimes", "24 Rue de la Liberte, Nimes", "50 Avenue du Midi, Nimes",
+        "17 Rue des Amandiers, Nimes",
+    ]
+    PRODUITS = (["Livebox Fibre"] * 29 + ["Livebox Up"] * 10 + ["Livebox Max"] * 7 + ["Serie Special Lite Fibre"] * 3)
+    DATA = [
+        ("2026-02-02", ["installe", "confirme", "confirme"]),
+        ("2026-02-03", ["installe", "confirme", "no_show"]),
+        ("2026-02-04", ["installe", "confirme"]),
+        ("2026-02-05", ["confirme", "confirme"]),
+        ("2026-02-06", ["confirme"]),
+        ("2026-02-09", ["installe", "installe", "confirme"]),
+        ("2026-02-10", ["installe", "installe", "annule"]),
+        ("2026-02-11", ["installe", "confirme", "confirme"]),
+        ("2026-02-12", ["installe", "confirme", "no_show"]),
+        ("2026-02-13", ["confirme", "confirme"]),
+        ("2026-02-16", ["installe", "installe", "confirme"]),
+        ("2026-02-17", ["installe", "installe", "confirme"]),
+        ("2026-02-18", ["installe", "installe", "no_show"]),
+        ("2026-02-19", ["installe", "confirme", "confirme"]),
+        ("2026-02-20", ["installe", "confirme", "no_show"]),
+        ("2026-02-23", ["installe", "confirme"]),
+        ("2026-02-24", ["installe", "confirme"]),
+        ("2026-02-25", ["confirme", "confirme"]),
+        ("2026-02-26", ["confirme", "no_show"]),
+        ("2026-02-27", ["confirme"]),
+    ]
+    heures = [8, 9, 10, 14, 15, 16]
+    idx = 0
+    for date_str, statuts in DATA:
+        sig = _d.fromisoformat(date_str)
+        for statut in statuts:
+            rdv = _dt.combine(sig + _td(days=_rnd.randint(4, 12)),
+                              _dt.min.time().replace(hour=heures[idx % len(heures)]))
+            db.session.add(Vente(
+                prenom=PRENOMS[idx % len(PRENOMS)],
+                nom=NOMS[idx % len(NOMS)],
+                telephone=f"+336{50000000 + idx:08d}",
+                adresse=ADRESSES[idx],
+                produit=PRODUITS[idx],
+                date_rdv=rdv,
+                date_signature=sig,
+                statut=statut,
+                sms_envoye=(statut not in ("en_attente", "confirme")),
+            ))
+            idx += 1
+    db.session.commit()
+    flash("49 ventes de fevrier 2026 injectees avec succes !", "success")
+    return redirect(url_for("dashboard"))
 
 
 # ---------------------------------------------------------------------------
@@ -1684,21 +1377,12 @@ def memoire():
 
 def creer_scheduler():
     scheduler = BackgroundScheduler()
-    scheduler.add_job(
-        envoyer_rappels_du_jour,
-        trigger="cron", hour=9, minute=0,
-        id="rappels_sms", replace_existing=True,
-    )
-    scheduler.add_job(
-        envoyer_sms_rappels_clients,
-        trigger="cron", hour=12, minute=30,
-        id="sms_rappels_pause", replace_existing=True,
-    )
-    scheduler.add_job(
-        envoyer_sms_rappels_clients,
-        trigger="cron", hour=19, minute=0,
-        id="sms_rappels_soir", replace_existing=True,
-    )
+    scheduler.add_job(envoyer_rappels_du_jour, trigger="cron", hour=9, minute=0,
+        id="rappels_sms", replace_existing=True)
+    scheduler.add_job(envoyer_sms_rappels_clients, trigger="cron", hour=12, minute=30,
+        id="sms_rappels_pause", replace_existing=True)
+    scheduler.add_job(envoyer_sms_rappels_clients, trigger="cron", hour=19, minute=0,
+        id="sms_rappels_soir", replace_existing=True)
     scheduler.start()
     return scheduler
 
