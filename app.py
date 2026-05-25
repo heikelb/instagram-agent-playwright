@@ -16,8 +16,10 @@ load_dotenv()
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
-# Chemin DB : utilise le volume Railway si configuré, sinon local
 _db_path = os.environ.get("DATABASE_URL", "sqlite:////data/ventes.db")
+# Railway PostgreSQL URLs commencent par postgres:// — SQLAlchemy requiert postgresql://
+if _db_path.startswith("postgres://"):
+    _db_path = _db_path.replace("postgres://", "postgresql://", 1)
 app.config["SQLALCHEMY_DATABASE_URI"] = _db_path
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -126,7 +128,6 @@ class Vente(db.Model):
 # Modèles prospection terrain
 # ---------------------------------------------------------------------------
 
-# Résultats possibles à chaque porte
 RESULTATS_PORTE = {
     "absent":  {"label": "ABSENT",  "emoji": "🔘", "color": "#6c757d"},
     "refus":   {"label": "REFUS",   "emoji": "❌", "color": "#dc3545"},
@@ -140,7 +141,7 @@ class SessionProspection(db.Model):
     __tablename__ = "sessions_prospection"
 
     id = db.Column(db.Integer, primary_key=True)
-    nom = db.Column(db.String(200), nullable=False)   # ex: "Rue de la Paix, Paris 2"
+    nom = db.Column(db.String(200), nullable=False)
     date = db.Column(db.Date, nullable=False, default=date.today)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     portes = db.relationship(
@@ -264,7 +265,6 @@ class Rappel(db.Model):
 # ---------------------------------------------------------------------------
 
 def envoyer_sms(telephone: str, message: str) -> bool:
-    """Envoie un SMS via Twilio. Retourne True si succès."""
     sid = os.environ.get("TWILIO_ACCOUNT_SID")
     token = os.environ.get("TWILIO_AUTH_TOKEN")
     from_number = os.environ.get("TWILIO_PHONE_NUMBER")
@@ -296,7 +296,6 @@ def construire_message_rappel(vente: Vente) -> str:
 
 
 def envoyer_sms_rappels_clients():
-    """Tâche planifiée : envoie au commercial ses rappels clients en attente."""
     with app.app_context():
         mon_tel = os.environ.get("MON_TELEPHONE", "")
         if not mon_tel:
@@ -313,7 +312,6 @@ def envoyer_sms_rappels_clients():
 
 
 def envoyer_rappels_du_jour():
-    """Tâche planifiée : envoie les rappels SMS pour les RDV du lendemain."""
     with app.app_context():
         demain = date.today() + timedelta(days=1)
         ventes = Vente.query.filter(
@@ -357,17 +355,14 @@ def inject_nav_badges():
 @login_required
 def recap_semaine(offset_semaines=0):
     aujourd_hui = date.today()
-    # Lundi de la semaine cible
     lundi = aujourd_hui - timedelta(days=aujourd_hui.weekday()) + timedelta(weeks=offset_semaines)
     dimanche = lundi + timedelta(days=6)
 
-    # Toutes les ventes de la semaine
     ventes_semaine = Vente.query.filter(
         Vente.date_signature >= lundi,
         Vente.date_signature <= dimanche,
     ).order_by(Vente.date_signature.asc(), Vente.created_at.asc()).all()
 
-    # Grouper par jour
     jours = []
     noms_jours = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
     for i in range(7):
@@ -380,7 +375,6 @@ def recap_semaine(offset_semaines=0):
             "is_today": jour == aujourd_hui,
         })
 
-    # Stats globales de la semaine
     par_produit = {}
     for v in ventes_semaine:
         par_produit[v.produit] = par_produit.get(v.produit, 0) + 1
@@ -470,7 +464,6 @@ def liste_ventes():
 
     ventes = query.order_by(Vente.date_rdv.desc()).all()
 
-    # Export CSV
     if request.args.get("export") == "csv":
         output = io.StringIO()
         writer = csv.writer(output)
@@ -491,7 +484,7 @@ def liste_ventes():
             ])
         output.seek(0)
         return Response(
-            "﻿" + output.getvalue(),  # BOM pour Excel
+            "﻿" + output.getvalue(),
             mimetype="text/csv",
             headers={"Content-Disposition": "attachment; filename=ventes_orange.csv"},
         )
@@ -583,7 +576,6 @@ def modifier_vente(vente_id):
             vente.statut = request.form.get("statut", vente.statut)
             vente.notes = request.form.get("notes", "").strip() or None
 
-            # Si le statut change, on reset l'envoi SMS si besoin
             if vente.statut != ancien_statut and vente.statut in ("en_attente", "confirme"):
                 vente.sms_envoye = False
 
@@ -633,6 +625,124 @@ def changer_statut(vente_id, statut):
         f"{vente.prenom} {vente.nom} → {STATUTS[statut]}", "success"
     )
     return redirect(request.referrer or url_for("liste_ventes"))
+
+
+@app.route("/stats")
+@login_required
+def stats():
+    from collections import defaultdict
+    from sqlalchemy import func as _func
+
+    aujourd_hui = date.today()
+
+    # ── Ventes globales ──
+    total_ventes = Vente.query.count()
+    installes   = Vente.query.filter_by(statut="installe").count()
+    no_shows    = Vente.query.filter_by(statut="no_show").count()
+    annules     = Vente.query.filter_by(statut="annule").count()
+    taux_installation = round(installes / total_ventes * 100) if total_ventes else 0
+    taux_no_show      = round(no_shows  / total_ventes * 100) if total_ventes else 0
+
+    # ── Ventes par produit ──
+    par_produit = (
+        db.session.query(Vente.produit, _func.count(Vente.id))
+        .group_by(Vente.produit)
+        .order_by(_func.count(Vente.id).desc())
+        .all()
+    )
+
+    # ── Ventes par jour de semaine ──
+    JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
+    par_jour = defaultdict(int)
+    for (ds,) in db.session.query(Vente.date_signature).all():
+        par_jour[ds.weekday()] += 1
+    par_jour_data = [(JOURS[i], par_jour[i]) for i in range(7)]
+    meilleur_jour = JOURS[max(range(7), key=lambda i: par_jour[i])] if total_ventes else "—"
+
+    # ── 4 dernières semaines ──
+    semaines = []
+    for i in range(4):
+        lundi    = aujourd_hui - timedelta(days=aujourd_hui.weekday()) - timedelta(weeks=i)
+        dimanche = lundi + timedelta(days=6)
+        nb = Vente.query.filter(
+            Vente.date_signature >= lundi,
+            Vente.date_signature <= dimanche,
+        ).count()
+        semaines.append({"label": "Cette sem." if i == 0 else f"S-{i}", "nb": nb})
+    semaines.reverse()
+
+    # ── Ce mois vs mois dernier ──
+    debut_mois = aujourd_hui.replace(day=1)
+    if debut_mois.month == 1:
+        debut_mois_dernier = debut_mois.replace(year=debut_mois.year - 1, month=12)
+    else:
+        debut_mois_dernier = debut_mois.replace(month=debut_mois.month - 1)
+    ventes_ce_mois      = Vente.query.filter(Vente.date_signature >= debut_mois).count()
+    ventes_mois_dernier = Vente.query.filter(
+        Vente.date_signature >= debut_mois_dernier,
+        Vente.date_signature < debut_mois,
+    ).count()
+
+    # ── Prospection terrain ──
+    total_portes      = Porte.query.count()
+    nb_absent         = Porte.query.filter_by(resultat="absent").count()
+    nb_cause          = Porte.query.filter_by(resultat="cause").count()
+    nb_entre          = Porte.query.filter_by(resultat="entre").count()
+    nb_signe_terrain  = Porte.query.filter_by(resultat="signe").count()
+    portes_ouvert      = total_portes - nb_absent
+    portes_cause_total = nb_cause + nb_entre + nb_signe_terrain
+    taux_ouverture    = round(portes_ouvert      / total_portes * 100) if total_portes else 0
+    taux_cause_p      = round(portes_cause_total / total_portes * 100) if total_portes else 0
+    taux_entre_p      = round((nb_entre + nb_signe_terrain) / total_portes * 100) if total_portes else 0
+    taux_signe_p      = round(nb_signe_terrain   / total_portes * 100) if total_portes else 0
+    ratio_portes_vente = round(total_portes / total_ventes) if total_ventes and total_portes else None
+
+    # ── Moyennes de performance ──
+    from sqlalchemy import func as _func2
+    premiere_vente_date = db.session.query(_func2.min(Vente.date_signature)).scalar()
+    nb_jours_actifs = db.session.query(
+        _func2.count(_func2.distinct(Vente.date_signature))
+    ).scalar() or 0
+    if premiere_vente_date and total_ventes:
+        nb_jours_calendrier = (aujourd_hui - premiere_vente_date).days + 1
+        nb_semaines_calendrier = max(1, round(nb_jours_calendrier / 7))
+        nb_mois_calendrier = max(1, round(nb_jours_calendrier / 30))
+        moyenne_par_jour    = round(total_ventes / nb_jours_actifs, 1) if nb_jours_actifs else 0
+        moyenne_par_semaine = round(total_ventes / nb_semaines_calendrier, 1)
+        moyenne_par_mois    = round(total_ventes / nb_mois_calendrier, 1)
+    else:
+        moyenne_par_jour = moyenne_par_semaine = moyenne_par_mois = 0
+        nb_jours_actifs = 0
+
+    return render_template("stats.html",
+        aujourd_hui=aujourd_hui,
+        total_ventes=total_ventes,
+        installes=installes,
+        no_shows=no_shows,
+        annules=annules,
+        taux_installation=taux_installation,
+        taux_no_show=taux_no_show,
+        par_produit=par_produit,
+        par_jour_data=par_jour_data,
+        meilleur_jour=meilleur_jour,
+        ventes_ce_mois=ventes_ce_mois,
+        ventes_mois_dernier=ventes_mois_dernier,
+        semaines=semaines,
+        total_portes=total_portes,
+        portes_ouvert=portes_ouvert,
+        portes_cause_total=portes_cause_total,
+        nb_entre=nb_entre,
+        nb_signe_terrain=nb_signe_terrain,
+        taux_ouverture=taux_ouverture,
+        taux_cause_p=taux_cause_p,
+        taux_entre_p=taux_entre_p,
+        taux_signe_p=taux_signe_p,
+        ratio_portes_vente=ratio_portes_vente,
+        moyenne_par_jour=moyenne_par_jour,
+        moyenne_par_semaine=moyenne_par_semaine,
+        moyenne_par_mois=moyenne_par_mois,
+        nb_jours_actifs=nb_jours_actifs,
+    )
 
 
 @app.route("/carte")
@@ -687,7 +797,6 @@ def lancer_rappels():
 
 
 # ---------------------------------------------------------------------------
-# ---------------------------------------------------------------------------
 # Prompt Claude Vision (partagé entre scan photo et suivi URL)
 # ---------------------------------------------------------------------------
 
@@ -720,7 +829,7 @@ _PROMPT_SCAN = (
     "Ignorer 'code d'accès Suivi Cde'.\n"
     "- date_rdv : cherche dans cet ordre :\n"
     "  1. 'Rdv d'installation' ou 'RDV installation' (ignorer si marqué 'supprimé' ou 'annulé')\n"
-    "  2. 'Date de livraison initiale', 'date de livraison', 'date d'activation'\n"
+    "  2. 'Date de livraison initiale', 'date de livraison', 'date d\'activation'\n"
     "  3. 'créneau', 'intervention prévue', 'date de pose'\n"
     "  Formats français à convertir en YYYY-MM-DDTHH:MM :\n"
     "  'le jeudi 25 juin' → déduire l'année depuis les autres dates du document → '2026-06-25T08:00'\n"
@@ -738,7 +847,6 @@ _PROMPT_SCAN = (
 
 
 async def _playwright_screenshot(url: str, login: str, password: str) -> bytes:
-    """Navigue vers l'URL Orange (avec login SSO si besoin) et retourne un screenshot."""
     from playwright.async_api import async_playwright
 
     async with async_playwright() as p:
@@ -760,14 +868,12 @@ async def _playwright_screenshot(url: str, login: str, password: str) -> bytes:
             await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             await page.wait_for_timeout(2000)
 
-            # Boucle SSO (max 3 tentatives : identifiant, puis mot de passe)
             for _ in range(3):
                 cur = page.url
                 if not any(kw in cur for kw in
                            ["login", "auth", "sso", "signin", "prelogin", "portail", "rso."]):
                     break
 
-                # Remplir identifiant (email / numéro Orange)
                 for sel in ["#username", "#login", "#email",
                             'input[name="username"]', 'input[name="login"]',
                             'input[type="email"]:visible', 'input[type="text"]:visible']:
@@ -779,7 +885,6 @@ async def _playwright_screenshot(url: str, login: str, password: str) -> bytes:
                     except Exception:
                         continue
 
-                # Remplir mot de passe si déjà visible
                 for sel in ["#password", 'input[name="password"]',
                             'input[type="password"]:visible']:
                     try:
@@ -790,7 +895,6 @@ async def _playwright_screenshot(url: str, login: str, password: str) -> bytes:
                     except Exception:
                         continue
 
-                # Cliquer sur le bouton de validation
                 for sel in ['button[type="submit"]', 'input[type="submit"]',
                             "#bouton-valider", ".btn-connexion", ".btn-primary"]:
                     try:
@@ -804,7 +908,6 @@ async def _playwright_screenshot(url: str, login: str, password: str) -> bytes:
                 await page.wait_for_load_state("domcontentloaded", timeout=15000)
                 await page.wait_for_timeout(2000)
 
-            # Screenshot de la page de suivi
             screenshot = await page.screenshot(
                 full_page=False, type="jpeg", quality=88
             )
@@ -906,7 +1009,6 @@ def _sort_numero(a):
 
 
 def trouver_adresses_pour_rue(nom_session):
-    """Retourne les AdresseImportee correspondant au nom de session (matching souple)."""
     nom_norm = nom_session.lower().strip()
     rues = [r[0] for r in db.session.query(AdresseImportee.rue).distinct().all()]
     matching = [r for r in rues if r.lower() in nom_norm or nom_norm in r.lower()]
@@ -968,6 +1070,27 @@ def tap_session(session_id):
     return render_template("tap.html", session=sess, resultats=RESULTATS_PORTE)
 
 
+@app.route("/prospection/<int:session_id>/itineraire")
+@login_required
+def itineraire_session(session_id):
+    sess = SessionProspection.query.get_or_404(session_id)
+    adresses = trouver_adresses_pour_rue(sess.nom)
+    if not adresses:
+        flash("Cette session n'a pas d'adresses importées.", "warning")
+        return redirect(url_for("tap_session", session_id=session_id))
+    taps = {p.adresse_id: p.resultat for p in sess.portes if p.adresse_id is not None}
+    adresses_data = [{
+        "id": a.id,
+        "rue": a.rue,
+        "numero": a.numero,
+        "complement": a.complement or "",
+        "ville": a.ville or "",
+        "resultat": taps.get(a.id),
+        "adresse_complete": f"{a.numero} {a.rue}{' ' + a.ville if a.ville else ''}",
+    } for a in adresses]
+    return render_template("itineraire.html", session=sess, adresses=adresses_data)
+
+
 @app.route("/prospection/<int:session_id>/tap/<resultat>", methods=["POST"])
 @login_required
 def tap_porte(session_id, resultat):
@@ -1003,7 +1126,6 @@ def tap_adresse_specifique(session_id, adresse_id, resultat):
         return jsonify({"error": "Résultat invalide"}), 400
     sess = SessionProspection.query.get_or_404(session_id)
     AdresseImportee.query.get_or_404(adresse_id)
-    # Upsert: one Porte entry per (session, adresse)
     existing = Porte.query.filter_by(session_id=session_id, adresse_id=adresse_id).first()
     if existing:
         existing.resultat = resultat
@@ -1052,10 +1174,8 @@ def importer_fichier():
             ws = wb.worksheets[0]
 
             def cell_str(c):
-                """Convertit n'importe quelle valeur openpyxl en string propre."""
                 if c is None:
                     return ""
-                # CellRichText ou objet itérable non-string
                 if hasattr(c, '__iter__') and not isinstance(c, str):
                     try:
                         return "".join(
@@ -1071,7 +1191,6 @@ def importer_fichier():
                     return str(c)
                 return str(c).strip()
 
-            # Lire toutes les lignes non-vides
             all_rows = [
                 [cell_str(c) for c in row]
                 for row in ws.iter_rows(min_row=1, values_only=True)
@@ -1085,7 +1204,6 @@ def importer_fichier():
 
             n_cols = max(len(r) for r in all_rows)
 
-            # ── Détecter en-tête ────────────────────────────────────────────
             HEADER_KW = {"rue", "adresse", "voie", "libelle", "libellé", "street",
                          "num", "n°", "no", "porte", "portes", "numero", "numéro", "code",
                          "nom de voie", "type voie", "type de voie", "libellé voie",
@@ -1100,7 +1218,6 @@ def importer_fichier():
                 flash("Aucune donnée trouvée dans le fichier.", "warning")
                 return redirect(url_for("importer_fichier"))
 
-            # ── Détecter colonnes par CONTENU (analyse des 50 premières lignes) ──
             PREFIXES_RUE = (
                 "rue ", "avenue ", "av ", "av. ", "boulevard ", "bd ", "bd.",
                 "chemin ", "impasse ", "allée ", "allee ", "passage ", "place ",
@@ -1112,7 +1229,6 @@ def importer_fichier():
             scores_num = [0] * n_cols
             scores_ville = [0] * n_cols
 
-            # Diversité par colonne (valeurs uniques non-nulles non-zéro)
             col_unique_vals = [set() for _ in range(n_cols)]
             col_zero_count  = [0] * n_cols
 
@@ -1123,72 +1239,57 @@ def importer_fichier():
                         continue
                     vl = v.lower()
 
-                    # Score rue
                     if any(vl.startswith(p) for p in PREFIXES_RUE):
                         scores_rue[j] += 4
                     elif " " in v and not v[0].isdigit() and "/" not in v and len(v) > 5:
                         scores_rue[j] += 1
 
-                    # Score numéro : entier court, pas de /
                     if "/" not in v and re.match(r'^\d{1,4}\w{0,3}$', v):
                         scores_num[j] += 4
                     elif re.match(r'^\d+$', v) and len(v) <= 4:
                         scores_num[j] += 2
 
-                    # Score ville : alphabétique, sans préfixe de voie, 2-35 chars
                     if re.match(r'^[A-Za-zÀ-ÿ\s\-\']+$', v) and 2 <= len(v) <= 35 and "/" not in v:
                         if not any(vl.startswith(p) for p in PREFIXES_RUE):
                             scores_ville[j] += 2
 
-                    # Diversité
                     if v == "0":
                         col_zero_count[j] += 1
                     else:
                         col_unique_vals[j].add(v)
 
-            # Bonus de diversité : une colonne avec plein de valeurs différentes
-            # est très probablement la vraie colonne de numéros
             for j in range(n_cols):
                 n_unique = len(col_unique_vals[j])
                 n_zero   = col_zero_count[j]
                 total    = n_unique + n_zero
                 if total == 0:
                     continue
-                # Pénaliser fortement les colonnes majoritairement à 0
                 if total > 3 and n_zero / total > 0.5:
                     scores_num[j] = 0
-                # Bonus diversité pour les colonnes avec plusieurs valeurs distinctes
                 if n_unique >= 3:
                     scores_num[j] += n_unique * 2
 
-            # Priorité 1 : colonnes nommées dans l'en-tête (3 passes par spécificité)
             col_rue = col_num = col_ville = None
             if has_header and header_row:
-                # Pass 1 — termes très spécifiques
                 for j, c in enumerate(header_row):
                     cl = c.lower()
                     if col_ville is None and any(w in cl for w in ("ville", "commune", "localit", "city")):
                         col_ville = j
-                    # "adresse" seul (pas "adresse mail" etc.)
                     if col_rue is None and "adresse" in cl and "mail" not in cl and "email" not in cl:
                         col_rue = j
-                    # "numéro rue" / "numero rue" / "n° rue" → très spécifique
                     if col_num is None and re.search(r'num[eé]ro\s*rue|n°\s*rue|num\s*rue', cl):
                         col_num = j
-                # Pass 2 — termes génériques
                 for j, c in enumerate(header_row):
                     cl = c.lower()
                     if col_rue is None and any(w in cl for w in ("rue", "voie", "libelle", "libellé")):
                         col_rue = j
                     if col_num is None and any(w in cl for w in ("num", "n°", "numéro", "numero")):
                         col_num = j
-                # Pass 3 — fallback
                 for j, c in enumerate(header_row):
                     cl = c.lower()
                     if col_rue is None and "nom" in cl:
                         col_rue = j
 
-            # Priorité 2 : colonnes détectées par contenu
             if col_rue is None:
                 col_rue = max(range(n_cols), key=lambda j: scores_rue[j])
             if col_num is None:
@@ -1201,13 +1302,11 @@ def importer_fichier():
                     if scores_ville[best_v] >= 4:
                         col_ville = best_v
 
-            # ── Importer ────────────────────────────────────────────────────
             nb_ok = nb_skip = 0
             for cells in data_rows:
                 rue_val = cells[col_rue] if col_rue < len(cells) else ""
                 num_val = cells[col_num] if col_num < len(cells) else ""
 
-                # Cas colonne unique "12 Rue Victor Hugo"
                 if not num_val and rue_val:
                     m = re.match(r'^(\d+\w*)\s+(.+)$', rue_val)
                     if m:
@@ -1262,7 +1361,6 @@ def importer_fichier():
 @app.route("/import/structure", methods=["POST"])
 @login_required
 def structure_fichier():
-    """Affiche les premières lignes brutes du fichier pour diagnostiquer le format."""
     fichier = request.files.get("fichier")
     if not fichier:
         return "Aucun fichier", 400
@@ -1313,7 +1411,6 @@ def structure_fichier():
 def repasser():
     from collections import defaultdict
 
-    # Absents avec adresse spécifique (sessions avec liste importée)
     rows_addr = (
         db.session.query(Porte, AdresseImportee, SessionProspection)
         .join(AdresseImportee, Porte.adresse_id == AdresseImportee.id)
@@ -1322,8 +1419,6 @@ def repasser():
         .order_by(SessionProspection.date.desc(), AdresseImportee.rue, AdresseImportee.numero)
         .all()
     )
-
-    # Absents sans adresse précise (mode compteur libre)
     rows_libre = (
         db.session.query(Porte, SessionProspection)
         .join(SessionProspection, Porte.session_id == SessionProspection.id)
@@ -1331,21 +1426,17 @@ def repasser():
         .order_by(SessionProspection.date.desc())
         .all()
     )
-
     JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
     MOIS = ["", "jan.", "fév.", "mars", "avr.", "mai", "juin", "juil.", "août", "sep.", "oct.", "nov.", "déc."]
-
     grouped = defaultdict(lambda: {"adresses": [], "libres": defaultdict(int)})
     for porte, adresse, sess in rows_addr:
         grouped[sess.date]["adresses"].append((porte, adresse, sess))
     for porte, sess in rows_libre:
         grouped[sess.date]["libres"][sess.nom] += 1
-
     groupes = []
     for d in sorted(grouped.keys(), reverse=True):
         label = f"{JOURS[d.weekday()]} {d.day} {MOIS[d.month]} {d.year}"
         groupes.append((label, grouped[d]["adresses"], dict(grouped[d]["libres"])))
-
     nb_total = len(rows_addr) + len(rows_libre)
     return render_template("repasser.html", groupes=groupes, nb_total=nb_total)
 
@@ -1417,10 +1508,8 @@ def effacer_adresses():
 @app.route("/backup-db")
 @login_required
 def backup_db():
-    """Télécharge la base SQLite — pour migrer les données vers un autre service."""
     import re as _re
     db_uri = app.config["SQLALCHEMY_DATABASE_URI"]
-    # Extraire le chemin depuis sqlite:////... ou sqlite:///...
     m = _re.match(r"sqlite:///+(.*)", db_uri)
     if not m:
         flash("Backup non disponible (base non SQLite).", "danger")
@@ -1440,7 +1529,6 @@ def backup_db():
 @app.route("/restore-db", methods=["GET", "POST"])
 @login_required
 def restore_db():
-    """Restaure la base SQLite depuis un fichier uploadé."""
     import re as _re, shutil as _shutil, tempfile as _tempfile
     if request.method == "POST":
         f = request.files.get("fichier_db")
@@ -1453,10 +1541,8 @@ def restore_db():
             flash("Restore non disponible (base non SQLite).", "danger")
             return redirect(url_for("dashboard"))
         db_file = "/" + m.group(1).lstrip("/")
-        # Sauvegarder l'ancienne base au cas où
         if os.path.exists(db_file):
             _shutil.copy2(db_file, db_file + ".bak")
-        # Écrire le fichier uploadé
         tmp = _tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         f.save(tmp.name)
         tmp.close()
@@ -1467,18 +1553,67 @@ def restore_db():
 
 
 # ---------------------------------------------------------------------------
+# Route : Mémoire / Historique
+# ---------------------------------------------------------------------------
+
+@app.route("/memoire")
+@login_required
+def memoire():
+    from sqlalchemy import func
+
+    sessions = SessionProspection.query.order_by(SessionProspection.date.desc()).all()
+    ventes = Vente.query.order_by(Vente.date_signature.desc()).all()
+
+    timeline = {}
+    for s in sessions:
+        d = s.date
+        if d not in timeline:
+            timeline[d] = {"portes": 0, "ventes": [], "zones": []}
+        timeline[d]["portes"] += s.total
+        if s.nom not in timeline[d]["zones"]:
+            timeline[d]["zones"].append(s.nom)
+
+    for v in ventes:
+        d = v.date_signature
+        if d not in timeline:
+            timeline[d] = {"portes": 0, "ventes": [], "zones": []}
+        timeline[d]["ventes"].append(v)
+
+    timeline_sorted = sorted(timeline.items(), key=lambda x: x[0], reverse=True)
+
+    villes = db.session.query(
+        AdresseImportee.ville,
+        func.count(AdresseImportee.id).label("nb"),
+    ).filter(AdresseImportee.ville != None, AdresseImportee.ville != "").group_by(
+        AdresseImportee.ville
+    ).order_by(func.count(AdresseImportee.id).desc()).all()
+
+    adresses_contrats = db.session.query(
+        Vente.adresse,
+        func.count(Vente.id).label("nb"),
+    ).filter(Vente.adresse != None, Vente.adresse != "").group_by(
+        Vente.adresse
+    ).order_by(func.count(Vente.id).desc()).all()
+
+    return render_template(
+        "memoire.html",
+        timeline=timeline_sorted,
+        villes=villes,
+        adresses_contrats=adresses_contrats,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Démarrage
 # ---------------------------------------------------------------------------
 
 def creer_scheduler():
     scheduler = BackgroundScheduler()
-    # Tous les jours à 9h00 : envoyer les rappels RDV clients J-1
     scheduler.add_job(
         envoyer_rappels_du_jour,
         trigger="cron", hour=9, minute=0,
         id="rappels_sms", replace_existing=True,
     )
-    # À 12h30 et 19h00 : SMS au commercial avec ses rappels clients en attente
     scheduler.add_job(
         envoyer_sms_rappels_clients,
         trigger="cron", hour=12, minute=30,
@@ -1493,10 +1628,8 @@ def creer_scheduler():
     return scheduler
 
 
-# Créer les tables au démarrage (gunicorn + flask run)
 with app.app_context():
     db.create_all()
-    # Migration: ajouter adresse_id à portes si absent (upgrade progressif)
     from sqlalchemy import text, inspect as sa_inspect
     _insp = sa_inspect(db.engine)
     _cols = [c["name"] for c in _insp.get_columns("portes")]
