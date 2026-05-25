@@ -1553,6 +1553,57 @@ def restore_db():
 
 
 # ---------------------------------------------------------------------------
+# Route : Mémoire / Historique
+# ---------------------------------------------------------------------------
+
+@app.route("/memoire")
+@login_required
+def memoire():
+    from sqlalchemy import func
+
+    sessions = SessionProspection.query.order_by(SessionProspection.date.desc()).all()
+    ventes = Vente.query.order_by(Vente.date_signature.desc()).all()
+
+    timeline = {}
+    for s in sessions:
+        d = s.date
+        if d not in timeline:
+            timeline[d] = {"portes": 0, "ventes": [], "zones": []}
+        timeline[d]["portes"] += s.total
+        if s.nom not in timeline[d]["zones"]:
+            timeline[d]["zones"].append(s.nom)
+
+    for v in ventes:
+        d = v.date_signature
+        if d not in timeline:
+            timeline[d] = {"portes": 0, "ventes": [], "zones": []}
+        timeline[d]["ventes"].append(v)
+
+    timeline_sorted = sorted(timeline.items(), key=lambda x: x[0], reverse=True)
+
+    villes = db.session.query(
+        AdresseImportee.ville,
+        func.count(AdresseImportee.id).label("nb"),
+    ).filter(AdresseImportee.ville != None, AdresseImportee.ville != "").group_by(
+        AdresseImportee.ville
+    ).order_by(func.count(AdresseImportee.id).desc()).all()
+
+    adresses_contrats = db.session.query(
+        Vente.adresse,
+        func.count(Vente.id).label("nb"),
+    ).filter(Vente.adresse != None, Vente.adresse != "").group_by(
+        Vente.adresse
+    ).order_by(func.count(Vente.id).desc()).all()
+
+    return render_template(
+        "memoire.html",
+        timeline=timeline_sorted,
+        villes=villes,
+        adresses_contrats=adresses_contrats,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Démarrage
 # ---------------------------------------------------------------------------
 

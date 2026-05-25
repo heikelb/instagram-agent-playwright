@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Mémoire — Ventes Orange{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="mb-0 fw-bold">
+    <i class="bi bi-clock-history me-1 text-warning"></i>Mémoire
+  </h4>
+  <small class="text-muted">{{ timeline|length }} jour{{ 's' if timeline|length != 1 else '' }}</small>
+</div>
+
+<!-- Villes travaillées -->
+{% if villes %}
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-white fw-semibold">
+    <i class="bi bi-geo-alt-fill me-1 text-warning"></i>Villes travaillées
+  </div>
+  <div class="card-body pb-2">
+    <div class="d-flex flex-wrap gap-2">
+      {% for ville, nb in villes %}
+      <span class="badge rounded-pill px-3 py-2" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80;font-size:.85rem;">
+        {{ ville }} <span class="ms-1 fw-bold">{{ nb }}</span>
+      </span>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Adresses contrats signés -->
+{% if adresses_contrats %}
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-white fw-semibold">
+    <i class="bi bi-house-check-fill me-1 text-success"></i>Adresses avec contrats
+  </div>
+  <div class="card-body p-0">
+    <ul class="list-group list-group-flush">
+      {% for adresse, nb in adresses_contrats %}
+      <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+        <span style="font-size:.88rem;">{{ adresse }}</span>
+        {% if nb > 1 %}
+        <span class="badge bg-success rounded-pill">{{ nb }}</span>
+        {% else %}
+        <i class="bi bi-check-circle-fill text-success"></i>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+<!-- Timeline par jour -->
+<div class="card shadow-sm">
+  <div class="card-header bg-white fw-semibold">
+    <i class="bi bi-calendar3 me-1 text-warning"></i>Historique jour par jour
+  </div>
+  <div class="card-body p-0">
+    {% if timeline %}
+    {% for jour, data in timeline %}
+    <div class="border-bottom px-3 py-3">
+      <!-- En-tête du jour -->
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div>
+          <span class="fw-bold" style="color:#ff7900;">
+            {{ jour.strftime('%A %d %B %Y') | capitalize }}
+          </span>
+          {% if data.zones %}
+          <div class="text-muted" style="font-size:.75rem;">
+            <i class="bi bi-pin-map me-1"></i>{{ data.zones | join(' · ') }}
+          </div>
+          {% endif %}
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+          {% if data.portes > 0 %}
+          <span class="badge bg-secondary rounded-pill">🚪 {{ data.portes }}</span>
+          {% endif %}
+          {% if data.ventes | length > 0 %}
+          <span class="badge bg-success rounded-pill">✅ {{ data.ventes | length }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <!-- Contrats du jour -->
+      {% if data.ventes %}
+      <div class="ps-2">
+        {% for v in data.ventes %}
+        <div class="d-flex align-items-center gap-2 mb-1" style="font-size:.82rem;">
+          <span class="badge {{ v.badge_class }}" style="font-size:.65rem;">{{ v.statut_label }}</span>
+          <span class="fw-semibold">{{ v.prenom }} {{ v.nom }}</span>
+          <span class="text-muted">—</span>
+          <span>{{ v.produit }}</span>
+          {% if v.adresse %}
+          <span class="text-muted d-none d-md-inline">· {{ v.adresse }}</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="text-center text-muted py-5">
+      <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+      Aucune activité enregistrée.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
