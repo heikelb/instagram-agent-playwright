@@ -1395,6 +1395,77 @@ def seed_fevrier():
     return redirect(url_for("dashboard"))
 
 
+@app.route("/admin/seed-mars")
+@login_required
+def seed_mars():
+    from datetime import date as _d, datetime as _dt, timedelta as _td
+    import random as _rnd
+    _rnd.seed(2027)
+    if Vente.query.filter(
+        Vente.date_signature >= _d(2026, 3, 1),
+        Vente.date_signature <= _d(2026, 3, 31),
+    ).count() > 0:
+        flash("Donnees mars deja injectees.", "warning")
+        return redirect(url_for("dashboard"))
+    PRENOMS = ["Karim", "Sophie", "Laurent", "Nathalie", "Mohamed", "Isabelle", "David",
+               "Virginie", "Nicolas", "Fatima", "Sebastien", "Celine", "Thomas", "Amina",
+               "Guillaume", "Sylvie", "Romain", "Zineb", "Maxime", "Karine", "Pierre",
+               "Sandrine", "Eric", "Leila", "Julien", "Valerie", "Alexandre"]
+    NOMS = ["MARTIN", "DUBOIS", "THOMAS", "ROBERT", "RICHARD", "PETIT", "DURAND",
+            "MOREAU", "SIMON", "LAURENT", "LEFEBVRE", "MICHEL", "GARCIA", "DAVID",
+            "BERTRAND", "ROUX", "VINCENT", "FOURNIER", "MOREL", "GIRARD", "ANDRE",
+            "LEROY", "DUPONT", "LAMBERT", "BONNET", "FRANCOIS", "MARTINEZ"]
+    ADRESSES = [
+        "3 Rue du Gard, Nimes", "18 Avenue des Arenes, Nimes", "27 Rue Plechat, Nimes",
+        "52 Boulevard Victor Hugo, Nimes", "9 Impasse des Oliviers, Nimes",
+        "34 Rue de la Fontaine, Nimes", "71 Avenue du Marche, Ales",
+        "12 Rue Colbert, Nimes", "45 Chemin des Pins, Nimes", "6 Rue du Temple, Uzes",
+        "83 Boulevard Sergent Triaire, Nimes", "21 Rue de la Baume, Nimes",
+        "58 Avenue du Grau, Lunel", "15 Rue Bigot, Nimes", "39 Impasse des Cedres, Nimes",
+        "66 Rue des Tuileries, Nimes", "8 Avenue de Montpellier, Nimes",
+        "43 Rue de la Croix de Fer, Nimes", "29 Boulevard Jean Jaures, Ales",
+        "74 Rue des Asphodeles, Nimes", "11 Chemin de la Gardiole, Vergeze",
+        "55 Avenue du President Wilson, Nimes", "22 Rue Porte de France, Nimes",
+        "37 Impasse des Amandiers, Nimes", "90 Rue Nationale, Lunel",
+        "4 Rue des Jacobins, Nimes", "68 Boulevard de la Liberation, Nimes",
+    ]
+    PRODUITS = (["Livebox Fibre"] * 16 + ["Livebox Up"] * 7 + ["Livebox Max"] * 3 + ["Série Spécial Lite Fibre"] * 1)
+    DATA = [
+        ("2026-03-02", ["installe", "confirme", "confirme"]),
+        ("2026-03-03", ["installe", "confirme", "confirme"]),
+        ("2026-03-04", ["installe", "confirme"]),
+        ("2026-03-05", ["annule", "confirme", "confirme"]),
+        ("2026-03-06", ["confirme", "confirme"]),
+        ("2026-03-09", ["installe", "confirme", "confirme"]),
+        ("2026-03-10", ["installe", "confirme", "confirme"]),
+        ("2026-03-11", ["installe", "confirme", "confirme"]),
+        ("2026-03-12", ["confirme", "confirme", "confirme"]),
+        ("2026-03-13", ["confirme", "confirme"]),
+    ]
+    heures = [8, 9, 10, 14, 15, 16]
+    idx = 0
+    for date_str, statuts in DATA:
+        sig = _d.fromisoformat(date_str)
+        for statut in statuts:
+            rdv = _dt.combine(sig + _td(days=_rnd.randint(4, 14)),
+                              _dt.min.time().replace(hour=heures[idx % len(heures)]))
+            db.session.add(Vente(
+                prenom=PRENOMS[idx % len(PRENOMS)],
+                nom=NOMS[idx % len(NOMS)],
+                telephone=f"+336{60000000 + idx:08d}",
+                adresse=ADRESSES[idx % len(ADRESSES)],
+                produit=PRODUITS[idx % len(PRODUITS)],
+                date_rdv=rdv,
+                date_signature=sig,
+                statut=statut,
+                sms_envoye=(statut not in ("en_attente", "confirme")),
+            ))
+            idx += 1
+    db.session.commit()
+    flash("27 ventes de mars 2026 injectees avec succes !", "success")
+    return redirect(url_for("dashboard"))
+
+
 # ---------------------------------------------------------------------------
 # Démarrage
 # ---------------------------------------------------------------------------
