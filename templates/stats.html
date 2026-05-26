@@ -111,9 +111,8 @@
             <th>Mois</th>
             <th class="text-center">Contrats</th>
             <th class="text-center">Installés</th>
-            <th class="text-center">No-show</th>
-            <th class="text-center">Annulés</th>
-            <th class="text-center">Raccordement</th>
+            <th class="text-center">Raccord.</th>
+            <th class="text-center">Salaire net</th>
           </tr>
         </thead>
         <tbody>
@@ -122,12 +121,27 @@
             <td class="fw-semibold">{{ m.label }}</td>
             <td class="text-center fw-bold fs-5">{{ m.total }}</td>
             <td class="text-center fw-semibold text-success">{{ m.installes }}</td>
-            <td class="text-center text-danger">{{ m.no_shows }}</td>
-            <td class="text-center text-secondary">{{ m.annules }}</td>
             <td class="text-center">
               <span class="badge {% if m.taux >= 40 %}bg-success{% elif m.taux >= 25 %}bg-warning text-dark{% else %}bg-secondary{% endif %} px-2 py-1">
                 {{ m.taux }}%
               </span>
+            </td>
+            <td class="text-center">
+              {% if m.salaire_net %}
+                <span class="fw-bold text-success">{{ "%.2f"|format(m.salaire_net) }} €</span>
+              {% else %}
+                <button class="btn btn-sm btn-outline-secondary py-0 px-2"
+                  onclick="document.getElementById('sal-form-{{ m.annee }}-{{ m.mois }}').classList.toggle('d-none')"
+                  style="font-size:.75rem;">+ Saisir</button>
+                <form id="sal-form-{{ m.annee }}-{{ m.mois }}" action="{{ url_for('sauvegarder_salaire') }}"
+                  method="POST" class="d-none mt-1 d-flex gap-1">
+                  <input type="hidden" name="annee" value="{{ m.annee }}">
+                  <input type="hidden" name="mois" value="{{ m.mois }}">
+                  <input type="text" name="montant" placeholder="ex: 3327.75"
+                    class="form-control form-control-sm" style="width:100px;">
+                  <button type="submit" class="btn btn-sm btn-success">OK</button>
+                </form>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}

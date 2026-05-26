@@ -247,6 +247,17 @@ class Rappel(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class SalaireMensuel(db.Model):
+    __tablename__ = "salaires_mensuels"
+
+    id = db.Column(db.Integer, primary_key=True)
+    annee = db.Column(db.Integer, nullable=False)
+    mois = db.Column(db.Integer, nullable=False)
+    montant_net = db.Column(db.Float, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    __table_args__ = (db.UniqueConstraint("annee", "mois", name="uq_salaire_mois"),)
+
+
 def envoyer_sms(telephone: str, message: str) -> bool:
     sid = os.environ.get("TWILIO_ACCOUNT_SID")
     token = os.environ.get("TWILIO_AUTH_TOKEN")
@@ -634,16 +645,20 @@ def stats():
         elif v.statut == "annule":
             par_mois_dict[key]["annules"] += 1
     par_mois = []
+    salaires = {(s.annee, s.mois): s.montant_net for s in SalaireMensuel.query.all()}
     for (year, month), data in sorted(par_mois_dict.items(), reverse=True):
         t = data["total"]
         taux = round(data["installes"] / t * 100) if t else 0
         par_mois.append({
             "label": f"{MOIS_FR[month]} {year}",
+            "annee": year,
+            "mois": month,
             "total": t,
             "installes": data["installes"],
             "no_shows": data["no_shows"],
             "annules": data["annules"],
             "taux": taux,
+            "salaire_net": salaires.get((year, month)),
         })
     return render_template("stats.html",
         aujourd_hui=aujourd_hui, total_ventes=total_ventes, installes=installes,
@@ -806,7 +821,7 @@ def scan_affiche():
 def _claude_vision(img_b64: str, media_type: str, api_key: str):
     import json as _json, anthropic
     try:
-        client = anthropic.Anthropic(api_key=api_key)
+.        client = anthropic.Anthropic(api_key=api_key)
         msg = client.messages.create(
             model="claude-sonnet-4-6", max_tokens=1024,
             messages=[{"role": "user", "content": [
@@ -1464,6 +1479,25 @@ def seed_mars():
     db.session.commit()
     flash("27 ventes de mars 2026 injectees avec succes !", "success")
     return redirect(url_for("dashboard"))
+
+
+@app.route("/admin/salaire", methods=["POST"])
+@login_required
+def sauvegarder_salaire():
+    try:
+        annee = int(request.form["annee"])
+        mois = int(request.form["mois"])
+        montant = float(request.form["montant"].replace(",", ".").replace(" ", "").replace(" ", ""))
+        existing = SalaireMensuel.query.filter_by(annee=annee, mois=mois).first()
+        if existing:
+            existing.montant_net = montant
+        else:
+            db.session.add(SalaireMensuel(annee=annee, mois=mois, montant_net=montant))
+        db.session.commit()
+        flash("Salaire enregistré.", "success")
+    except Exception as e:
+        flash(f"Erreur : {e}", "danger")
+    return redirect(url_for("stats"))
 
 
 # ---------------------------------------------------------------------------
