@@ -46,7 +46,7 @@ Variables d'environnement nécessaires (copier `.env.example` → `.env`) :
 
 ## Architecture
 
-Tout le backend est dans **`app.py`** (fichier unique ~1480 lignes). Les templates Jinja2 sont dans `templates/`, les assets dans `static/`.
+Tout le backend est dans **`app.py`** (fichier unique ~1560 lignes). Les templates Jinja2 sont dans `templates/`, les assets dans `static/`.
 
 ### Modèles SQLAlchemy
 
@@ -57,6 +57,7 @@ Tout le backend est dans **`app.py`** (fichier unique ~1480 lignes). Les templat
 | `Porte` | `portes` | Résultat porte à porte (absent/refus/causé/entré/signé) |
 | `AdresseImportee` | `adresses_importees` | Adresses importées depuis Excel Orange (rue, numero, ville) |
 | `Rappel` | `rappels` | Rappel client à faire (nom, tel, motif, moment, done) |
+| `SalaireMensuel` | `salaires_mensuels` | Salaire net mensuel (annee, mois, montant_net) — contrainte unique (annee, mois) |
 
 `Porte.adresse_id` lie une porte frappée à une adresse importée. Migration auto au démarrage si la colonne manque.
 
@@ -73,6 +74,14 @@ Tout le backend est dans **`app.py`** (fichier unique ~1480 lignes). Les templat
 **Rappels SMS** : APScheduler → 9h00 (rappels RDV clients J-1), 12h30 et 19h00 (résumé rappels clients au commercial)
 
 **Backup/Restore** : `GET /backup-db` (télécharge SQLite), `GET|POST /restore-db` (upload SQLite)
+
+**Salaire mensuel** : `POST /admin/salaire` (upsert `SalaireMensuel`) — affiché dans le tableau « Résultats par mois » de `/stats` avec un bouton inline « + Saisir » si absent
+
+**Filtre mois dans /ventes** : paramètre `?mois=YYYY-MM` — la liste des mois disponibles est construite dynamiquement depuis les `date_signature` existantes
+
+### Routes admin (seed historique)
+
+`GET /admin/seed-fevrier` et `GET /admin/seed-mars` — injectent des données fictives pour tests, protégées par `@login_required`, idempotentes (vérifient si données déjà présentes).
 
 ### Authentification
 
