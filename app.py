@@ -448,12 +448,24 @@ def dashboard():
 def liste_ventes():
     statut_filtre = request.args.get("statut", "")
     produit_filtre = request.args.get("produit", "")
+    mois_filtre = request.args.get("mois", "")
     search = request.args.get("q", "").strip()
+    MOIS_FR = ["", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+               "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
     query = Vente.query
     if statut_filtre:
         query = query.filter_by(statut=statut_filtre)
     if produit_filtre:
         query = query.filter_by(produit=produit_filtre)
+    if mois_filtre:
+        try:
+            annee, mois = mois_filtre.split("-")
+            annee, mois = int(annee), int(mois)
+            debut = date(annee, mois, 1)
+            fin = date(annee + 1, 1, 1) if mois == 12 else date(annee, mois + 1, 1)
+            query = query.filter(Vente.date_signature >= debut, Vente.date_signature < fin)
+        except Exception:
+            mois_filtre = ""
     if search:
         like = f"%{search}%"
         query = query.filter(
@@ -463,6 +475,16 @@ def liste_ventes():
             )
         )
     ventes = query.order_by(Vente.date_rdv.desc()).all()
+    mois_dispo = []
+    seen = set()
+    for v in Vente.query.order_by(Vente.date_signature.desc()).all():
+        key = (v.date_signature.year, v.date_signature.month)
+        if key not in seen:
+            seen.add(key)
+            mois_dispo.append({
+                "value": f"{key[0]}-{key[1]:02d}",
+                "label": f"{MOIS_FR[key[1]]} {key[0]}",
+            })
     if request.args.get("export") == "csv":
         output = io.StringIO()
         writer = csv.writer(output)
@@ -477,7 +499,8 @@ def liste_ventes():
         return Response("﻿" + output.getvalue(), mimetype="text/csv",
             headers={"Content-Disposition": "attachment; filename=ventes_orange.csv"})
     return render_template("ventes.html", ventes=ventes, statuts=STATUTS, produits=PRODUITS,
-        statut_filtre=statut_filtre, produit_filtre=produit_filtre, search=search)
+        statut_filtre=statut_filtre, produit_filtre=produit_filtre, search=search,
+        mois_filtre=mois_filtre, mois_dispo=mois_dispo)
 
 
 @app.route("/ajouter", methods=["GET", "POST"])
@@ -821,7 +844,7 @@ def scan_affiche():
 def _claude_vision(img_b64: str, media_type: str, api_key: str):
     import json as _json, anthropic
     try:
-.        client = anthropic.Anthropic(api_key=api_key)
+        client = anthropic.Anthropic(api_key=api_key)
         msg = client.messages.create(
             model="claude-sonnet-4-6", max_tokens=1024,
             messages=[{"role": "user", "content": [
