@@ -13,7 +13,7 @@ const ELEVENLABS_API_KEY = "sk_a2ec02a4131798d58b43e0418222189295076526697a5728"
 const ANTHROPIC_API_KEY  = "-----REMPLACE-PAR-TA-CLÉ-ANTHROPIC-----";
 const EL_MODEL           = "eleven_flash_v2_5";
 
-// ─── PERSONNAGES ─────────────────────────────────────────────────────────────
+// ─── PERSONNAGES ──────────────────────────────────────────────────────────────────────────────
 
 const CHARACTERS = [
   { id: "retraitee", name: "Madame Moreau", age: 67, emoji: "👵", type: "F", color: "#EC4899",
@@ -43,7 +43,7 @@ const CHARACTERS = [
   },
 ];
 
-// ─── SCÉNARIOS DE JEU ─────────────────────────────────────────────────────────
+// ─── SCÉNARIOS DE JEU ───────────────────────────────────────────────────────────────────────────
 
 const GAME_SCENARIOS = [
   {
@@ -139,7 +139,7 @@ Retourne UNIQUEMENT ce JSON :
   },
 ];
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
+// ─── HELPERS ────────────────────────────────────────────────────────────────────────────────
 
 const callClaude = async (system, messages, maxTokens = 120) => {
   const r = await fetch("https://api.anthropic.com/v1/messages", {
@@ -185,7 +185,7 @@ const speakEL = (text, voiceId, settings) =>
     }
   });
 
-// ─── COMPOSANT PRINCIPAL ─────────────────────────────────────────────────────
+// ─── COMPOSANT PRINCIPAL ─────────────────────────────────────────────────────────────────────────
 
 export default function RolePlayGameScreen({ onBack, onXPGain }) {
   const [phase, setPhase]         = useState("select");   // select|door|opening|convo|debrief
@@ -216,7 +216,7 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
   useEffect(() => { histEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [history]);
   useEffect(() => () => { audioRef.current?.pause(); speechSynthesis.cancel(); }, []);
 
-  // ── DÉMARRER UN SCÉNARIO ────────────────────────────────────────────────────
+  // ── DÉMARRER UN SCÉNARIO ───────────────────────────────────────────────────────────────────
   const startScenario = (sc) => {
     const compatible = CHARACTERS.filter(c => sc.compatibleCharacters.includes(c.id));
     const char = compatible[Math.floor(Math.random() * compatible.length)];
@@ -236,17 +236,15 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
     setPhase("door");
   };
 
-  // ── TOQUER ──────────────────────────────────────────────────────────────────
+  // ── TOQUER ──────────────────────────────────────────────────────────────────────────
   const knock = async () => {
     setKnockEffect(true);
     setTimeout(() => setKnockEffect(false), 600);
 
-    // 1s pause puis porte qui s'ouvre
     setTimeout(async () => {
       setDoorOpen(true);
       setTimeout(() => setCharVisible(true), 600);
 
-      // Message d'ouverture du personnage
       await new Promise(r => setTimeout(r, 900));
       const openingOptions = [
         "Oui ?",
@@ -273,7 +271,7 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
     }, 800);
   };
 
-  // ── MICRO ────────────────────────────────────────────────────────────────────
+  // ── MICRO ────────────────────────────────────────────────────────────────────────────
   const handleMic = () => {
     if (isRecording) { recRef.current?.stop(); return; }
     if (isSpeaking || loading) return;
@@ -300,7 +298,7 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
     r.start();
   };
 
-  // ── TRAITEMENT PAROLE ───────────────────────────────────────────────────────
+  // ── TRAITEMENT PAROLE ───────────────────────────────────────────────────────────────
   const processSpeech = async (text) => {
     addBubble("user", text);
     claudeHist.current.push({ role: "user", content: text });
@@ -310,7 +308,6 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
     const currentStep = steps[stepIdx];
     if (!currentStep) { setLoading(false); return; }
 
-    // Évaluation de l'étape courante
     let coachResult = { validated: false, score: 5, feedback: "Continue...", formule: currentStep.hint };
     try {
       const raw = await callClaude(
@@ -321,7 +318,6 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
       coachResult = parseJSON(raw, coachResult);
     } catch { /* fallback */ }
 
-    // Mise à jour des étapes
     setSteps(prev => prev.map((s, i) =>
       i === stepIdx ? { ...s, validated: coachResult.validated, score: coachResult.score, feedback: coachResult.feedback } : s
     ));
@@ -334,7 +330,6 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
 
       const nextIdx = stepIdx + 1;
       if (nextIdx >= steps.length) {
-        // Toutes les étapes validées !
         setLoading(false);
         await new Promise(r => setTimeout(r, 800));
         generateDebrief(steps.map((s, i) => i === stepIdx ? { ...s, validated: true } : s));
@@ -342,7 +337,6 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
       }
       setStepIdx(nextIdx);
 
-      // Réponse du prospect (réaction positive)
       const prospectPrompt = `L'utilisateur vient de bien faire l'étape "${currentStep.name}". Réagis naturellement et positivement à ce qu'il a dit. 1-2 phrases max, reste dans le personnage.`;
       let reply = "";
       try {
@@ -356,7 +350,6 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
       setIsSpeaking(false);
       setMicHint(`🎯 Étape suivante : ${steps[nextIdx]?.name}`);
     } else {
-      // Étape non validée — le prospect réagit, hint donné
       setFlash({ type: "fail", stepName: currentStep.name, formule: coachResult.formule });
       setTimeout(() => setFlash(null), 3000);
 
@@ -377,7 +370,7 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
     setTranscript("");
   };
 
-  // ── DÉBRIEF ──────────────────────────────────────────────────────────────────
+  // ── DÉBRIEF ────────────────────────────────────────────────────────────────────────────
   const generateDebrief = async (finalSteps) => {
     setPhase("debrief");
     const validated = (finalSteps || steps).filter(s => s.validated).length;
@@ -392,9 +385,9 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
   const addBubble = (role, text) =>
     setHistory(prev => [...prev, { role, text }]);
 
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────────
   // RENDER — SELECT
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────────
   if (phase === "select") return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Sora',sans-serif", display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "14px 16px", background: C.card, borderBottom: `1px solid ${C.cardBorder}`, display: "flex", alignItems: "center", gap: 12 }}>
@@ -463,13 +456,12 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
     </div>
   );
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // RENDER — DOOR (avant de toquer)
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────────
+  // RENDER — DOOR
+  // ───────────────────────────────────────────────────────────────────────────────
   if (phase === "door" || (phase === "convo" && !charVisible)) return (
     <div style={{ minHeight: "100vh", background: "#0F0F13", fontFamily: "'Sora',sans-serif", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-      {/* Header minimaliste */}
       <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, zIndex: 10 }}>
         <button onClick={() => setPhase("select")} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "6px 10px", color: "rgba(255,255,255,0.6)", fontSize: 13, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>← Quitter</button>
         <div style={{ flex: 1, textAlign: "center" }}>
@@ -478,26 +470,18 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
         <div style={{ fontSize: 11, color: "#FFB800", fontWeight: 700 }}>⚡ {totalXP} XP</div>
       </div>
 
-      {/* Scène — rue la nuit */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", padding: "0 20px 20px" }}>
 
-        {/* Fond de rue */}
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, #0a0a12 0%, #14141f 40%, #1a1025 100%)", overflow: "hidden" }}>
-          {/* Réverbère */}
           <div style={{ position: "absolute", top: 20, right: "30%", width: 2, height: 80, background: "rgba(255,200,100,0.4)", borderRadius: 1 }} />
           <div style={{ position: "absolute", top: 10, right: "30%", width: 20, height: 6, background: "rgba(255,200,100,0.5)", borderRadius: 10, transform: "translateX(-50%)" }} />
           <div style={{ position: "absolute", top: 16, right: "28%", width: 60, height: 60, borderRadius: "50%", background: "radial-gradient(circle,rgba(255,200,100,0.08),transparent 70%)" }} />
-          {/* Sol */}
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 100, background: "linear-gradient(180deg,transparent,rgba(0,0,0,0.5))" }} />
         </div>
 
-        {/* Immeuble / mur */}
         <div style={{ position: "relative", width: "100%", maxWidth: 340, zIndex: 2 }}>
-
-          {/* Mur */}
           <div style={{ background: "linear-gradient(180deg,#1e1a2e,#161222)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "16px 16px 0 0", padding: "16px 16px 0", marginBottom: 0 }}>
 
-            {/* Numéro de porte */}
             <div style={{ textAlign: "center", marginBottom: 16 }}>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontWeight: 600 }}>Rue des Lilas</div>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", fontWeight: 700 }}>
@@ -505,7 +489,6 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
               </div>
             </div>
 
-            {/* LA PORTE */}
             <div style={{ perspective: "900px", perspectiveOrigin: "left center" }}>
               <div style={{
                 width: "100%",
@@ -521,32 +504,26 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
                 cursor: !doorOpen ? "pointer" : "default",
                 boxShadow: doorOpen ? "none" : "inset -4px 0 12px rgba(0,0,0,0.4)",
               }}>
-                {/* Panneaux de porte */}
                 <div style={{ position: "absolute", inset: 12, border: "2px solid rgba(255,255,255,0.08)", borderRadius: 4, display: "grid", gridTemplateRows: "1fr 1fr", gap: 8 }}>
                   <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 3 }} />
                   <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 3 }} />
                 </div>
-                {/* Poignée */}
                 <div style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)" }}>
                   <div style={{ width: 8, height: 24, background: "linear-gradient(180deg,#c8a84b,#8b6914)", borderRadius: 4 }} />
                   <div style={{ width: 14, height: 6, background: "linear-gradient(90deg,#c8a84b,#8b6914)", borderRadius: 2, marginTop: 2, marginLeft: -3 }} />
                 </div>
-                {/* Judas / œil de porte */}
                 <div style={{ position: "absolute", right: 20, top: 60, width: 10, height: 10, borderRadius: "50%", background: "radial-gradient(circle,#1a1030,#0a0518)", border: "2px solid rgba(255,255,255,0.15)" }} />
               </div>
             </div>
 
-            {/* Paillasson */}
             <div style={{ height: 14, background: "linear-gradient(90deg,#2a1e3a,#1e1530,#2a1e3a)", borderRadius: "0 0 4px 4px", border: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <div style={{ fontSize: 7, color: "rgba(255,255,255,0.15)", letterSpacing: 4, fontWeight: 700 }}>BIENVENUE</div>
             </div>
           </div>
 
-          {/* Sol */}
           <div style={{ height: 30, background: "linear-gradient(180deg,#1a1a28,#0f0f18)", borderRadius: "0 0 12px 12px" }} />
         </div>
 
-        {/* Personnage qui apparaît */}
         {charVisible && (
           <div style={{ position: "absolute", left: "50%", transform: "translateX(-10%)", bottom: 120, zIndex: 5, animation: "slideUp 0.5s ease-out", textAlign: "center" }}>
             <div style={{ fontSize: 72, filter: "drop-shadow(0 4px 20px rgba(0,0,0,0.8))" }}>{character?.emoji}</div>
@@ -556,7 +533,6 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
           </div>
         )}
 
-        {/* Bouton TOQUER */}
         {!doorOpen && (
           <div style={{ position: "relative", zIndex: 10, textAlign: "center", marginTop: 20 }}>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 10 }}>Tu es devant la porte.</div>
@@ -583,7 +559,6 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
           </div>
         )}
 
-        {/* Loading après knock */}
         {doorOpen && !charVisible && (
           <div style={{ position: "relative", zIndex: 10, textAlign: "center", marginTop: 20 }}>
             <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>La porte s'ouvre...</div>
@@ -600,13 +575,12 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
     </div>
   );
 
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────────
   // RENDER — CONVERSATION
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────────
   if (phase === "convo") return (
     <div style={{ height: "100vh", background: "#0F0F13", fontFamily: "'Sora',sans-serif", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-      {/* Header — personnage + steps */}
       <div style={{ padding: "10px 14px", background: "rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
           <button onClick={() => setPhase("select")} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 18, cursor: "pointer" }}>←</button>
@@ -618,7 +592,6 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
           <div style={{ fontSize: 13, fontWeight: 800, color: "#FFB800" }}>⚡ {totalXP} XP</div>
         </div>
 
-        {/* Barre de progression des étapes */}
         <div style={{ display: "flex", gap: 4, overflowX: "auto", paddingBottom: 2 }}>
           {steps.map((s, i) => (
             <div key={s.id} style={{
@@ -636,7 +609,6 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
         </div>
       </div>
 
-      {/* Étape courante */}
       {steps[stepIdx] && (
         <div style={{ padding: "8px 14px", background: `${scenario?.color}10`, borderBottom: `1px solid ${scenario?.color}22`, flexShrink: 0 }}>
           <div style={{ fontSize: 9, color: scenario?.color, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1, marginBottom: 2 }}>
@@ -648,7 +620,6 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
         </div>
       )}
 
-      {/* Conversation */}
       <div style={{ flex: 1, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
         {history.map((m, i) => (
           <div key={i} style={{
@@ -678,10 +649,8 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
         <div ref={histEndRef} />
       </div>
 
-      {/* Zone micro */}
       <div style={{ padding: "10px 14px 24px", borderTop: "1px solid rgba(255,255,255,0.07)", background: "rgba(0,0,0,0.4)", flexShrink: 0 }}>
 
-        {/* Transcript live */}
         {(isRecording || transcript) && (
           <div style={{ marginBottom: 10, padding: "8px 12px", background: "rgba(255,255,255,0.05)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
             <div style={{ fontSize: 9, color: isRecording ? "#EF4444" : "rgba(255,255,255,0.3)", fontWeight: 700, marginBottom: 3 }}>
@@ -692,7 +661,6 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
         )}
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {/* Bouton micro */}
           <button
             onClick={handleMic}
             disabled={isSpeaking || loading}
@@ -728,7 +696,6 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
         </div>
       </div>
 
-      {/* FLASH VALIDATION */}
       {flash && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 200,
@@ -772,9 +739,9 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
     </div>
   );
 
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────────
   // RENDER — DEBRIEF
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ───────────────────────────────────────────────────────────────────────────────
   if (phase === "debrief" && debrief) {
     const { validated, total, stars, xpEarned, steps: finalSteps } = debrief;
     const starsArr = [0,1,2];
@@ -789,7 +756,6 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
 
         <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 24px" }}>
 
-          {/* Score + étoiles */}
           <div style={{ textAlign: "center", padding: "24px 0 20px" }}>
             <div style={{ fontSize: 56 }}>{character?.emoji}</div>
             <div style={{ display: "flex", justifyContent: "center", gap: 8, margin: "16px 0 10px" }}>
@@ -803,7 +769,6 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
             <div style={{ fontSize: 28, fontWeight: 900, color: "#FFB800" }}>+{xpEarned} XP ⚡</div>
           </div>
 
-          {/* Détail étapes */}
           <div style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, overflow: "hidden", marginBottom: 14 }}>
             {finalSteps.map((s, i) => (
               <div key={s.id} style={{
@@ -821,7 +786,6 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
             ))}
           </div>
 
-          {/* Message selon performance */}
           <div style={{ background: stars === 3 ? "rgba(34,197,94,0.1)" : stars === 2 ? "rgba(255,184,0,0.1)" : "rgba(239,68,68,0.1)", border: `1px solid ${stars === 3 ? "rgba(34,197,94,0.3)" : stars === 2 ? "rgba(255,184,0,0.3)" : "rgba(239,68,68,0.3)"}`, borderRadius: 14, padding: "14px 16px", marginBottom: 16, textAlign: "center" }}>
             <div style={{ fontSize: 14, fontWeight: 800, color: stars === 3 ? "#22C55E" : stars === 2 ? "#FFB800" : "#EF4444", marginBottom: 6 }}>
               {stars === 3 ? "🏆 Script parfait !" : stars === 2 ? "💪 Bon travail !" : stars === 1 ? "📚 Continue à t'entraîner" : "🔄 Recommence — c'est comme ça qu'on progresse"}
@@ -833,7 +797,6 @@ export default function RolePlayGameScreen({ onBack, onXPGain }) {
             </div>
           </div>
 
-          {/* CTAs */}
           <button onClick={() => startScenario(scenario)} style={{ width: "100%", padding: 15, borderRadius: 14, border: "none", background: `linear-gradient(135deg,${scenario?.color},${scenario?.color}cc)`, color: "white", fontFamily: "'Sora',sans-serif", fontSize: 15, fontWeight: 900, cursor: "pointer", marginBottom: 10 }}>
             🔄 Rejouer — autre personnage
           </button>
