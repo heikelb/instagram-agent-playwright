@@ -143,6 +143,43 @@ export default function HomeScreen({ xpTotal = 0, onNavigate }) {
           <div style={{ fontSize: 9, color: C.textMuted, fontWeight: 700 }}>— {dailyTip.source}</div>
         </div>
 
+        {/* ─── HERO 0 : Mode Immersif (NOUVEAU) ─── */}
+        <div
+          onClick={() => onNavigate("roleplay-game")}
+          onMouseEnter={() => setHovered("game")}
+          onMouseLeave={() => setHovered(null)}
+          style={{
+            background: "linear-gradient(135deg,#0F0F13,#1a102e,#0F0F13)",
+            border: `2px solid ${hovered === "game" ? "rgba(255,184,0,0.7)" : "rgba(255,184,0,0.35)"}`,
+            borderRadius: 20, padding: "18px 18px 16px", cursor: "pointer",
+            transform: hovered === "game" ? "translateY(-3px)" : "none",
+            transition: "all .2s",
+            position: "relative", overflow: "hidden",
+          }}
+        >
+          <div style={{ position: "absolute", top: -40, right: -40, width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle,rgba(255,184,0,0.12),transparent 70%)", pointerEvents: "none" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+            <div style={{ fontSize: 36 }}>🚪</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 10, color: "#FFB800", fontWeight: 800, textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>🎮 NOUVEAU — Mode Immersif Terrain</div>
+              <div style={{ fontSize: 17, fontWeight: 900, color: "white" }}>Simulation PAP Interactive</div>
+            </div>
+            <div style={{ padding: "4px 10px", borderRadius: 99, background: "rgba(255,184,0,0.15)", border: "1px solid rgba(255,184,0,0.4)", fontSize: 10, fontWeight: 800, color: "#FFB800" }}>NEW</div>
+          </div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.7, marginBottom: 14 }}>
+            Tu arrives devant une porte → tu toques → un prospect ouvre → tu valides chaque étape de ton script en temps réel
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 6 }}>
+              {["👵","👨‍💼","😤","👩","👨"].map((e, i) => <span key={i} style={{ fontSize: 18 }}>{e}</span>)}
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", alignSelf: "center" }}>5 personnages</span>
+            </div>
+            <button style={{ padding: "10px 20px", borderRadius: 99, background: "linear-gradient(135deg,#FFB800,#FF8C00)", border: "none", color: "#0F0F13", fontSize: 13, fontWeight: 900, cursor: "pointer", fontFamily: "'Sora',sans-serif" }}>
+              Jouer →
+            </button>
+          </div>
+        </div>
+
         {/* ─── HERO 1 : RP Vocal ─── */}
         <div
           onClick={() => onNavigate("roleplay-vocal")}

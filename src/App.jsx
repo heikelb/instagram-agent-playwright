@@ -15,6 +15,7 @@ import ProfileScreen   from "./screens/ProfileScreen";
 
 // Nouveaux écrans
 import RolePlayVocalScreen from "./screens/RolePlayVocalScreen";
+import RolePlayGameScreen  from "./screens/RolePlayGameScreen";
 import SkillsPathScreen    from "./screens/SkillsPathScreen";
 
 export default function App() {
@@ -32,6 +33,13 @@ export default function App() {
   // ── ROUTING ─────────────────────────────────────────────────────────────────
   if (screen === "roleplay-vocal") return (
     <RolePlayVocalScreen
+      onBack={() => setScreen("home")}
+      onXPGain={addXP}
+    />
+  );
+
+  if (screen === "roleplay-game") return (
+    <RolePlayGameScreen
       onBack={() => setScreen("home")}
       onXPGain={addXP}
     />
