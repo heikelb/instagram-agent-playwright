@@ -38,12 +38,32 @@
 
   {% if s.est_active %}
   <!-- ═══ FORMULAIRE LOG APPEL ═══ -->
-  <form method="POST" action="{{ url_for('log_appel', sid=s.id) }}" id="callForm">
+  <form method="POST" action="{{ url_for('log_appel', sid=s.id) }}" id="callForm"
+        enctype="multipart/form-data">
 
     <!-- Étape 1 : Statut -->
     <div class="section-title">Enregistrer un appel</div>
     <input type="hidden" name="statut" id="statutInput" required>
     <input type="hidden" name="duree_secs" id="dureeSecs" value="0">
+    <input type="file" name="audio" id="audioInput" accept="audio/*" style="display:none">
+
+    <!-- Bouton enregistrement micro -->
+    <div style="background:var(--card); border:1.5px solid var(--border); border-radius:14px;
+                padding:14px 16px; margin-bottom:16px; display:flex;
+                align-items:center; justify-content:space-between;">
+      <div>
+        <div style="font-weight:700; font-size:13px;">🎙️ Enregistrement</div>
+        <div id="recStatus" style="font-size:11px; color:var(--muted); margin-top:2px;">Micro éteint</div>
+      </div>
+      <button type="button" id="recBtn" onclick="toggleRecording()"
+              style="background:var(--red-s); border:1.5px solid rgba(239,68,68,0.4);
+                     color:var(--red); border-radius:99px; padding:8px 18px;
+                     font-size:13px; font-weight:700;">
+        ⏺ Rec
+      </button>
+    </div>
+    <audio id="audioPreview" controls style="display:none; width:100%; margin-bottom:12px;
+           border-radius:12px; background:var(--card);"></audio>
 
     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px;">
       <button type="button" onclick="setStatut('pas_de_réponse')"
@@ -191,6 +211,10 @@
         {{ a.notes }}
       </div>
       {% endif %}
+      {% if a.recording %}
+      <audio controls style="width:100%; margin-top:8px; border-radius:10px;"
+             src="{{ url_for('serve_recording', filename=a.recording) }}"></audio>
+      {% endif %}
     </div>
     {% endfor %}
   </div>
@@ -323,5 +347,50 @@ function parseDureeManuelle(val) {
 
 // Reset chrono on page load
 window.addEventListener('beforeunload', () => clearInterval(chronoInterval));
+
+// ── Enregistrement micro ───────────────────────────────────────────────────
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+
+async function toggleRecording() {
+  if (!isRecording) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        const file = new File([blob], 'recording.webm', { type: 'audio/webm' });
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        document.getElementById('audioInput').files = dt.files;
+        const url = URL.createObjectURL(blob);
+        const preview = document.getElementById('audioPreview');
+        preview.src = url;
+        preview.style.display = 'block';
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mediaRecorder.start();
+      isRecording = true;
+      document.getElementById('recBtn').textContent = '⏹ Stop';
+      document.getElementById('recBtn').style.background = 'var(--red)';
+      document.getElementById('recBtn').style.color = '#fff';
+      document.getElementById('recStatus').textContent = '● Enregistrement en cours...';
+      document.getElementById('recStatus').style.color = 'var(--red)';
+    } catch (e) {
+      alert('Accès micro refusé. Active le micro dans les paramètres du navigateur.');
+    }
+  } else {
+    mediaRecorder.stop();
+    isRecording = false;
+    document.getElementById('recBtn').textContent = '⏺ Rec';
+    document.getElementById('recBtn').style.background = 'var(--red-s)';
+    document.getElementById('recBtn').style.color = 'var(--red)';
+    document.getElementById('recStatus').textContent = '✓ Enregistrement sauvegardé';
+    document.getElementById('recStatus').style.color = 'var(--green)';
+  }
+}
 </script>
 {% endblock %}

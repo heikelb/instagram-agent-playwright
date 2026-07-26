@@ -73,6 +73,10 @@
         {% if a.notes %}
         <div style="font-size:11px; color:var(--dim); margin-top:2px;">{{ a.notes }}</div>
         {% endif %}
+        {% if a.recording %}
+        <audio controls style="width:100%; margin-top:8px; border-radius:10px;"
+               src="{{ url_for('serve_recording', filename=a.recording) }}"></audio>
+        {% endif %}
       </div>
       {% if a.rdv_decroché %}
       <span class="pill" style="background:var(--green-s); color:var(--green); border:1px solid rgba(34,197,94,0.3);">✅ RDV</span>

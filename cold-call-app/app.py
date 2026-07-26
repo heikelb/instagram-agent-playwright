@@ -1,14 +1,18 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required
 from datetime import datetime, date
 import os
 import hashlib
+import uuid
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'coldcall2026')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:////data/coldcall.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+RECORDINGS_DIR = os.environ.get('RECORDINGS_DIR', '/data/recordings')
+os.makedirs(RECORDINGS_DIR, exist_ok=True)
 
 APP_PASSWORD = os.environ.get('APP_PASSWORD', 'cold2026')
 APP_PASSWORD_HASH = hashlib.sha256(APP_PASSWORD.encode()).hexdigest()
@@ -93,6 +97,7 @@ class Appel(db.Model):
     rdv_decroché = db.Column(db.Boolean, default=False)
     objection    = db.Column(db.String(200), nullable=True)
     notes        = db.Column(db.Text, nullable=True)
+    recording    = db.Column(db.String(100), nullable=True)  # filename audio
 
     @property
     def duree_fmt(self):
@@ -198,6 +203,14 @@ def log_appel(sid):
     appel = Appel(session_id=sid, statut=statut, duree_secs=duree_secs,
                   rdv_decroché=rdv, objection=objection, notes=notes)
     db.session.add(appel)
+    db.session.flush()  # get appel.id before commit
+
+    audio = request.files.get('audio')
+    if audio and audio.filename:
+        filename = f"{appel.id}_{uuid.uuid4().hex[:8]}.webm"
+        audio.save(os.path.join(RECORDINGS_DIR, filename))
+        appel.recording = filename
+
     db.session.commit()
     return redirect(url_for('session', sid=sid))
 
@@ -221,6 +234,14 @@ def session_fin(sid):
             objection_counts[a.objection] = objection_counts.get(a.objection, 0) + 1
     top_objections = sorted(objection_counts.items(), key=lambda x: x[1], reverse=True)
     return render_template('session_fin.html', s=s, top_objections=top_objections)
+
+
+# ── Enregistrements ───────────────────────────────────────────────────────────
+
+@app.route('/recordings/<path:filename>')
+@login_required
+def serve_recording(filename):
+    return send_from_directory(RECORDINGS_DIR, filename)
 
 
 # ── Historique ────────────────────────────────────────────────────────────────
@@ -279,6 +300,13 @@ def stats():
 
 with app.app_context():
     db.create_all()
+    # Migration : ajoute la colonne recording si elle n'existe pas
+    from sqlalchemy import text
+    try:
+        db.session.execute(text('ALTER TABLE appels ADD COLUMN recording VARCHAR(100)'))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 if __name__ == '__main__':
     app.run(debug=True)
