@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}Noter l'appel{% endblock %}
+{% block content %}
+<div style="padding: 24px 20px 0;">
+  <a href="{{ url_for('session', sid=appel.session_id) }}" class="btn-ghost" style="display:inline-block; margin-bottom:20px;">← Retour</a>
+
+  <h1 style="font-size:20px; margin-bottom:6px;">📋 Résultat de l'appel</h1>
+  <div class="text-muted fs-13" style="margin-bottom:20px;">
+    {{ appel.heure_fmt }} · {{ appel.numero }} · ⏱ {{ appel.duree_fmt }}
+  </div>
+
+  {% if appel.recording or appel.recording_url %}
+  <div style="margin-bottom:20px;">
+    <div class="label" style="color:var(--blue); margin-bottom:8px;">🎙️ Réécoute de l'appel</div>
+    <audio controls style="width:100%; border-radius:12px;"
+      src="{{ url_for('serve_recording', filename=appel.recording) if appel.recording else appel.recording_url }}">
+    </audio>
+  </div>
+  {% else %}
+  <div class="card card-sm" style="margin-bottom:20px; border-color:rgba(255,184,0,0.3);">
+    <div style="color:var(--gold); font-size:13px;">⏳ Enregistrement en cours de traitement par Twilio...</div>
+  </div>
+  {% endif %}
+
+  <form method="POST">
+    <div class="card card-sm" style="margin-bottom:12px;">
+      <div class="label">RDV décroché ?</div>
+      <input type="hidden" name="rdv" id="rdvInput" value="">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+        <button type="button" onclick="setRdv('oui')" id="rdv-oui"
+                style="background:var(--card); border:1.5px solid var(--border);
+                       border-radius:12px; padding:14px; font-size:20px; text-align:center; cursor:pointer;">
+          ✅
+          <div style="font-size:12px; font-weight:700; color:var(--muted); margin-top:4px;">OUI</div>
+        </button>
+        <button type="button" onclick="setRdv('non')" id="rdv-non"
+                style="background:var(--card); border:1.5px solid var(--border);
+                       border-radius:12px; padding:14px; font-size:20px; text-align:center; cursor:pointer;">
+          ❌
+          <div style="font-size:12px; font-weight:700; color:var(--muted); margin-top:4px;">NON</div>
+        </button>
+      </div>
+    </div>
+
+    <div id="objSection" class="hidden card card-sm" style="margin-bottom:12px;">
+      <div class="label">Objection rencontrée</div>
+      <input type="hidden" name="objection" id="objInput">
+      <div class="chips-row" style="margin-top:8px;">
+        {% for obj in objections %}
+        <button type="button" class="chip obj-chip" onclick="setObj('{{ obj }}')" data-val="{{ obj }}">
+          {{ obj }}
+        </button>
+        {% endfor %}
+      </div>
+      <input type="text" id="objAutre" placeholder="Autre..." oninput="setObj(this.value)"
+             style="margin-top:10px; font-size:13px;">
+    </div>
+
+    <div class="card card-sm" style="margin-bottom:20px;">
+      <div class="label">Notes</div>
+      <textarea name="notes" placeholder="Nom, contexte, rappel..." style="margin-top:8px;"></textarea>
+    </div>
+
+    <button type="submit" id="submitBtn" class="btn btn-primary hidden">✓ Enregistrer</button>
+  </form>
+</div>
+
+<script>
+function setRdv(val) {
+  document.getElementById('rdvInput').value = val;
+  ['oui','non'].forEach(k => {
+    document.getElementById('rdv-'+k).style.border = '1.5px solid var(--border)';
+    document.getElementById('rdv-'+k).style.background = 'var(--card)';
+  });
+  const btn = document.getElementById('rdv-'+val);
+  btn.style.border = val==='oui' ? '1.5px solid var(--green)' : '1.5px solid var(--red)';
+  btn.style.background = val==='oui' ? 'var(--green-s)' : 'var(--red-s)';
+  document.getElementById('objSection').classList.toggle('hidden', val==='oui');
+  document.getElementById('submitBtn').classList.remove('hidden');
+}
+function setObj(val) {
+  document.getElementById('objInput').value = val;
+  document.querySelectorAll('.obj-chip').forEach(c => {
+    c.classList.remove('active-red');
+    if (c.dataset.val === val) c.classList.add('active-red');
+  });
+}
+</script>
+{% endblock %}
