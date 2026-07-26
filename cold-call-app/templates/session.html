@@ -1,0 +1,327 @@
+{% extends 'base.html' %}
+{% block title %}Session{% endblock %}
+{% block content %}
+<div style="padding: 20px 16px 0;">
+
+  <!-- Header session -->
+  <div class="flex justify-between items-center" style="margin-bottom: 16px;">
+    <a href="{{ url_for('dashboard') }}" class="btn-ghost">← Retour</a>
+    <div style="font-size: 12px; color: var(--muted);">
+      Démarré à {{ s.heure_debut.strftime('%H:%M') }}
+      {% if not s.est_active %} · Terminé à {{ s.heure_fin.strftime('%H:%M') }}{% endif %}
+    </div>
+  </div>
+
+  <!-- Stats en temps réel -->
+  <div style="background: linear-gradient(135deg, rgba(59,130,246,0.12) 0%, var(--card) 100%);
+              border: 1.5px solid rgba(59,130,246,0.3); border-radius: 18px;
+              padding: 16px 18px; margin-bottom: 20px;">
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; text-align: center;">
+      <div>
+        <div style="font-family:'Sora',sans-serif; font-size:24px; font-weight:800;">{{ s.total }}</div>
+        <div style="font-size:10px; color:var(--muted);">Appels</div>
+      </div>
+      <div>
+        <div style="font-family:'Sora',sans-serif; font-size:24px; font-weight:800; color:var(--blue);">{{ s.decroches|length }}</div>
+        <div style="font-size:10px; color:var(--muted);">Décrochés</div>
+      </div>
+      <div>
+        <div style="font-family:'Sora',sans-serif; font-size:24px; font-weight:800; color:var(--green);">{{ s.rdv_list|length }}</div>
+        <div style="font-size:10px; color:var(--muted);">RDV</div>
+      </div>
+      <div>
+        <div style="font-family:'Sora',sans-serif; font-size:24px; font-weight:800; color:var(--gold);">{{ s.taux }}%</div>
+        <div style="font-size:10px; color:var(--muted);">Transfo</div>
+      </div>
+    </div>
+  </div>
+
+  {% if s.est_active %}
+  <!-- ═══ FORMULAIRE LOG APPEL ═══ -->
+  <form method="POST" action="{{ url_for('log_appel', sid=s.id) }}" id="callForm">
+
+    <!-- Étape 1 : Statut -->
+    <div class="section-title">Enregistrer un appel</div>
+    <input type="hidden" name="statut" id="statutInput" required>
+    <input type="hidden" name="duree_secs" id="dureeSecs" value="0">
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+      <button type="button" onclick="setStatut('pas_de_réponse')"
+        id="btn-pas" class="statut-btn"
+        style="background:var(--card); border:1.5px solid var(--border); border-radius:14px;
+               padding:14px 8px; font-size:22px; text-align:center;">
+        📵
+        <div style="font-size:10px; color:var(--muted); font-weight:700; margin-top:4px;">Pas répondu</div>
+      </button>
+      <button type="button" onclick="setStatut('répondeur')"
+        id="btn-rep" class="statut-btn"
+        style="background:var(--card); border:1.5px solid var(--border); border-radius:14px;
+               padding:14px 8px; font-size:22px; text-align:center;">
+        📬
+        <div style="font-size:10px; color:var(--muted); font-weight:700; margin-top:4px;">Répondeur</div>
+      </button>
+      <button type="button" onclick="setStatut('décroché')"
+        id="btn-dec" class="statut-btn"
+        style="background:var(--card); border:1.5px solid var(--border); border-radius:14px;
+               padding:14px 8px; font-size:22px; text-align:center;">
+        🗣️
+        <div style="font-size:10px; color:var(--muted); font-weight:700; margin-top:4px;">Décroché</div>
+      </button>
+    </div>
+
+    <!-- Étape 2 : Durée + RDV (si décroché) -->
+    <div id="decrocheSection" class="hidden">
+
+      <!-- Chrono -->
+      <div class="card card-sm" style="margin-bottom: 12px;">
+        <div class="label">⏱ Durée du call</div>
+        <div style="display:flex; align-items:center; gap:10px; margin-top:8px;">
+          <div id="chronoDisplay"
+               style="font-family:'Sora',sans-serif; font-size:28px; font-weight:800;
+                      color:var(--blue); min-width:80px;">
+            0:00
+          </div>
+          <button type="button" id="chronoBtn" onclick="toggleChrono()"
+                  style="background:var(--blue-s); border:1.5px solid rgba(59,130,246,0.4);
+                         color:var(--blue); border-radius:99px; padding:8px 18px;
+                         font-size:13px; font-weight:700;">
+            ▶ Démarrer
+          </button>
+          <button type="button" onclick="resetChrono()"
+                  style="background:none; border:1.5px solid var(--border);
+                         color:var(--muted); border-radius:99px; padding:8px 14px;
+                         font-size:13px; font-weight:700;">
+            ↺
+          </button>
+        </div>
+        <div style="margin-top:10px;">
+          <div style="font-size:11px; color:var(--dim); margin-bottom:4px;">Ou saisir manuellement (mm:ss)</div>
+          <input type="text" id="dureeManuelle" placeholder="ex: 2:30"
+                 oninput="parseDureeManuelle(this.value)"
+                 style="max-width: 120px;">
+        </div>
+      </div>
+
+      <!-- RDV ? -->
+      <div class="card card-sm" style="margin-bottom: 12px;">
+        <div class="label">RDV décroché ?</div>
+        <input type="hidden" name="rdv" id="rdvInput" value="">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+          <button type="button" onclick="setRdv('oui')" id="rdv-oui"
+                  style="background:var(--card); border:1.5px solid var(--border);
+                         border-radius:12px; padding:14px; font-size:20px; text-align:center;">
+            ✅
+            <div style="font-size:12px; font-weight:700; color:var(--muted); margin-top:4px;">OUI</div>
+          </button>
+          <button type="button" onclick="setRdv('non')" id="rdv-non"
+                  style="background:var(--card); border:1.5px solid var(--border);
+                         border-radius:12px; padding:14px; font-size:20px; text-align:center;">
+            ❌
+            <div style="font-size:12px; font-weight:700; color:var(--muted); margin-top:4px;">NON</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Objections (si pas de RDV) -->
+      <div id="objectionSection" class="hidden card card-sm" style="margin-bottom: 12px;">
+        <div class="label">Objection rencontrée</div>
+        <input type="hidden" name="objection" id="objectionInput">
+        <div class="chips-row" style="margin-top: 8px;">
+          {% for obj in objections %}
+          <button type="button" class="chip obj-chip" onclick="setObjection('{{ obj }}')"
+                  data-val="{{ obj }}">
+            {{ obj }}
+          </button>
+          {% endfor %}
+        </div>
+        <div style="margin-top: 10px;">
+          <input type="text" id="objAutre" placeholder="Autre objection..."
+                 oninput="setObjection(this.value)" style="font-size:13px;">
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="card card-sm" style="margin-bottom: 16px;">
+        <div class="label">Notes (optionnel)</div>
+        <textarea name="notes" placeholder="Contexte, nom du prospect..." style="margin-top:8px;"></textarea>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <button type="submit" id="submitBtn" class="btn btn-primary hidden" style="margin-bottom: 16px;">
+      ✓ Enregistrer l'appel
+    </button>
+
+  </form>
+
+  <!-- Terminer session -->
+  <form action="{{ url_for('terminer_session', sid=s.id) }}" method="POST" style="margin-bottom: 24px;">
+    <button type="submit" class="btn-outline"
+            onclick="return confirm('Terminer cette session ?')">
+      🏁 Terminer la session
+    </button>
+  </form>
+  {% endif %}
+
+  <!-- ═══ TOUR D'APPELS DÉCROCHÉS ═══ -->
+  {% if s.decroches %}
+  <div class="section-title" style="margin-top: 8px;">Tour d'appels décrochés</div>
+  <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:24px;">
+    {% for a in s.decroches|reverse %}
+    <div style="background:var(--card); border:1.5px solid var(--border);
+                border-radius:14px; padding:14px 16px;">
+      <div class="flex justify-between items-center">
+        <div class="flex items-center gap-8">
+          <span style="color:var(--muted); font-size:13px; min-width:40px;">{{ a.heure_fmt }}</span>
+          <span style="color:var(--blue); font-size:12px; font-weight:700;">⏱ {{ a.duree_fmt }}</span>
+        </div>
+        {% if a.rdv_decroché %}
+        <span class="pill" style="background:var(--green-s); color:var(--green); border:1px solid rgba(34,197,94,0.3);">✅ RDV</span>
+        {% else %}
+        <span class="pill" style="background:var(--red-s); color:var(--red); border:1px solid rgba(239,68,68,0.3);">❌ Sans RDV</span>
+        {% endif %}
+      </div>
+      {% if a.objection %}
+      <div style="margin-top:6px; font-size:12px; color:var(--muted);">
+        💬 {{ a.objection }}
+      </div>
+      {% endif %}
+      {% if a.notes %}
+      <div style="margin-top:4px; font-size:12px; color:var(--dim); font-style:italic;">
+        {{ a.notes }}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Autres appels -->
+  {% set non_dec = s.appels | rejectattr('statut', 'equalto', 'décroché') | list %}
+  {% if non_dec %}
+  <div class="section-title">Appels sans réponse</div>
+  <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:24px;">
+    {% for a in non_dec|reverse %}
+    <div style="background:var(--card); border:1.5px solid var(--border);
+                border-radius:12px; padding:12px 14px;
+                display:flex; align-items:center; justify-content:space-between;">
+      <span style="color:var(--muted); font-size:13px;">{{ a.heure_fmt }}</span>
+      <span style="font-size:12px; color:var(--dim);">
+        {% if a.statut == 'répondeur' %}📬 Répondeur{% else %}📵 Pas répondu{% endif %}
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+let chronoInterval = null;
+let chronoRunning = false;
+let chronoSecs = 0;
+
+function setStatut(val) {
+  document.getElementById('statutInput').value = val;
+  ['pas','rep','dec'].forEach(k => {
+    document.getElementById('btn-'+k).style.border = '1.5px solid var(--border)';
+    document.getElementById('btn-'+k).style.background = 'var(--card)';
+  });
+  const map = {'pas_de_réponse':'pas','répondeur':'rep','décroché':'dec'};
+  const btn = document.getElementById('btn-'+map[val]);
+  btn.style.border = '1.5px solid var(--blue)';
+  btn.style.background = 'var(--blue-s)';
+
+  if (val === 'décroché') {
+    document.getElementById('decrocheSection').classList.remove('hidden');
+  } else {
+    document.getElementById('decrocheSection').classList.add('hidden');
+    document.getElementById('submitBtn').classList.remove('hidden');
+  }
+}
+
+function setRdv(val) {
+  document.getElementById('rdvInput').value = val;
+  ['oui','non'].forEach(k => {
+    document.getElementById('rdv-'+k).style.border = '1.5px solid var(--border)';
+    document.getElementById('rdv-'+k).style.background = 'var(--card)';
+  });
+  const btn = document.getElementById('rdv-'+val);
+  btn.style.border = val === 'oui' ? '1.5px solid var(--green)' : '1.5px solid var(--red)';
+  btn.style.background = val === 'oui' ? 'var(--green-s)' : 'var(--red-s)';
+
+  const objSec = document.getElementById('objectionSection');
+  if (val === 'non') {
+    objSec.classList.remove('hidden');
+  } else {
+    objSec.classList.add('hidden');
+  }
+  document.getElementById('submitBtn').classList.remove('hidden');
+}
+
+function setObjection(val) {
+  document.getElementById('objectionInput').value = val;
+  document.querySelectorAll('.obj-chip').forEach(c => {
+    c.classList.remove('active-red');
+    if (c.dataset.val === val) c.classList.add('active-red');
+  });
+}
+
+function toggleChrono() {
+  if (!chronoRunning) {
+    chronoInterval = setInterval(() => {
+      chronoSecs++;
+      updateChronoDisplay();
+      document.getElementById('dureeSecs').value = chronoSecs;
+    }, 1000);
+    chronoRunning = true;
+    document.getElementById('chronoBtn').textContent = '⏸ Arrêter';
+    document.getElementById('chronoBtn').style.background = 'var(--red-s)';
+    document.getElementById('chronoBtn').style.borderColor = 'rgba(239,68,68,0.4)';
+    document.getElementById('chronoBtn').style.color = 'var(--red)';
+  } else {
+    clearInterval(chronoInterval);
+    chronoRunning = false;
+    document.getElementById('chronoBtn').textContent = '▶ Reprendre';
+    document.getElementById('chronoBtn').style.background = 'var(--blue-s)';
+    document.getElementById('chronoBtn').style.borderColor = 'rgba(59,130,246,0.4)';
+    document.getElementById('chronoBtn').style.color = 'var(--blue)';
+  }
+}
+
+function resetChrono() {
+  clearInterval(chronoInterval);
+  chronoRunning = false;
+  chronoSecs = 0;
+  document.getElementById('dureeSecs').value = 0;
+  document.getElementById('chronoDisplay').textContent = '0:00';
+  document.getElementById('chronoBtn').textContent = '▶ Démarrer';
+  document.getElementById('chronoBtn').style.background = 'var(--blue-s)';
+  document.getElementById('chronoBtn').style.borderColor = 'rgba(59,130,246,0.4)';
+  document.getElementById('chronoBtn').style.color = 'var(--blue)';
+}
+
+function updateChronoDisplay() {
+  const m = Math.floor(chronoSecs / 60);
+  const s = chronoSecs % 60;
+  document.getElementById('chronoDisplay').textContent = m + ':' + String(s).padStart(2,'0');
+}
+
+function parseDureeManuelle(val) {
+  const parts = val.split(':');
+  if (parts.length === 2) {
+    const m = parseInt(parts[0]) || 0;
+    const s = parseInt(parts[1]) || 0;
+    const total = m * 60 + s;
+    if (total > 0) {
+      chronoSecs = total;
+      document.getElementById('dureeSecs').value = total;
+      updateChronoDisplay();
+    }
+  }
+}
+
+// Reset chrono on page load
+window.addEventListener('beforeunload', () => clearInterval(chronoInterval));
+</script>
+{% endblock %}

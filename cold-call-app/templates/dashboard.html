@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Accueil{% endblock %}
+{% block content %}
+<div style="padding: 28px 20px 0;">
+
+  <!-- Header -->
+  <div class="flex justify-between items-center" style="margin-bottom: 20px;">
+    <div>
+      <div class="text-muted" style="font-size: 13px;">{{ today.strftime('%A %d %B') }}</div>
+      <h1 style="font-size: 22px;">Bonjour 👋</h1>
+    </div>
+    <a href="{{ url_for('logout') }}" class="text-muted fs-12">Quitter</a>
+  </div>
+
+  <!-- Stats du jour -->
+  <div style="background: linear-gradient(135deg, rgba(59,130,246,0.15) 0%, var(--card) 100%);
+              border: 1.5px solid rgba(59,130,246,0.35); border-radius: 18px;
+              padding: 20px; margin-bottom: 20px;">
+    <div class="label" style="color: var(--blue);">📊 Aujourd'hui</div>
+    <div class="stat-grid" style="margin-top: 12px;">
+      <div>
+        <div style="font-family:'Sora',sans-serif; font-size:32px; font-weight:800; color:var(--text);">{{ total }}</div>
+        <div class="text-muted fs-12">Appels passés</div>
+      </div>
+      <div>
+        <div style="font-family:'Sora',sans-serif; font-size:32px; font-weight:800; color:var(--blue);">{{ decroches }}</div>
+        <div class="text-muted fs-12">Décrochés</div>
+      </div>
+      <div>
+        <div style="font-family:'Sora',sans-serif; font-size:32px; font-weight:800; color:var(--green);">{{ rdv }}</div>
+        <div class="text-muted fs-12">RDV décrochés</div>
+      </div>
+      <div>
+        <div style="font-family:'Sora',sans-serif; font-size:32px; font-weight:800; color:var(--gold);">{{ taux }}%</div>
+        <div class="text-muted fs-12">Taux de transfo</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  {% if session_active %}
+  <a href="{{ url_for('session', sid=session_active.id) }}"
+     style="display: block; background: var(--green); color: #fff; border-radius: 18px;
+            padding: 18px 20px; margin-bottom: 20px; box-shadow: 0 8px 24px rgba(34,197,94,0.35);">
+    <div class="label" style="color: rgba(255,255,255,0.7);">SESSION EN COURS</div>
+    <div style="font-family:'Sora',sans-serif; font-size:18px; font-weight:800; margin-top:4px;">
+      ▶ Reprendre la session
+    </div>
+    <div style="font-size: 13px; color: rgba(255,255,255,0.75); margin-top: 4px;">
+      Démarrée à {{ session_active.heure_debut_fmt }} · {{ session_active.total }} appels
+    </div>
+  </a>
+  {% else %}
+  <form action="{{ url_for('nouvelle_session') }}" method="POST" style="margin-bottom: 20px;">
+    <button type="submit" class="btn btn-primary" style="padding: 18px; font-size: 16px;">
+      📞 Démarrer une session
+    </button>
+  </form>
+  {% endif %}
+
+  <!-- Sessions du jour -->
+  {% if sessions_today %}
+  <div class="section-title">Sessions d'aujourd'hui</div>
+  <div style="display: flex; flex-direction: column; gap: 10px;">
+    {% for s in sessions_today %}
+    <a href="{{ url_for('session', sid=s.id) if s.est_active else url_for('session_fin', sid=s.id) }}"
+       style="display: block; background: var(--card); border: 1.5px solid var(--border);
+              border-radius: 14px; padding: 14px 16px;">
+      <div class="flex justify-between items-center">
+        <div>
+          <div style="font-weight:700; font-size:14px;">
+            {{ s.heure_debut.strftime('%H:%M') }}
+            {% if s.heure_fin %} → {{ s.heure_fin.strftime('%H:%M') }}{% endif %}
+          </div>
+          <div class="text-muted fs-12" style="margin-top:3px;">
+            {{ s.total }} appels · {{ s.decroches|length }} décrochés · {{ s.rdv_list|length }} RDV
+          </div>
+        </div>
+        <div style="text-align: right;">
+          {% if s.est_active %}
+          <span class="pill" style="background:var(--green-s); color:var(--green); border:1px solid rgba(34,197,94,0.3);">EN COURS</span>
+          {% else %}
+          <span style="font-family:'Sora',sans-serif; font-size:20px; font-weight:800; color:var(--gold);">{{ s.taux }}%</span>
+          {% endif %}
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block title %}Statistiques{% endblock %}
+{% block content %}
+<div style="padding: 24px 20px 0;">
+  <h1 style="font-size:22px; margin-bottom:20px;">Statistiques globales</h1>
+
+  <!-- KPIs principaux -->
+  <div class="stat-grid" style="margin-bottom:20px;">
+    <div style="background:linear-gradient(135deg,rgba(59,130,246,0.15) 0%,var(--card) 100%);
+                border:1.5px solid rgba(59,130,246,0.35); border-radius:18px; padding:16px;">
+      <div style="font-size:20px; margin-bottom:6px;">📞</div>
+      <div class="val" style="font-family:'Sora',sans-serif; font-size:28px; font-weight:800; color:var(--blue);">{{ total_appels }}</div>
+      <div class="text-muted fs-12">Appels total</div>
+    </div>
+    <div style="background:linear-gradient(135deg,rgba(34,197,94,0.15) 0%,var(--card) 100%);
+                border:1.5px solid rgba(34,197,94,0.35); border-radius:18px; padding:16px;">
+      <div style="font-size:20px; margin-bottom:6px;">✅</div>
+      <div style="font-family:'Sora',sans-serif; font-size:28px; font-weight:800; color:var(--green);">{{ total_rdv }}</div>
+      <div class="text-muted fs-12">RDV décrochés</div>
+    </div>
+    <div style="background:linear-gradient(135deg,rgba(255,184,0,0.15) 0%,var(--card) 100%);
+                border:1.5px solid rgba(255,184,0,0.35); border-radius:18px; padding:16px;">
+      <div style="font-size:20px; margin-bottom:6px;">🎯</div>
+      <div style="font-family:'Sora',sans-serif; font-size:28px; font-weight:800; color:var(--gold);">{{ taux_global }}%</div>
+      <div class="text-muted fs-12">Taux de transfo</div>
+    </div>
+    <div style="background:var(--card); border:1.5px solid var(--border); border-radius:18px; padding:16px;">
+      <div style="font-size:20px; margin-bottom:6px;">🗣️</div>
+      <div style="font-family:'Sora',sans-serif; font-size:28px; font-weight:800;">{{ total_decroches }}</div>
+      <div class="text-muted fs-12">Décrochés total</div>
+    </div>
+  </div>
+
+  <!-- 7 derniers jours -->
+  <div class="section-title">7 derniers jours</div>
+  <div class="card" style="margin-bottom:20px; padding: 16px;">
+    {% for day in seven_days %}
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:{{ '10px' if not loop.last else '0' }};">
+      <div style="width:38px; font-size:11px; color:var(--muted); flex-shrink:0;">
+        {{ day.date.strftime('%a') }}<br>{{ day.date.strftime('%d') }}
+      </div>
+      <div style="flex:1;">
+        <div style="height:8px; background:var(--border); border-radius:99px; overflow:hidden; margin-bottom:3px;">
+          <div style="height:100%; background:var(--blue); border-radius:99px;
+                      width:{{ ((day.appels / max_appels) * 100)|int }}%;
+                      transition:width .4s;"></div>
+        </div>
+        <div style="height:8px; background:var(--border); border-radius:99px; overflow:hidden;">
+          <div style="height:100%; background:var(--green); border-radius:99px;
+                      width:{{ ((day.rdv / max_appels) * 100)|int }}%;"></div>
+        </div>
+      </div>
+      <div style="width:50px; text-align:right; font-size:12px; flex-shrink:0;">
+        <span style="color:var(--blue); font-weight:700;">{{ day.appels }}</span>
+        <span style="color:var(--dim);"> / </span>
+        <span style="color:var(--green); font-weight:700;">{{ day.rdv }}</span>
+      </div>
+    </div>
+    {% endfor %}
+    <div style="margin-top:12px; display:flex; gap:16px; font-size:11px; color:var(--muted);">
+      <span><span style="color:var(--blue);">■</span> Appels</span>
+      <span><span style="color:var(--green);">■</span> RDV</span>
+    </div>
+  </div>
+
+  <!-- Top objections -->
+  {% if top_objections %}
+  <div class="section-title">Objections les plus fréquentes</div>
+  <div class="card" style="margin-bottom:20px;">
+    {% set max_obj = top_objections[0][1] %}
+    {% for obj, count in top_objections %}
+    <div style="{% if not loop.last %}border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:12px;{% endif %}">
+      <div class="flex justify-between items-center" style="margin-bottom:6px;">
+        <div style="font-size:13px; font-weight:600;">💬 {{ obj }}</div>
+        <span style="font-family:'Sora',sans-serif; font-weight:800; color:var(--red); font-size:14px;">{{ count }}×</span>
+      </div>
+      <div style="height:6px; background:var(--border); border-radius:99px; overflow:hidden;">
+        <div style="height:100%; background:var(--red); border-radius:99px;
+                    width:{{ ((count / max_obj) * 100)|int }}%; opacity:.7;"></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Meilleure session -->
+  {% if best and best.rdv_list %}
+  <div class="section-title">Meilleure session</div>
+  <a href="{{ url_for('session_fin', sid=best.id) }}"
+     style="display:block; background:linear-gradient(135deg,rgba(255,184,0,0.15) 0%,var(--card) 100%);
+            border:1.5px solid rgba(255,184,0,0.4); border-radius:18px; padding:18px; margin-bottom:24px;">
+    <div class="label" style="color:var(--gold);">🏆 Record personnel</div>
+    <div style="font-family:'Sora',sans-serif; font-size:20px; font-weight:800; margin-top:6px;">
+      {{ best.rdv_list|length }} RDV — {{ best.taux }}% de transfo
+    </div>
+    <div class="text-muted" style="font-size:13px; margin-top:4px;">
+      {{ best.date.strftime('%d %B') }} · {{ best.total }} appels passés
+    </div>
+  </a>
+  {% endif %}
+
+</div>
+{% endblock %}
